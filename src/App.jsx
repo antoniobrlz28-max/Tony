@@ -47,6 +47,15 @@ function addDays(dateStr, days) {
 function daysBetween(a, b) {
   return Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
 }
+function lerpColor(hexA, hexB, t) {
+  const a = hexA.match(/\w\w/g).map(h => parseInt(h, 16));
+  const b = hexB.match(/\w\w/g).map(h => parseInt(h, 16));
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+function urgencyColor(daysLeft, totalDays) {
+  const t = totalDays > 0 ? Math.min(1, Math.max(0, 1 - daysLeft / totalDays)) : 1;
+  return lerpColor(SAGE, RUST, t);
+}
 
 function defaultData() {
   return {
@@ -270,6 +279,18 @@ function FastBar({ pct, label }) {
         </div>
       )}
     </div>
+  );
+}
+
+function PaydayPill({ days, totalDays }) {
+  const color = urgencyColor(days, totalDays);
+  const label = days === 0 ? "today" : days === 1 ? "1d" : `${days}d`;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: 999,
+      background: `${color}22`, color, border: `1px solid ${color}55`,
+      fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap"
+    }}>{label}</span>
   );
 }
 
@@ -654,19 +675,8 @@ export default function FinanceOS() {
           </div>
         </div>
         {tab !== "habits" ? (
-          <div style={{ marginTop: 14 }}>
-            {daysUntilPayday > 0 ? (
-              <>
-                <div style={{ fontSize: 11.5, color: "#C9C2AE", marginBottom: 4 }}>SAFE TO SPEND</div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <div>
-                    <span style={{ fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 700, color: GOLD }}>{fmt(Math.max(0, (incomeThisPeriod - spentThisPeriod) / daysUntilPayday))}</span>
-                    <span style={{ fontSize: 12, color: "#8A97A3" }}> / day</span>
-                  </div>
-                  <span style={{ fontSize: 11.5, color: "#8A97A3" }}>{daysUntilPayday} day{daysUntilPayday === 1 ? "" : "s"} to payday</span>
-                </div>
-              </>
-            ) : (
+          daysUntilPayday === 0 && (
+            <div style={{ marginTop: 14 }}>
               <button onClick={() => setShowPaycheckSheet(true)} style={{
                 width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
                 background: "rgba(201,161,61,0.14)", border: `1px solid ${GOLD}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
@@ -674,8 +684,8 @@ export default function FinanceOS() {
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: GOLD }}>Payday is today — tap to add your paycheck</span>
                 <Plus size={16} color={GOLD} />
               </button>
-            )}
-          </div>
+            </div>
+          )
         ) : (
           <div style={{ marginTop: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#C9C2AE", marginBottom: 6 }}>
@@ -697,7 +707,23 @@ export default function FinanceOS() {
       <div style={{ padding: "18px 16px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "dashboard" && (
           <>
-            <Section title="Spend this period">
+            <Section
+              title="Spend this period"
+              right={
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {daysUntilPayday > 0 && (
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 9, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Safe to spend</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>
+                        {fmt(Math.max(0, (incomeThisPeriod - spentThisPeriod) / daysUntilPayday))}
+                        <span style={{ fontSize: 10, fontWeight: 400, color: SLATE }}>/day</span>
+                      </div>
+                    </div>
+                  )}
+                  <PaydayPill days={daysUntilPayday} totalDays={period.totalDays} />
+                </div>
+              }
+            >
               <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
