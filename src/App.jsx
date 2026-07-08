@@ -873,7 +873,7 @@ export default function FinanceOS() {
 
         {tab === "habits" && (
           <HabitsTab data={data} upsertHabitLog={upsertHabitLog} toggleHabitBool={toggleHabitBool}
-            toggleFasting={toggleFasting} incrementAlcohol={incrementAlcohol} editHabitLog={editHabitLog}
+            incrementAlcohol={incrementAlcohol} editHabitLog={editHabitLog}
             deleteHabitLog={deleteHabitLog} setGoalWeight={setGoalWeight}
             addFoodItem={addFoodItem} editFoodItem={editFoodItem} deleteFoodItem={deleteFoodItem}
             addAbstinence={addAbstinence} resetAbstinence={resetAbstinence} editAbstinence={editAbstinence} deleteAbstinence={deleteAbstinence}
@@ -1270,7 +1270,7 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
   );
 }
 
-function HabitsTab({ data, upsertHabitLog, toggleHabitBool, toggleFasting, incrementAlcohol, editHabitLog, deleteHabitLog, setGoalWeight, addFoodItem, editFoodItem, deleteFoodItem, addAbstinence, resetAbstinence, editAbstinence, deleteAbstinence, addWeeklyReview, deleteWeeklyReview }) {
+function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, editHabitLog, deleteHabitLog, setGoalWeight, addFoodItem, editFoodItem, deleteFoodItem, addAbstinence, resetAbstinence, editAbstinence, deleteAbstinence, addWeeklyReview, deleteWeeklyReview }) {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [showAbstinence, setShowAbstinence] = useState(false);
   const [showWeightPicker, setShowWeightPicker] = useState(false);
