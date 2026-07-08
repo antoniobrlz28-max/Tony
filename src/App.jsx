@@ -1871,4 +1871,556 @@ function NutritionLog({ data, addFoodItem, editFoodItem, deleteFoodItem }) {
 
 function HabitLogRow({ log, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
-  const [f, setF] = useState({ weight: log.weight || "", wakeTime: log.wakeTime || "", sleepTime: log.
+  const [f, setF] = useState({
+    weight: log.weight || "", wakeTime: log.wakeTime || "", sleepTime: log.sleepTime || "",
+    trainingNote: log.trainingNote || "", trained: !!log.trained, alcoholDrinks: log.alcoholDrinks || 0,
+  });
+
+  if (editing) {
+    return (
+      <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 8 }}>
+          <Field label="Weight (kg)"><input style={minimalInputStyle} type="number" value={f.weight} onChange={e => setF({ ...f, weight: e.target.value })} /></Field>
+          <Field label="Sleep time"><input style={minimalInputStyle} type="time" value={f.sleepTime} onChange={e => setF({ ...f, sleepTime: e.target.value })} /></Field>
+          <Field label="Wake time"><input style={minimalInputStyle} type="time" value={f.wakeTime} onChange={e => setF({ ...f, wakeTime: e.target.value })} /></Field>
+          <Field label="Drinks"><input style={minimalInputStyle} type="number" value={f.alcoholDrinks} onChange={e => setF({ ...f, alcoholDrinks: e.target.value })} /></Field>
+          <Field label="Training note"><input style={minimalInputStyle} value={f.trainingNote} onChange={e => setF({ ...f, trainingNote: e.target.value })} placeholder="e.g. RDL 3x10" /></Field>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: SLATE, marginBottom: 10 }}>
+          <input type="checkbox" checked={f.trained} onChange={e => setF({ ...f, trained: e.target.checked })} /> Trained
+        </label>
+        <div style={{ display: "flex", gap: 6 }}>
+          <SmallBtn tone="gold" onClick={() => { onSave({ ...f, weight: Number(f.weight) || 0, alcoholDrinks: Number(f.alcoholDrinks) || 0 }); setEditing(false); }}><Check size={12} /> Save</SmallBtn>
+          <SmallBtn tone="ghost" onClick={() => setEditing(false)}><X size={12} /> Cancel</SmallBtn>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{log.date}</div>
+        <div style={{ fontSize: 11, color: SLATE }}>
+          {log.trained ? "Trained" : "Rest"}{log.weight ? ` · ${log.weight}kg` : ""}{log.alcoholDrinks ? ` · ${log.alcoholDrinks} drink${log.alcoholDrinks === 1 ? "" : "s"}` : ""}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
+        <DeleteBtn onDelete={onDelete} />
+      </div>
+    </div>
+  );
+}
+
+function BottomSheet({ title, onClose, children }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(22,35,46,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }} onClick={onClose}>
+      <div style={{ background: CARD, borderRadius: "20px 20px 0 0", padding: "18px 16px 24px", width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 -10px 30px rgba(0,0,0,0.3)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <h3 style={{ fontFamily: "Georgia, serif", fontSize: 17, color: TEXT, margin: 0 }}>{title}</h3>
+          <IconBtn icon={X} onClick={onClose} />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PaycheckSheet({ onClose, onConfirm }) {
+  const [amount, setAmount] = useState("");
+  return (
+    <BottomSheet title="Received a paycheck" onClose={onClose}>
+      <Field label="Amount">
+        <input style={inputStyle} type="number" value={amount} onChange={e => setAmount(e.target.value)} autoFocus placeholder="0.00" />
+      </Field>
+      <SmallBtn tone="gold" onClick={() => onConfirm(amount)} style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
+        <Check size={13} /> Confirm paycheck
+      </SmallBtn>
+    </BottomSheet>
+  );
+}
+
+function AccountsTab({ data, setData, editAccount, deleteAccount }) {
+  function addAccount(name, type) {
+    if (!name) return;
+    setData(d => ({ ...d, accounts: [...d.accounts, { id: uid(), name, balance: 0, type }] }));
+  }
+  return (
+    <Section title="Accounts" eyebrow={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`}>
+      {data.accounts.length === 0 && <Empty text="No accounts yet — add one below." />}
+      {data.accounts.map(a => (
+        <AccountRow key={a.id} account={a} onSave={updates => editAccount(a.id, updates)} onDelete={() => deleteAccount(a.id)} />
+      ))}
+      <AddAccountForm onAdd={addAccount} />
+    </Section>
+  );
+}
+
+function AccountRow({ account, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(account.name);
+  const [balance, setBalance] = useState(account.balance);
+  const [type, setType] = useState(account.type);
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 10 }}>
+        <input style={{ ...inputStyle, flex: 2, minWidth: 100 }} value={name} onChange={e => setName(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1, minWidth: 80 }} type="number" value={balance} onChange={e => setBalance(e.target.value)} />
+        <select style={{ ...inputStyle, flex: 1, minWidth: 100 }} value={type} onChange={e => setType(e.target.value)}>
+          {ACCOUNT_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave({ name, balance, type }); setEditing(false); }} />
+        <IconBtn icon={X} onClick={() => setEditing(false)} />
+      </div>
+    );
+  }
+  const typeInfo = ACCOUNT_TYPES.find(t => t.id === account.type) || ACCOUNT_TYPES[0];
+  const TypeIcon = typeInfo.icon;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: PAPER_DIM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <TypeIcon size={15} color={SLATE} />
+        </div>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{account.name}</div>
+          <div style={{ fontSize: 11, color: SLATE }}>{typeInfo.label}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(account.balance)}</span>
+        <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
+        <DeleteBtn onDelete={onDelete} />
+      </div>
+    </div>
+  );
+}
+
+function AddAccountForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [type, setType] = useState("checking");
+  if (!open) {
+    return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 10 }}><Plus size={13} /> Add account</SmallBtn>;
+  }
+  return (
+    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        {ACCOUNT_TYPES.map(t => {
+          const TypeIcon = t.icon;
+          const active = type === t.id;
+          return (
+            <button key={t.id} onClick={() => setType(t.id)} style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "8px 10px", borderRadius: 10, border: `1px solid ${active ? GOLD : INK_SOFT + "40"}`,
+              background: active ? "rgba(201,161,61,0.12)" : "transparent", color: active ? GOLD : TEXT, cursor: "pointer"
+            }}>
+              <TypeIcon size={14} /> <span style={{ fontSize: 12.5 }}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input style={{ ...inputStyle, flex: 1 }} placeholder="Account name" value={name} onChange={e => setName(e.target.value)} autoFocus />
+        <SmallBtn tone="gold" onClick={() => { onAdd(name, type); setName(""); setOpen(false); }}><Check size={13} /></SmallBtn>
+        <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
+      </div>
+    </div>
+  );
+}
+
+function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransaction, deleteTransaction }) {
+  const [formType, setFormType] = useState("expense");
+  const [amount, setAmount] = useState("");
+  const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
+  const [toAccountId, setToAccountId] = useState(data.accounts[1]?.id || data.accounts[0]?.id || "");
+  const [categoryId, setCategoryId] = useState(data.categories[0]?.id || "");
+  const [note, setNote] = useState("");
+
+  function submit() {
+    if (formType === "income") addIncome({ amount, accountId, note });
+    else if (formType === "expense") addExpense({ amount, accountId, categoryId, note });
+    else addTransfer({ amount, fromId: accountId, toId: toAccountId, note });
+    setAmount("");
+    setNote("");
+  }
+
+  const sorted = data.transactions.slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  return (
+    <>
+      <Section title="Log a transaction">
+        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+          {["expense", "income", "transfer"].map(t => (
+            <button key={t} onClick={() => setFormType(t)} style={{
+              flex: 1, padding: "8px 0", borderRadius: 999, border: "none", cursor: "pointer",
+              background: formType === t ? GOLD : PAPER_DIM, color: formType === t ? INK : TEXT,
+              fontWeight: 700, fontSize: 12.5, textTransform: "capitalize"
+            }}>{t}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <Field label="Amount"><input style={inputStyle} type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" /></Field>
+          <Field label={formType === "transfer" ? "From account" : "Account"}>
+            <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
+              {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </Field>
+          {formType === "transfer" && (
+            <Field label="To account">
+              <select style={inputStyle} value={toAccountId} onChange={e => setToAccountId(e.target.value)}>
+                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </Field>
+          )}
+          {formType === "expense" && (
+            <Field label="Category">
+              <select style={inputStyle} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+                {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
+          )}
+          <Field label="Note"><input style={inputStyle} value={note} onChange={e => setNote(e.target.value)} placeholder="Optional" /></Field>
+        </div>
+        <SmallBtn tone="gold" onClick={submit} style={{ marginTop: 12, width: "100%", justifyContent: "center" }}>
+          <Plus size={13} /> Add {formType}
+        </SmallBtn>
+      </Section>
+
+      <Section title="Recent transactions" eyebrow={`${data.transactions.length} total`}>
+        {sorted.length === 0 && <Empty text="No transactions yet." />}
+        {sorted.map(tx => (
+          <TransactionRow key={tx.id} tx={tx} data={data}
+            onSave={updates => editTransaction(tx, updates)}
+            onDelete={() => deleteTransaction(tx)} />
+        ))}
+      </Section>
+    </>
+  );
+}
+
+function TransactionRow({ tx, data, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [amount, setAmount] = useState(tx.amount);
+  const [note, setNote] = useState(tx.note || "");
+  const account = data.accounts.find(a => a.id === tx.accountId);
+  const category = data.categories.find(c => c.id === tx.categoryId);
+  const toAccount = data.accounts.find(a => a.id === tx.toAccountId);
+
+  const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "-" : "";
+  const color = tx.type === "income" ? SAGE : tx.type === "expense" ? RUST : SLATE;
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
+        <input style={{ ...inputStyle, flex: 1 }} type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 2 }} value={note} onChange={e => setNote(e.target.value)} />
+        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave({ amount, note }); setEditing(false); }} />
+        <IconBtn icon={X} onClick={() => setEditing(false)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{tx.note || category?.name || (tx.type === "transfer" ? `Transfer to ${toAccount?.name || "—"}` : tx.type)}</div>
+        <div style={{ fontSize: 11, color: SLATE }}>{tx.date} · {account?.name || "—"}</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color }}>{sign}{fmt(tx.amount)}</span>
+        <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
+        <DeleteBtn onDelete={onDelete} />
+      </div>
+    </div>
+  );
+}
+
+function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
+  function addBill(bill) {
+    setData(d => ({ ...d, bills: [...d.bills, { id: uid(), lastPaid: null, ...bill }] }));
+  }
+  const sorted = data.bills.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  return (
+    <Section title="Bills" eyebrow={`${data.bills.length} recurring`}>
+      {sorted.length === 0 && <Empty text="No bills yet — add one below." />}
+      {sorted.map(b => (
+        <BillRow key={b.id} bill={b}
+          onPay={() => payBill(b)}
+          onSave={updates => editBill(b.id, updates)}
+          onDelete={() => deleteBill(b.id)} />
+      ))}
+      <AddBillForm data={data} onAdd={addBill} />
+    </Section>
+  );
+}
+
+function BillRow({ bill, onPay, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(bill.name);
+  const [amount, setAmount] = useState(bill.amount);
+  const [dueDate, setDueDate] = useState(bill.dueDate);
+  const [frequencyDays, setFrequencyDays] = useState(bill.frequencyDays);
+  const BillIcon = BILL_ICONS[bill.name] || BILL_ICONS.Other;
+  const daysUntil = daysBetween(todayStr(), bill.dueDate);
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 10 }}>
+        <input style={{ ...inputStyle, flex: 2, minWidth: 100 }} value={name} onChange={e => setName(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1, minWidth: 70 }} type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1, minWidth: 120 }} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1, minWidth: 90 }} type="number" value={frequencyDays} onChange={e => setFrequencyDays(e.target.value)} />
+        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave({ name, amount, dueDate, frequencyDays }); setEditing(false); }} />
+        <IconBtn icon={X} onClick={() => setEditing(false)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: PAPER_DIM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <BillIcon size={15} color={SLATE} />
+        </div>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{bill.name}</div>
+          <div style={{ fontSize: 11, color: daysUntil <= 3 ? RUST : SLATE }}>
+            {daysUntil < 0 ? "overdue" : daysUntil === 0 ? "due today" : `due in ${daysUntil}d`} · every {bill.frequencyDays}d
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(bill.amount)}</span>
+        <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 10px", fontSize: 11 }}>Mark paid</SmallBtn>
+        <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
+        <DeleteBtn onDelete={onDelete} />
+      </div>
+    </div>
+  );
+}
+
+function AddBillForm({ data, onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [dueDate, setDueDate] = useState(todayStr());
+  const [frequencyDays, setFrequencyDays] = useState(30);
+  const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
+  const [categoryId, setCategoryId] = useState(data.categories[0]?.id || "");
+
+  if (!open) {
+    return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 10 }}><Plus size={13} /> Add bill</SmallBtn>;
+  }
+
+  function submit() {
+    if (!name || !amount) return;
+    onAdd({ name, amount: Number(amount), dueDate, frequencyDays: Number(frequencyDays), accountId, categoryId });
+    setName("");
+    setAmount("");
+    setOpen(false);
+  }
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        {BILL_TEMPLATES.map(t => (
+          <button key={t} onClick={() => setName(t)} style={{
+            padding: "5px 10px", borderRadius: 999, border: `1px solid ${name === t ? GOLD : INK_SOFT + "40"}`,
+            background: name === t ? "rgba(201,161,61,0.12)" : "transparent", color: name === t ? GOLD : TEXT,
+            fontSize: 11.5, cursor: "pointer"
+          }}>{t}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <Field label="Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} /></Field>
+        <Field label="Amount"><input style={inputStyle} type="number" value={amount} onChange={e => setAmount(e.target.value)} /></Field>
+        <Field label="Next due"><input style={inputStyle} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></Field>
+        <Field label="Repeats every (days)"><input style={inputStyle} type="number" value={frequencyDays} onChange={e => setFrequencyDays(e.target.value)} /></Field>
+        <Field label="Account">
+          <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
+            {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Category">
+          <select style={inputStyle} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+            {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <SmallBtn tone="gold" onClick={submit}><Check size={13} /> Save</SmallBtn>
+        <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /> Cancel</SmallBtn>
+      </div>
+    </div>
+  );
+}
+
+function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }) {
+  function addGoal(name, target) {
+    if (!name) return;
+    setData(d => ({ ...d, goals: [...d.goals, { id: uid(), name, target: Number(target) || 0, saved: 0 }] }));
+  }
+  return (
+    <Section title="Goals" eyebrow={`${data.goals.length} goal${data.goals.length === 1 ? "" : "s"}`}>
+      {data.goals.length === 0 && <Empty text="No goals yet — add one below." />}
+      {data.goals.map(g => (
+        <GoalRow key={g.id} goal={g} data={data}
+          onContribute={(amount, accountId) => contributeGoal(g, amount, accountId)}
+          onSave={updates => editGoal(g.id, updates)}
+          onDelete={() => deleteGoal(g.id)} />
+      ))}
+      <AddGoalForm onAdd={addGoal} />
+    </Section>
+  );
+}
+
+function GoalRow({ goal, data, onContribute, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(goal.name);
+  const [target, setTarget] = useState(goal.target);
+  const [contributing, setContributing] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
+  const pct = goal.target > 0 ? (goal.saved / goal.target) * 100 : 0;
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12 }}>
+        <input style={{ ...inputStyle, flex: 2 }} value={name} onChange={e => setName(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1 }} type="number" value={target} onChange={e => setTarget(e.target.value)} />
+        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave({ name, target, saved: goal.saved }); setEditing(false); }} />
+        <IconBtn icon={X} onClick={() => setEditing(false)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+        <span style={{ fontWeight: 600 }}>{goal.name}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: SLATE }}>{fmt(goal.saved)} / {fmt(goal.target)}</span>
+          <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
+          <DeleteBtn onDelete={onDelete} />
+        </div>
+      </div>
+      <ProgressBar pct={pct} tone="gold" />
+      {contributing ? (
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+          <select style={{ ...inputStyle, flex: 1 }} value={accountId} onChange={e => setAccountId(e.target.value)}>
+            {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <SmallBtn tone="gold" onClick={() => { onContribute(amount, accountId); setAmount(""); setContributing(false); }}><Check size={13} /></SmallBtn>
+          <SmallBtn tone="ghost" onClick={() => setContributing(false)}><X size={13} /></SmallBtn>
+        </div>
+      ) : (
+        <SmallBtn onClick={() => setContributing(true)} style={{ marginTop: 8, padding: "5px 10px", fontSize: 11 }}><Plus size={11} /> Contribute</SmallBtn>
+      )}
+    </div>
+  );
+}
+
+function AddGoalForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [target, setTarget] = useState("");
+  if (!open) return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 8 }}><Plus size={13} /> Add goal</SmallBtn>;
+  return (
+    <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+      <input style={{ ...inputStyle, flex: 2 }} placeholder="Goal name" value={name} onChange={e => setName(e.target.value)} autoFocus />
+      <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="Target" value={target} onChange={e => setTarget(e.target.value)} />
+      <SmallBtn tone="gold" onClick={() => { onAdd(name, target); setName(""); setTarget(""); setOpen(false); }}><Check size={13} /></SmallBtn>
+      <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
+    </div>
+  );
+}
+
+function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
+  function addDebt(name, total, rate) {
+    if (!name) return;
+    setData(d => ({ ...d, debts: [...d.debts, { id: uid(), name, total: Number(total) || 0, rate: Number(rate) || 0, paid: 0 }] }));
+  }
+  return (
+    <Section title="Debt" eyebrow={`${data.debts.length} tracked`}>
+      {data.debts.length === 0 && <Empty text="No debts tracked — add one below." />}
+      {data.debts.map(x => (
+        <DebtRow key={x.id} debt={x} data={data}
+          onPay={(amount, accountId) => payDebt(x, amount, accountId)}
+          onSave={updates => editDebt(x.id, updates)}
+          onDelete={() => deleteDebt(x.id)} />
+      ))}
+      <AddDebtForm onAdd={addDebt} />
+    </Section>
+  );
+}
+
+function DebtRow({ debt, data, onPay, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(debt.name);
+  const [total, setTotal] = useState(debt.total);
+  const [rate, setRate] = useState(debt.rate);
+  const [paying, setPaying] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
+  const remaining = Math.max(0, debt.total - debt.paid);
+  const pct = debt.total > 0 ? (debt.paid / debt.total) * 100 : 0;
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 12 }}>
+        <input style={{ ...inputStyle, flex: 2, minWidth: 100 }} value={name} onChange={e => setName(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1, minWidth: 80 }} type="number" value={total} onChange={e => setTotal(e.target.value)} />
+        <input style={{ ...inputStyle, flex: 1, minWidth: 70 }} type="number" step="0.1" value={rate} onChange={e => setRate(e.target.value)} />
+        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave({ name, total, rate, paid: debt.paid }); setEditing(false); }} />
+        <IconBtn icon={X} onClick={() => setEditing(false)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+        <span style={{ fontWeight: 600 }}>{debt.name} <span style={{ color: SLATE, fontWeight: 400 }}>({debt.rate}% APR)</span></span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: SLATE }}>{fmt(remaining)} left</span>
+          <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
+          <DeleteBtn onDelete={onDelete} />
+        </div>
+      </div>
+      <ProgressBar pct={pct} tone="sage" />
+      {paying ? (
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+          <select style={{ ...inputStyle, flex: 1 }} value={accountId} onChange={e => setAccountId(e.target.value)}>
+            {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <SmallBtn tone="gold" onClick={() => { onPay(amount, accountId); setAmount(""); setPaying(false); }}><Check size={13} /></SmallBtn>
+          <SmallBtn tone="ghost" onClick={() => setPaying(false)}><X size={13} /></SmallBtn>
+        </div>
+      ) : (
+        <SmallBtn onClick={() => setPaying(true)} style={{ marginTop: 8, padding: "5px 10px", fontSize: 11 }}><Plus size={11} /> Make a payment</SmallBtn>
+      )}
+    </div>
+  );
+}
+
+function AddDebtForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [total, setTotal] = useState("");
+  const [rate, setRate] = useState("");
+  if (!open) return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 8 }}><Plus size={13} /> Add debt</SmallBtn>;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+      <input style={{ ...inputStyle, flex: 2, minWidth: 100 }} placeholder="Debt name" value={name} onChange={e => setName(e.target.value)} autoFocus />
+      <input style={{ ...inputStyle, flex: 1, minWidth: 80 }} type="number" placeholder="Total" value={total} onChange={e => setTotal(e.target.value)} />
+      <input style={{ ...inputStyle, flex: 1, minWidth: 70 }} type="number" step="0.1" placeholder="APR %" value={rate} onChange={e => setRate(e.target.value)} />
+      <SmallBtn tone="gold" onClick={() => { onAdd(name, total, rate); setName(""); setTotal(""); setRate(""); setOpen(false); }}><Check size={13} /></SmallBtn>
+      <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
+    </div>
+  );
+}
