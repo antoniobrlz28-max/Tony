@@ -347,24 +347,19 @@ export default function FinanceOS() {
   }
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await window.storage.get(STORAGE_KEY, false);
-        if (res && res.value) setData(migrate(JSON.parse(res.value)));
-      } catch (e) {
-        // No saved data yet, or storage unavailable — the default data already on screen stands.
-      }
-    })();
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setData(migrate(JSON.parse(raw)));
+    } catch (e) {
+      // No saved data yet, or storage unavailable — the default data already on screen stands.
+    }
   }, []);
 
   useEffect(() => {
     setSaving(true);
-    const t = setTimeout(async () => {
+    const t = setTimeout(() => {
       try {
-        await Promise.race([
-          window.storage.set(STORAGE_KEY, JSON.stringify(data), false),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("save timeout")), 4000)),
-        ]);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (e) { /* ignore — local state already has the change */ }
       setSaving(false);
     }, 300);
@@ -652,7 +647,10 @@ export default function FinanceOS() {
             ) : (
               <button onClick={() => setConfirmDemo(true)} style={{ fontSize: 10.5, background: "none", border: "none", color: "#8A97A3", cursor: "pointer", textDecoration: "underline" }}>Load demo data</button>
             )}
-            <span style={{ fontSize: 11, color: saving ? GOLD : SLATE }}>{saving ? "saving…" : "saved"}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: saving ? GOLD : SLATE }}>
+              {saving && <RefreshCw size={11} className="spinner" />}
+              {saving ? "saving…" : "saved"}
+            </span>
           </div>
         </div>
         {tab !== "habits" ? (
