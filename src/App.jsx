@@ -282,7 +282,16 @@ function FastBar({ pct, label }) {
   );
 }
 
-function PaydayPill({ days, totalDays }) {
+function CountdownPill({ days, totalDays }) {
+  if (days < 0) {
+    return (
+      <span style={{
+        display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: 999,
+        background: `${RUST}22`, color: RUST, border: `1px solid ${RUST}55`,
+        fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap"
+      }}>overdue</span>
+    );
+  }
   const color = urgencyColor(days, totalDays);
   const label = days === 0 ? "today" : days === 1 ? "1d" : `${days}d`;
   return (
@@ -467,7 +476,7 @@ export default function FinanceOS() {
     const amt = Number(amount);
     if (!amt) return;
     addIncome({ amount: amt, accountId: data.accounts[0]?.id, note: "Paycheck" });
-    setData(d => ({ ...d, nextPaycheck: addDays(d.nextPaycheck, d.cycleDays) }));
+    setData(d => ({ ...d, nextPaycheck: addDays(todayStr(), d.cycleDays) }));
     setSuggestion(computeSuggestedSplit(amt));
     setShowPaycheckSheet(false);
   }
@@ -720,7 +729,6 @@ export default function FinanceOS() {
                       </div>
                     </div>
                   )}
-                  <PaydayPill days={daysUntilPayday} totalDays={period.totalDays} />
                 </div>
               }
             >
@@ -759,14 +767,20 @@ export default function FinanceOS() {
                 )}
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "12px 14px" }}>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: TEAL_BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button
+                onClick={() => setShowPaycheckSheet(true)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                  background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "12px 14px", cursor: "pointer"
+                }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: TEAL_BG, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Wallet size={16} color={TEAL} />
                 </div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: TEXT }}>
                   {daysUntilPayday === 0 ? "Payday is today" : `Payday in ${daysUntilPayday} day${daysUntilPayday === 1 ? "" : "s"}`}
                 </div>
-              </div>
+              </button>
 
               {(() => {
                 const leftover = incomeThisPeriod - spentThisPeriod;
@@ -878,7 +892,7 @@ export default function FinanceOS() {
             <Section title="Upcoming bills">
               {data.bills.length === 0 && <Empty text="No bills yet — add one in the Bills tab." />}
               {data.bills.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4).map(b => (
-                <Row key={b.id} left={b.name} mid={b.dueDate} right={fmt(b.amount)} />
+                <Row key={b.id} left={b.name} mid={<CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />} right={fmt(b.amount)} />
               ))}
             </Section>
 
@@ -1119,7 +1133,6 @@ function FastingModal({ date, log, onClose, onSave, blockNew }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14, maxHeight: 260, overflowY: "auto" }}>
               {[
                 { h: 16, tag: "Recommended", desc: "The standard 16:8 window — sustainable for most days." },
-                { h: 12, tag: "Easier", desc: "A shorter window if today's already a lot." },
                 { h: 18, tag: "Extended", desc: "A bit more of a stretch, bigger deficit." },
                 { h: 24, tag: "Full day", desc: "24 hours. Only if you're sure." },
               ].map(opt => (
@@ -2213,8 +2226,9 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
         </div>
         <div>
           <div style={{ fontSize: 13.5, fontWeight: 600 }}>{bill.name}</div>
-          <div style={{ fontSize: 11, color: daysUntil <= 3 ? RUST : SLATE }}>
-            {daysUntil < 0 ? "overdue" : daysUntil === 0 ? "due today" : `due in ${daysUntil}d`} · every {bill.frequencyDays}d
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+            <CountdownPill days={daysUntil} totalDays={bill.frequencyDays} />
+            <span style={{ fontSize: 11, color: SLATE }}>every {bill.frequencyDays}d</span>
           </div>
         </div>
       </div>
