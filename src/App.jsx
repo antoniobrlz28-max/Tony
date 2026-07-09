@@ -120,50 +120,77 @@ function shiftMonth(ym, delta) {
 function generateDemoData() {
   const today = todayStr();
   const d = n => addDays(today, n);
+  const rand = (min, max) => Math.round(min + Math.random() * (max - min));
 
   const accounts = [
-    { id: uid(), name: "Checking", balance: 2450.75, type: "checking" },
-    { id: uid(), name: "Savings", balance: 5200, type: "savings" },
+    { id: uid(), name: "Checking", balance: 340.15, type: "checking" },
+    { id: uid(), name: "Savings", balance: 620, type: "savings" },
   ];
   const categories = [
     { id: uid(), name: "Rent", percent: 30 },
     { id: uid(), name: "Essentials", percent: 30 },
-    { id: uid(), name: "Discretionary", percent: 20 },
-    { id: uid(), name: "Savings", percent: 20 },
+    { id: uid(), name: "Discretionary", percent: 25 },
+    { id: uid(), name: "Savings", percent: 15 },
   ];
   const [rentCat, essCat, discCat] = categories;
   const checkingId = accounts[0].id;
 
-  // Two pay periods of transactions (28 days) so "vs avg spend" has real prior-period data to compare against
+  // Modeled on ~4 months of real statement patterns (anonymized, rescaled): irregular
+  // paycheck amounts, a recurring transfer that functions as rent, and frequent small
+  // discretionary spend (rideshare, dining/bars, convenience store, ATM cash) plus a
+  // handful of recurring subscriptions. Two pay periods so "vs avg spend" has prior data.
   const transactions = [];
+  const diningSpots = ["Taco spot", "Late-night diner", "Coffee shop", "Bar tab", "Pizza place", "Sushi counter"];
+  const rideshareNotes = ["Rideshare - night out", "Rideshare - airport", "Rideshare - home"];
+  const subscriptions = [
+    { note: "Streaming service", amount: 15.99 },
+    { note: "AI tool subscription", amount: 20 },
+    { note: "Phone bill", amount: 65 },
+    { note: "Internet", amount: 60 },
+  ];
+
   for (const offset of [-6, -20]) {
-    transactions.push({ id: uid(), type: "income", amount: 2100, accountId: checkingId, date: d(offset), note: "Paycheck" });
-    transactions.push({ id: uid(), type: "expense", amount: 1200, accountId: checkingId, categoryId: rentCat.id, date: d(offset), note: "Rent" });
-    transactions.push({ id: uid(), type: "expense", amount: 70 + Math.round(Math.random() * 40), accountId: checkingId, categoryId: essCat.id, date: d(offset + 1), note: "Groceries" });
-    transactions.push({ id: uid(), type: "expense", amount: 25 + Math.round(Math.random() * 30), accountId: checkingId, categoryId: discCat.id, date: d(offset + 3), note: "Dinner out" });
-    transactions.push({ id: uid(), type: "expense", amount: 40 + Math.round(Math.random() * 25), accountId: checkingId, categoryId: essCat.id, date: d(offset + 4), note: "Gas" });
-    transactions.push({ id: uid(), type: "expense", amount: 15 + Math.round(Math.random() * 20), accountId: checkingId, categoryId: discCat.id, date: d(offset + 6), note: "Streaming / fun" });
+    // Irregular income - two uneven paychecks per period, not a flat number
+    transactions.push({ id: uid(), type: "income", amount: rand(650, 1150), accountId: checkingId, date: d(offset), note: "Paycheck" });
+    transactions.push({ id: uid(), type: "income", amount: rand(550, 1000), accountId: checkingId, date: d(offset + 7), note: "Paycheck" });
+    // Recurring large transfer out that functions as rent
+    transactions.push({ id: uid(), type: "expense", amount: 820, accountId: checkingId, categoryId: rentCat.id, date: d(offset), note: "Rent transfer" });
+    // Groceries / gas / essentials
+    transactions.push({ id: uid(), type: "expense", amount: rand(60, 110), accountId: checkingId, categoryId: essCat.id, date: d(offset + 1), note: "Groceries" });
+    transactions.push({ id: uid(), type: "expense", amount: rand(30, 55), accountId: checkingId, categoryId: essCat.id, date: d(offset + 5), note: "Gas" });
+    transactions.push({ id: uid(), type: "expense", amount: rand(10, 25), accountId: checkingId, categoryId: essCat.id, date: d(offset + 9), note: "Convenience store" });
+    // High-frequency small discretionary spend: rideshare, dining/bars, cash
+    for (let i = 0; i < 5; i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(8, 45), accountId: checkingId, categoryId: discCat.id, date: d(offset + rand(0, 13)), note: diningSpots[rand(0, diningSpots.length - 1)] });
+    }
+    for (let i = 0; i < 2; i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(9, 22), accountId: checkingId, categoryId: discCat.id, date: d(offset + rand(0, 13)), note: rideshareNotes[rand(0, rideshareNotes.length - 1)] });
+    }
+    transactions.push({ id: uid(), type: "expense", amount: rand(20, 60), accountId: checkingId, categoryId: discCat.id, date: d(offset + rand(0, 13)), note: "ATM cash withdrawal" });
   }
-  transactions.push({ id: uid(), type: "expense", amount: 90, accountId: checkingId, categoryId: essCat.id, date: d(-1), note: "Groceries" });
+  for (const sub of subscriptions) {
+    transactions.push({ id: uid(), type: "expense", amount: sub.amount, accountId: checkingId, categoryId: discCat.id, date: d(-rand(1, 27)), note: sub.note });
+  }
+  transactions.push({ id: uid(), type: "expense", amount: 35, accountId: checkingId, categoryId: essCat.id, date: d(-1), note: "Groceries" });
 
   const bills = [
-    { id: uid(), name: "Electricity", amount: 78, dueDate: d(21), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-9) },
-    { id: uid(), name: "Internet", amount: 55, dueDate: d(4), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-26) },
-    { id: uid(), name: "Rent", amount: 1200, dueDate: d(8), frequencyDays: 30, accountId: checkingId, categoryId: rentCat.id, lastPaid: d(-6) },
+    { id: uid(), name: "Phone", amount: 65, dueDate: d(11), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-19) },
+    { id: uid(), name: "Internet", amount: 60, dueDate: d(4), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-26) },
+    { id: uid(), name: "Rent", amount: 820, dueDate: d(8), frequencyDays: 30, accountId: checkingId, categoryId: rentCat.id, lastPaid: d(-6) },
   ];
 
   const goals = [
-    { id: uid(), name: "Emergency fund", target: 3000, saved: 1200 },
-    { id: uid(), name: "New laptop", target: 1500, saved: 400 },
+    { id: uid(), name: "Emergency cushion", target: 1500, saved: 620 },
+    { id: uid(), name: "New laptop", target: 1200, saved: 150 },
   ];
 
   const debts = [
     {
-      id: uid(), name: "Student loan", total: 8000, rate: 5.5, paid: 1200,
+      id: uid(), name: "Credit card", total: 2400, rate: 22, paid: 500,
       payments: [
-        { date: d(-62), amount: 400 },
-        { date: d(-33), amount: 400 },
-        { date: d(-5), amount: 400 },
+        { date: d(-62), amount: 150 },
+        { date: d(-33), amount: 175 },
+        { date: d(-5), amount: 175 },
       ],
     },
   ];
@@ -412,13 +439,17 @@ export default function FinanceOS() {
   const [data, setData] = useState(() => defaultData());
   const [tab, setTab] = useState("dashboard");
   const [saving, setSaving] = useState(false);
-  const [confirmDemo, setConfirmDemo] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // "demo" | "empty" | null
   const [showPaycheckSheet, setShowPaycheckSheet] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const paydayLongPress = useLongPress(() => setShowPaycheckSheet(true));
   function loadDemoData() {
     setData(generateDemoData());
-    setConfirmDemo(false);
+    setConfirmAction(null);
+  }
+  function clearData() {
+    setData(defaultData());
+    setConfirmAction(null);
   }
 
   useEffect(() => {
@@ -798,14 +829,17 @@ export default function FinanceOS() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <h1 style={{ fontFamily: "Georgia, serif", fontSize: 21, margin: 0, letterSpacing: "0.01em" }}>Life OS</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {confirmDemo ? (
+            {confirmAction ? (
               <>
                 <span style={{ fontSize: 10.5, color: "#E0A0A0" }}>Overwrite all data?</span>
-                <button onClick={loadDemoData} style={{ fontSize: 10.5, fontWeight: 700, background: "none", border: "none", color: GOLD, cursor: "pointer" }}>Confirm</button>
-                <button onClick={() => setConfirmDemo(false)} style={{ fontSize: 10.5, background: "none", border: "none", color: SLATE, cursor: "pointer" }}>Cancel</button>
+                <button onClick={confirmAction === "demo" ? loadDemoData : clearData} style={{ fontSize: 10.5, fontWeight: 700, background: "none", border: "none", color: GOLD, cursor: "pointer" }}>Confirm</button>
+                <button onClick={() => setConfirmAction(null)} style={{ fontSize: 10.5, background: "none", border: "none", color: SLATE, cursor: "pointer" }}>Cancel</button>
               </>
             ) : (
-              <button onClick={() => setConfirmDemo(true)} style={{ fontSize: 10.5, background: "none", border: "none", color: "#8A97A3", cursor: "pointer", textDecoration: "underline" }}>Load demo data</button>
+              <>
+                <button onClick={() => setConfirmAction("demo")} style={{ fontSize: 10.5, background: "none", border: "none", color: "#8A97A3", cursor: "pointer", textDecoration: "underline" }}>Load demo data</button>
+                <button onClick={() => setConfirmAction("empty")} style={{ fontSize: 10.5, background: "none", border: "none", color: "#8A97A3", cursor: "pointer", textDecoration: "underline" }}>Empty fields</button>
+              </>
             )}
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: saving ? GOLD : SLATE }}>
               {saving && <RefreshCw size={11} className="spinner" />}
