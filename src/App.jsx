@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, Plus, X, Check, Edit2, Trash2, Activity, ChevronLeft, ChevronRight, RefreshCw, Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal } from "lucide-react";
+import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, Plus, X, Check, Edit2, Trash2, Activity, ChevronLeft, ChevronRight, RefreshCw, Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal, AlertCircle, Clock, Lightbulb, CreditCard } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const STORAGE_KEY = "antonio-finance-data";
@@ -32,6 +32,7 @@ const BILL_ICONS = {
 };
 const VIOLET = "#8D7CF0";
 const VIOLET_BG = "#2A2545";
+const SKY = "#6E9BC9";
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function fmt(n) {
@@ -46,6 +47,9 @@ function addDays(dateStr, days) {
 }
 function daysBetween(a, b) {
   return Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+}
+function formatShortDate(dateStr) {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 function lerpColor(hexA, hexB, t) {
   const a = hexA.match(/\w\w/g).map(h => parseInt(h, 16));
@@ -892,7 +896,12 @@ export default function FinanceOS() {
             <Section title="Upcoming bills">
               {data.bills.length === 0 && <Empty text="No bills yet — add one in the Bills tab." />}
               {data.bills.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4).map(b => (
-                <Row key={b.id} left={b.name} mid={<CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />} right={fmt(b.amount)} />
+                <Row key={b.id} left={b.name} mid={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />
+                    {formatShortDate(b.dueDate)}
+                  </span>
+                } right={fmt(b.amount)} />
               ))}
             </Section>
 
@@ -1190,14 +1199,19 @@ function FastingModal({ date, log, onClose, onSave, blockNew }) {
   );
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds, short = false) {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  if (d > 0) return `${d}d, ${h}h, ${m}m, ${s}s`;
-  if (h > 0) return `${h}h, ${m}m, ${s}s`;
-  if (m > 0) return `${m}m, ${s}s`;
+  if (short) {
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m ${s}s`;
+  }
+  if (d > 0) return `${d}d ${h}h ${m}m ${s}s`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 }
 
@@ -1240,7 +1254,7 @@ function AbstinenceRow({ item, onReset, onSave, onDelete }) {
       </div>
       <div style={{ padding: "0 12px 12px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 16 }}>{formatDuration(elapsedSec)}</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontVariantNumeric: "tabular-nums" }}>{formatDuration(elapsedSec)}</div>
           {confirmReset ? (
             <div style={{ display: "flex", gap: 6 }}>
               <SmallBtn tone="rust" onClick={() => { onReset(); setConfirmReset(false); }}>Confirm reset</SmallBtn>
@@ -1254,9 +1268,14 @@ function AbstinenceRow({ item, onReset, onSave, onDelete }) {
           )}
         </div>
         {item.history.length > 0 && (
-          <div style={{ marginTop: 8, height: 14, background: PAPER_DIM, borderRadius: 7, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: Math.min(100, (elapsedSec / best) * 100) + "%", background: item.color, borderRadius: 7, transition: "width 0.3s" }} />
-          </div>
+          <>
+            <div style={{ marginTop: 8, height: 14, background: PAPER_DIM, borderRadius: 7, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: Math.min(100, (elapsedSec / best) * 100) + "%", background: item.color, borderRadius: 7, transition: "width 0.3s" }} />
+            </div>
+            <div style={{ fontSize: 10.5, color: SLATE, marginTop: 5, fontVariantNumeric: "tabular-nums" }}>
+              personal best {formatDuration(best, true)}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -1269,6 +1288,7 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
+  const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState(ABSTINENCE_COLORS[0]);
 
@@ -1276,6 +1296,8 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
     if (!name) return;
     addAbstinence(name, color);
     setName("");
+    setColor(ABSTINENCE_COLORS[0]);
+    setAdding(false);
   }
 
   return (
@@ -1283,9 +1305,10 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
         <ChevronLeft size={16} /> Back to Habits
       </button>
-      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, marginBottom: 14, marginTop: 0 }}>Abstinence</h2>
+      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, marginBottom: 4, marginTop: 0 }}>Abstinence</h2>
+      <div style={{ fontSize: 12, color: SLATE, marginBottom: 14 }}>Track how long it's been</div>
 
-      {data.abstinence.length === 0 && <Empty text="No trackers yet — add one below." />}
+      {data.abstinence.length === 0 && !adding && <Empty text="No trackers yet — add one below." />}
       {data.abstinence.map(item => (
         <AbstinenceRow key={item.id} item={item}
           onReset={() => resetAbstinence(item.id)}
@@ -1293,18 +1316,24 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
           onDelete={() => deleteAbstinence(item.id)} />
       ))}
 
-      <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: 12, marginTop: 10 }}>
-        <div style={{ fontSize: 11, color: SLATE, marginBottom: 6 }}>Add a tracker</div>
-        <input style={{ ...inputStyle, marginBottom: 8 }} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Quit Drinking" />
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-          {ABSTINENCE_COLORS.map(c => (
-            <button key={c} onClick={() => setColor(c)} style={{
-              width: 24, height: 24, borderRadius: 6, border: color === c ? `2px solid ${TEXT}` : "2px solid transparent", background: c, cursor: "pointer"
-            }} />
-          ))}
+      {adding ? (
+        <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: 12, marginTop: 10 }}>
+          <input style={{ ...inputStyle, marginBottom: 8 }} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Quit Drinking" autoFocus />
+          <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+            {ABSTINENCE_COLORS.map(c => (
+              <button key={c} onClick={() => setColor(c)} style={{
+                width: 24, height: 24, borderRadius: 6, border: color === c ? `2px solid ${TEXT}` : "2px solid transparent", background: c, cursor: "pointer"
+              }} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <SmallBtn onClick={submit} style={{ background: color }}><Plus size={13} /> Add tracker</SmallBtn>
+            <SmallBtn tone="ghost" onClick={() => { setAdding(false); setName(""); }}>Cancel</SmallBtn>
+          </div>
         </div>
-        <SmallBtn onClick={submit} style={{ background: color }}><Plus size={13} /> Add tracker</SmallBtn>
-      </div>
+      ) : (
+        <SmallBtn onClick={() => setAdding(true)} style={{ marginTop: 10 }}><Plus size={13} /> Add tracker</SmallBtn>
+      )}
     </div>
   );
 }
@@ -1380,7 +1409,7 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
   const latestWeight = weightLogs.length ? weightLogs[weightLogs.length - 1] : null;
   const latestDow = latestWeight ? new Date(latestWeight.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" }) : "";
   const firstWeight = weightLogs.length ? Number(weightLogs[0].weight) : null;
-  const toGoalRaw = latestWeight ? Number(latestWeight.weight) - data.goalWeight : null;
+  const toGoalRaw = latestWeight ? data.goalWeight - Number(latestWeight.weight) : null;
   const toGoalLabel = toGoalRaw === null ? "—" : (toGoalRaw > 0 ? "+" : toGoalRaw < 0 ? "-" : "") + Math.abs(toGoalRaw).toFixed(1) + " kg";
   const prevBeforeLatest = latestWeight ? weightBefore(latestWeight.date) : null;
   const increment = (latestWeight && prevBeforeLatest != null) ? Number(latestWeight.weight) - prevBeforeLatest : null;
@@ -1704,7 +1733,7 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
           sleepChartData.length > 0 ? (
             <div>
               <div style={{ display: "flex", gap: 14, marginBottom: 6, fontSize: 10.5, color: SLATE }}>
-                <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: AMBER, marginRight: 4 }} />{chartRange.days <= 14 ? "Sleep hours" : "Avg sleep hours/wk"}</span>
+                <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: SKY, marginRight: 4 }} />{chartRange.days <= 14 ? "Sleep hours" : "Avg sleep hours/wk"}</span>
                 <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: CORAL, marginRight: 4 }} />{chartRange.days <= 14 ? "Drinks that day" : "Total drinks/wk"}</span>
               </div>
               <div style={{ height: 170 }}>
@@ -1714,7 +1743,7 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: SLATE }} />
                     <YAxis tick={{ fontSize: 10, fill: SLATE }} allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="hours" fill={AMBER} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="hours" fill={SKY} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="drinks" fill={CORAL} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -2177,21 +2206,106 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
   );
 }
 
+function StatTile({ icon: Icon, color, value, label, caption }) {
+  return (
+    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: "12px 10px", minWidth: 0 }}>
+      <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${color}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+        <Icon size={13} color={color} />
+      </div>
+      <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.15, overflowWrap: "break-word" }}>{value}</div>
+      <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 3 }}>{label}</div>
+      <div style={{ fontSize: 9.5, color, marginTop: 2 }}>{caption}</div>
+    </div>
+  );
+}
+
 function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
+  const [addOpen, setAddOpen] = useState(false);
+
   function addBill(bill) {
     setData(d => ({ ...d, bills: [...d.bills, { id: uid(), lastPaid: null, ...bill }] }));
+    setAddOpen(false);
   }
-  const sorted = data.bills.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  const withDays = data.bills.map(b => ({ ...b, daysUntil: daysBetween(todayStr(), b.dueDate) })).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const overdue = withDays.filter(b => b.daysUntil < 0);
+  const dueThisWeek = withDays.filter(b => b.daysUntil >= 0 && b.daysUntil <= 7);
+  const upcoming = withDays.filter(b => b.daysUntil > 7);
+  const dueThisWeekTotal = dueThisWeek.reduce((s, b) => s + b.amount, 0);
+  const totalAmount = data.bills.reduce((s, b) => s + b.amount, 0);
+  const accountsTotal = data.accounts.reduce((s, a) => s + a.balance, 0);
+  const covered = accountsTotal >= totalAmount;
+
+  const groups = [
+    { key: "overdue", label: "Overdue", items: overdue },
+    { key: "week", label: "Due this week", items: dueThisWeek },
+    { key: "upcoming", label: "Upcoming", items: upcoming },
+  ].filter(g => g.items.length > 0);
+
   return (
-    <Section title="Bills" eyebrow={`${data.bills.length} recurring`}>
-      {sorted.length === 0 && <Empty text="No bills yet — add one below." />}
-      {sorted.map(b => (
-        <BillRow key={b.id} bill={b}
-          onPay={() => payBill(b)}
-          onSave={updates => editBill(b.id, updates)}
-          onDelete={() => deleteBill(b.id)} />
+    <Section
+      title="Bills"
+      eyebrow="Stay on top of what's due"
+      right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add bill</SmallBtn>}
+    >
+      {data.bills.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <StatTile
+            icon={overdue.length === 0 ? Check : AlertCircle}
+            color={overdue.length === 0 ? SAGE : RUST}
+            value={overdue.length}
+            label="Overdue"
+            caption={overdue.length === 0 ? "All caught up" : "Needs attention"}
+          />
+          <StatTile
+            icon={Clock}
+            color={GOLD}
+            value={fmt(dueThisWeekTotal)}
+            label="Due this week"
+            caption={`${dueThisWeek.length} bill${dueThisWeek.length === 1 ? "" : "s"}`}
+          />
+          <StatTile
+            icon={Receipt}
+            color={SKY}
+            value={fmt(totalAmount)}
+            label="Total"
+            caption={`${data.bills.length} bill${data.bills.length === 1 ? "" : "s"}`}
+          />
+        </div>
+      )}
+
+      {addOpen && <AddBillForm data={data} onAdd={addBill} onCancel={() => setAddOpen(false)} />}
+
+      {data.bills.length === 0 && !addOpen && <Empty text="No bills yet — add one above." />}
+
+      {groups.map(g => (
+        <div key={g.key} style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: TEXT, textTransform: "uppercase", letterSpacing: "0.05em" }}>{g.label}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, background: PAPER_DIM, color: SLATE, borderRadius: 999, padding: "1px 7px" }}>{g.items.length}</span>
+          </div>
+          {g.items.map(b => (
+            <BillRow key={b.id} bill={b}
+              onPay={() => payBill(b)}
+              onSave={updates => editBill(b.id, updates)}
+              onDelete={() => deleteBill(b.id)} />
+          ))}
+        </div>
       ))}
-      <AddBillForm data={data} onAdd={addBill} />
+
+      {data.bills.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: PAPER_DIM, borderRadius: 10, padding: "12px 14px" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: covered ? `${SAGE}22` : `${RUST}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Lightbulb size={14} color={covered ? SAGE : RUST} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: TEXT }}>You have {fmt(accountsTotal)} across all accounts</div>
+            <div style={{ fontSize: 11, color: SLATE, marginTop: 1 }}>
+              {covered ? "Plenty to cover your upcoming bills." : `You're ${fmt(totalAmount - accountsTotal)} short of covering everything due.`}
+            </div>
+          </div>
+        </div>
+      )}
     </Section>
   );
 }
@@ -2204,6 +2318,7 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
   const [frequencyDays, setFrequencyDays] = useState(bill.frequencyDays);
   const BillIcon = BILL_ICONS[bill.name] || BILL_ICONS.Other;
   const daysUntil = daysBetween(todayStr(), bill.dueDate);
+  const accent = urgencyColor(daysUntil, bill.frequencyDays);
 
   if (editing) {
     return (
@@ -2219,22 +2334,26 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: PAPER_DIM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "10px 10px 10px 12px", marginBottom: 8, borderRadius: 8,
+      borderLeft: `3px solid ${accent}`, background: daysUntil < 0 ? `${RUST}14` : PAPER_DIM
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: CARD, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <BillIcon size={15} color={SLATE} />
         </div>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600 }}>{bill.name}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
             <CountdownPill days={daysUntil} totalDays={bill.frequencyDays} />
-            <span style={{ fontSize: 11, color: SLATE }}>every {bill.frequencyDays}d</span>
+            <span style={{ fontSize: 11, color: SLATE }}>{formatShortDate(bill.dueDate)}</span>
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(bill.amount)}</span>
-        <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 10px", fontSize: 11 }}>Mark paid</SmallBtn>
+        <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 10px", fontSize: 11 }}><CreditCard size={11} /> Pay</SmallBtn>
         <IconBtn icon={Edit2} onClick={() => setEditing(true)} />
         <DeleteBtn onDelete={onDelete} />
       </div>
@@ -2242,8 +2361,7 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
   );
 }
 
-function AddBillForm({ data, onAdd }) {
-  const [open, setOpen] = useState(false);
+function AddBillForm({ data, onAdd, onCancel }) {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState(todayStr());
@@ -2251,28 +2369,29 @@ function AddBillForm({ data, onAdd }) {
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id || "");
 
-  if (!open) {
-    return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 10 }}><Plus size={13} /> Add bill</SmallBtn>;
-  }
-
   function submit() {
     if (!name || !amount) return;
     onAdd({ name, amount: Number(amount), dueDate, frequencyDays: Number(frequencyDays), accountId, categoryId });
-    setName("");
-    setAmount("");
-    setOpen(false);
   }
 
   return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-        {BILL_TEMPLATES.map(t => (
-          <button key={t} onClick={() => setName(t)} style={{
-            padding: "5px 10px", borderRadius: 999, border: `1px solid ${name === t ? GOLD : INK_SOFT + "40"}`,
-            background: name === t ? "rgba(201,161,61,0.12)" : "transparent", color: name === t ? GOLD : TEXT,
-            fontSize: 11.5, cursor: "pointer"
-          }}>{t}</button>
-        ))}
+    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
+      <div style={{ fontSize: 11, color: SLATE, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Choose a category to get started</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6, marginBottom: 12 }}>
+        {BILL_TEMPLATES.map(t => {
+          const TemplateIcon = BILL_ICONS[t] || BILL_ICONS.Other;
+          const active = name === t;
+          return (
+            <button key={t} onClick={() => setName(t)} style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 6px",
+              borderRadius: 10, border: `1px solid ${active ? GOLD : INK_SOFT + "30"}`,
+              background: active ? "rgba(201,161,61,0.12)" : PAPER_DIM, color: active ? GOLD : TEXT, cursor: "pointer"
+            }}>
+              <TemplateIcon size={15} />
+              <span style={{ fontSize: 10.5 }}>{t}</span>
+            </button>
+          );
+        })}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         <Field label="Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} /></Field>
@@ -2290,9 +2409,9 @@ function AddBillForm({ data, onAdd }) {
           </select>
         </Field>
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <SmallBtn tone="gold" onClick={submit}><Check size={13} /> Save</SmallBtn>
-        <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /> Cancel</SmallBtn>
+        <SmallBtn tone="ghost" onClick={onCancel}><X size={13} /> Cancel</SmallBtn>
       </div>
     </div>
   );
