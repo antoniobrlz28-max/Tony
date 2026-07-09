@@ -390,7 +390,7 @@ export default function FinanceOS() {
   const [saving, setSaving] = useState(false);
   const [confirmDemo, setConfirmDemo] = useState(false);
   const [showPaycheckSheet, setShowPaycheckSheet] = useState(false);
-  const [suggestion, setSuggestion] = useState(null);
+  const paydayLongPress = useLongPress(() => setShowPaycheckSheet(true));
   function loadDemoData() {
     setData(generateDemoData());
     setConfirmDemo(false);
@@ -492,17 +492,17 @@ export default function FinanceOS() {
     const savings = Math.max(0, Math.round(afterBills - essentials - discretionary));
     return { income: incomeAmount, rent: RENT_FIXED, upcomingBills, essentials, discretionary, savings };
   }
-  function receivePaycheck(amount) {
+  function receivePaycheck(amount, shouldBudget) {
     const amt = Number(amount);
     if (!amt) return;
-    addIncome({ amount: amt, accountId: data.accounts[0]?.id, note: "Paycheck" });
+    const checkingAccount = data.accounts.find(a => a.type === "checking") || data.accounts[0];
+    addIncome({ amount: amt, accountId: checkingAccount.id, note: "Paycheck" });
     setData(d => ({ ...d, nextPaycheck: addDays(todayStr(), d.cycleDays) }));
-    setSuggestion(computeSuggestedSplit(amt));
+    if (shouldBudget) applySplit(computeSuggestedSplit(amt));
     setShowPaycheckSheet(false);
   }
-  function applySuggestion() {
-    if (!suggestion) return;
-    const { income, rent, essentials, discretionary, savings } = suggestion;
+  function applySplit(split) {
+    const { income, rent, essentials, discretionary, savings } = split;
     const pct = n => Math.round((n / income) * 100);
     const map = { rent: pct(rent), essentials: pct(essentials), discretionary: pct(discretionary), savings: pct(savings) };
     setData(d => ({
@@ -512,7 +512,6 @@ export default function FinanceOS() {
         return key ? { ...c, percent: map[key] } : c;
       }),
     }));
-    setSuggestion(null);
   }
   function addExpense({ amount, accountId, categoryId, note }) {
     if (!amount || !accountId || !categoryId) return;
@@ -789,7 +788,8 @@ export default function FinanceOS() {
               </div>
 
               <button
-                onClick={() => setShowPaycheckSheet(true)}
+                onClick={() => { if (daysUntilPayday === 0) setShowPaycheckSheet(true); }}
+                {...paydayLongPress}
                 style={{
                   display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
                   background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "12px 14px", cursor: "pointer"
@@ -798,8 +798,11 @@ export default function FinanceOS() {
                 <div style={{ width: 34, height: 34, borderRadius: "50%", background: TEAL_BG, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Wallet size={16} color={TEAL} />
                 </div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: TEXT }}>
-                  {daysUntilPayday === 0 ? "Payday is today" : `Payday in ${daysUntilPayday} day${daysUntilPayday === 1 ? "" : "s"}`}
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: TEXT }}>
+                    {daysUntilPayday === 0 ? "Payday is today" : `Payday in ${daysUntilPayday} day${daysUntilPayday === 1 ? "" : "s"}`}
+                  </div>
+                  {daysUntilPayday > 0 && <div style={{ fontSize: 10, color: SLATE, marginTop: 1 }}>Hold to log it early</div>}
                 </div>
               </button>
 
@@ -869,36 +872,6 @@ export default function FinanceOS() {
                         </div>
                       );
                     })}
-                  </div>
-                </div>
-              )}
-
-              {suggestion && (
-                <div style={{ background: "rgba(201,161,61,0.1)", border: `1px solid ${GOLD}45`, borderRadius: 14, padding: "12px 14px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: GOLD, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-                    Suggested split for this {fmt(suggestion.income)} paycheck
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
-                    <span>Rent (fixed)</span><span style={{ fontWeight: 700 }}>{fmt(suggestion.rent)}</span>
-                  </div>
-                  {suggestion.upcomingBills > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4, color: SLATE }}>
-                      <span>Reserved for bills due this period</span><span>{fmt(suggestion.upcomingBills)}</span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
-                    <span>Essentials</span><span style={{ fontWeight: 700 }}>{fmt(suggestion.essentials)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 8 }}>
-                    <span>Discretionary</span><span style={{ fontWeight: 700 }}>{fmt(suggestion.discretionary)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, borderTop: `1px solid ${GOLD}30`, paddingTop: 8, marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700 }}>Savings — what's actually left over</span>
-                    <span style={{ fontWeight: 700, color: SAGE }}>{fmt(suggestion.savings)}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <SmallBtn onClick={applySuggestion} style={{ background: GOLD }}><Check size={12} /> Apply this split</SmallBtn>
-                    <SmallBtn tone="ghost" onClick={() => setSuggestion(null)}>Dismiss</SmallBtn>
                   </div>
                 </div>
               )}
@@ -975,7 +948,7 @@ export default function FinanceOS() {
       </div>
 
       {showPaycheckSheet && (
-        <PaycheckSheet onClose={() => setShowPaycheckSheet(false)} onConfirm={receivePaycheck} />
+        <PaycheckSheet onClose={() => setShowPaycheckSheet(false)} onConfirm={receivePaycheck} computeSplit={computeSuggestedSplit} />
       )}
 
       {/* Bottom nav */}
@@ -1019,8 +992,9 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
       </div>
     );
   }
+  const barColor = lerpColor(SAGE, RUST, Math.min(1, pct / 100));
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
         <span style={{ fontWeight: 600 }}>{category.name} <span style={{ color: SLATE, fontWeight: 400 }}>({category.percent}%)</span></span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1029,7 +1003,12 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
           <DeleteBtn onDelete={onDelete} />
         </div>
       </div>
-      <ProgressBar pct={pct} />
+      <div style={{ height: 8, background: PAPER_DIM, borderRadius: 4, overflow: "hidden", border: `1px solid ${INK_SOFT}18` }}>
+        <div style={{ height: "100%", width: Math.min(100, pct) + "%", background: barColor, borderRadius: 4, transition: "width 0.3s" }} />
+      </div>
+      <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SLATE, marginTop: 4 }}>
+        {pct > 100 ? `${fmt(spent - budget)} over budget` : `${fmt(Math.max(0, budget - spent))} left`}
+      </div>
     </div>
   );
 }
@@ -1063,12 +1042,12 @@ function Row({ left, mid, right, onClick, accent }) {
   if (accent) {
     return (
       <div onClick={onClick} style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 10px",
+        display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "9px 10px",
         fontSize: 13, borderRadius: 6, marginBottom: 4, borderLeft: `3px solid ${accent}`, background: PAPER_DIM
       }}>
         <span style={{ fontWeight: 600 }}>{left}</span>
-        {mid && <span style={{ color: SLATE }}>{mid}</span>}
-        <span>{right}</span>
+        {mid ? <span style={{ color: SLATE, justifySelf: "center", textAlign: "center" }}>{mid}</span> : <span />}
+        <span style={{ justifySelf: "end" }}>{right}</span>
       </div>
     );
   }
@@ -1373,10 +1352,75 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
   );
 }
 
+function IdentityReviewPage({ todayIdentity, identityAvg, upsertHabitLog, review, setReview, showReviewForm, setShowReviewForm, submitReview, weeklyReviews, deleteWeeklyReview, onBack }) {
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
+        <ChevronLeft size={16} /> Back to Habits
+      </button>
+      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, marginBottom: 4, marginTop: 0 }}>Identity & review</h2>
+      <div style={{ fontSize: 12, color: SLATE, marginBottom: 18 }}>Who you're becoming, and what you're learning</div>
+
+      <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 16, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+          <h3 style={{ fontFamily: "Georgia, serif", fontSize: 16, color: TEXT, margin: 0 }}>Identity</h3>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>30-day avg: {identityAvg}</span>
+        </div>
+        <div style={{ fontSize: 12, color: SLATE, marginBottom: 10 }}>Acted like the person I'm becoming, today</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <input type="range" min={0} max={10} step={1} value={todayIdentity}
+            onChange={e => upsertHabitLog(todayStr(), { identityScore: Number(e.target.value) })}
+            style={{ flex: 1, accentColor: VIOLET }} />
+          <div style={{ width: 30, textAlign: "center", fontFamily: "Georgia, serif", fontSize: 19, fontWeight: 700, color: VIOLET }}>{todayIdentity}</div>
+        </div>
+      </div>
+
+      <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 16, padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontFamily: "Georgia, serif", fontSize: 16, color: TEXT, margin: 0 }}>Weekly review</h3>
+          <span style={{ fontSize: 10, fontWeight: 700, color: VIOLET, background: VIOLET_BG, padding: "3px 9px", borderRadius: 10 }}>Sundays</span>
+        </div>
+        {!showReviewForm ? (
+          <SmallBtn onClick={() => setShowReviewForm(true)} style={{ background: VIOLET }}><Plus size={13} /> New review</SmallBtn>
+        ) : (
+          <>
+            {[
+              ["wentWell", "What went well?"], ["wastedTime", "Where did I waste time?"], ["proud", "What made me proud?"],
+              ["hurtDecision", "What decisions hurt me?"], ["lesson", "Biggest lesson?"], ["nextFocus", "What deserves attention next week?"]
+            ].map(([key, label]) => (
+              <div key={key} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11.5, color: SLATE, marginBottom: 4 }}>{label}</div>
+                <textarea style={{ ...inputStyle, minHeight: 50, resize: "vertical" }} value={review[key]} onChange={e => setReview({ ...review, [key]: e.target.value })} />
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <SmallBtn onClick={submitReview} style={{ background: VIOLET }}><Check size={13} /> Save review</SmallBtn>
+              <SmallBtn tone="ghost" onClick={() => setShowReviewForm(false)}>Cancel</SmallBtn>
+            </div>
+          </>
+        )}
+        {weeklyReviews.length === 0 && !showReviewForm && <Empty text="No reviews yet — first one starts this Sunday." />}
+        {weeklyReviews.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            {weeklyReviews.slice(0, 4).map(w => (
+              <div key={w.id} style={{ padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: VIOLET }}>{w.date}</span>
+                  <DeleteBtn onDelete={() => deleteWeeklyReview(w.id)} />
+                </div>
+                <div style={{ fontSize: 11.5, color: SLATE }}>{w.lesson || "—"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, editHabitLog, deleteHabitLog, setGoalWeight, addFoodItem, editFoodItem, deleteFoodItem, addAbstinence, resetAbstinence, editAbstinence, deleteAbstinence, addWeeklyReview, deleteWeeklyReview }) {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [showAbstinence, setShowAbstinence] = useState(false);
-  const [showWeightPicker, setShowWeightPicker] = useState(false);
   const [showLogDaySheet, setShowLogDaySheet] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [review, setReview] = useState({ wentWell: "", wastedTime: "", proud: "", hurtDecision: "", lesson: "", nextFocus: "" });
@@ -1443,16 +1487,12 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
   const weightLogs = data.habits.filter(h => h.weight).sort((a, b) => a.date.localeCompare(b.date));
   const latestWeight = weightLogs.length ? weightLogs[weightLogs.length - 1] : null;
   const latestDow = latestWeight ? new Date(latestWeight.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" }) : "";
-  const firstWeight = weightLogs.length ? Number(weightLogs[0].weight) : null;
   const toGoalRaw = latestWeight ? data.goalWeight - Number(latestWeight.weight) : null;
   const toGoalLabel = toGoalRaw === null ? "—" : (toGoalRaw > 0 ? "+" : toGoalRaw < 0 ? "-" : "") + Math.abs(toGoalRaw).toFixed(1) + " kg";
   const prevBeforeLatest = latestWeight ? weightBefore(latestWeight.date) : null;
   const increment = (latestWeight && prevBeforeLatest != null) ? Number(latestWeight.weight) - prevBeforeLatest : null;
   const incrementLabel = increment === null ? "—" : (increment > 0 ? "+" : "") + increment.toFixed(1) + " kg";
   const incrementColor = increment === null ? SLATE : increment > 0 ? CORAL : increment < 0 ? TEAL : SLATE;
-  const progressPct = firstWeight && firstWeight !== data.goalWeight
-    ? Math.min(100, Math.max(0, ((firstWeight - Number(latestWeight.weight)) / (firstWeight - data.goalWeight)) * 100))
-    : 0;
 
   const [dayForm, setDayForm] = useState({ date: todayStr(), wakeTime: "", sleepTime: "", weight: "", trainingNote: "" });
   function saveDayForm() {
@@ -1492,7 +1532,7 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
         return buckets;
       })();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [reflectionOpen, setReflectionOpen] = useState(true);
+  const [showIdentityReview, setShowIdentityReview] = useState(false);
 
   const rows = [
     { key: "trained", label: "Trained", color: TEAL, bg: TEAL_BG, kind: "bool" },
@@ -1516,6 +1556,24 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
         editAbstinence={editAbstinence}
         deleteAbstinence={deleteAbstinence}
         onBack={() => setShowAbstinence(false)}
+      />
+    );
+  }
+
+  if (showIdentityReview) {
+    return (
+      <IdentityReviewPage
+        todayIdentity={todayIdentity}
+        identityAvg={identityAvg}
+        upsertHabitLog={upsertHabitLog}
+        review={review}
+        setReview={setReview}
+        showReviewForm={showReviewForm}
+        setShowReviewForm={setShowReviewForm}
+        submitReview={submitReview}
+        weeklyReviews={data.weeklyReviews}
+        deleteWeeklyReview={deleteWeeklyReview}
+        onBack={() => setShowIdentityReview(false)}
       />
     );
   }
@@ -1644,89 +1702,34 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
         </div>
       </Section>
 
-      <Section
-        title="Identity & review"
-        collapsible
-        open={reflectionOpen}
-        onToggle={() => setReflectionOpen(!reflectionOpen)}
-        right={<span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>{todayIdentity}/10 today</span>}
-      >
-        <div style={{ fontSize: 12, color: SLATE, marginBottom: 10 }}>Acted like the person I'm becoming, today</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <input type="range" min={0} max={10} step={1} value={todayIdentity}
-            onChange={e => upsertHabitLog(todayStr(), { identityScore: Number(e.target.value) })}
-            style={{ flex: 1, accentColor: VIOLET }} />
-          <div style={{ width: 30, textAlign: "center", fontFamily: "Georgia, serif", fontSize: 19, fontWeight: 700, color: VIOLET }}>{todayIdentity}</div>
-        </div>
-        <div style={{ fontSize: 10, color: SLATE, marginTop: 6 }}>30-day avg: {identityAvg}</div>
-
-        <div style={{ borderTop: `1px solid ${INK_SOFT}18`, marginTop: 18, paddingTop: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ fontFamily: "Georgia, serif", fontSize: 15, color: TEXT, margin: 0 }}>Weekly review</h3>
-            <span style={{ fontSize: 10, fontWeight: 700, color: VIOLET, background: VIOLET_BG, padding: "3px 9px", borderRadius: 10 }}>Sundays</span>
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => setShowIdentityReview(true)} style={{
+          width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: CARD, border: `1px solid ${INK_SOFT}18`, borderRadius: 22, padding: "18px 16px", cursor: "pointer"
+        }}>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>Identity & review</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>{todayIdentity}/10 today</span>
+            <ChevronRight size={16} color={SLATE} />
           </div>
-          {!showReviewForm ? (
-            <SmallBtn onClick={() => setShowReviewForm(true)} style={{ background: VIOLET }}><Plus size={13} /> New review</SmallBtn>
-          ) : (
-            <>
-              {[
-                ["wentWell", "What went well?"], ["wastedTime", "Where did I waste time?"], ["proud", "What made me proud?"],
-                ["hurtDecision", "What decisions hurt me?"], ["lesson", "Biggest lesson?"], ["nextFocus", "What deserves attention next week?"]
-              ].map(([key, label]) => (
-                <div key={key} style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11.5, color: SLATE, marginBottom: 4 }}>{label}</div>
-                  <textarea style={{ ...inputStyle, minHeight: 50, resize: "vertical" }} value={review[key]} onChange={e => setReview({ ...review, [key]: e.target.value })} />
-                </div>
-              ))}
-              <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                <SmallBtn onClick={submitReview} style={{ background: VIOLET }}><Check size={13} /> Save review</SmallBtn>
-                <SmallBtn tone="ghost" onClick={() => setShowReviewForm(false)}>Cancel</SmallBtn>
-              </div>
-            </>
-          )}
-          {data.weeklyReviews.length === 0 && !showReviewForm && <Empty text="No reviews yet — first one starts this Sunday." />}
-          {data.weeklyReviews.length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              {data.weeklyReviews.slice(0, 4).map(w => (
-                <div key={w.id} style={{ padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: VIOLET }}>{w.date}</span>
-                    <DeleteBtn onDelete={() => deleteWeeklyReview(w.id)} />
-                  </div>
-                  <div style={{ fontSize: 11.5, color: SLATE }}>{w.lesson || "—"}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Section>
+        </button>
+      </div>
 
       <Section title="Weight tracking">
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: SLATE, marginBottom: 5 }}>Goal weight</div>
-          <button onClick={() => setShowWeightPicker(true)} style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center", width: 140,
-            background: PAPER_DIM, border: `1px solid ${INK_SOFT}30`, borderRadius: 14, padding: "8px 12px", cursor: "pointer"
-          }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{data.goalWeight} kg</span>
-            <Edit2 size={12} color={SLATE} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, width: 140 }}>
+            <input
+              type="number" inputMode="decimal" value={data.goalWeight}
+              onChange={e => setGoalWeight(e.target.value)}
+              style={{
+                ...inputStyle, width: "100%", fontWeight: 700, fontSize: 14
+              }}
+            />
+            <span style={{ fontSize: 13, color: SLATE }}>kg</span>
+          </div>
         </div>
-        {showWeightPicker && (
-          <BottomSheet title="Set goal weight" onClose={() => setShowWeightPicker(false)}>
-            <div style={{ maxHeight: "50vh", overflowY: "auto" }}>
-              {Array.from({ length: 16 }, (_, i) => 80 + i).map(w => (
-                <button key={w} onClick={() => { setGoalWeight(w); setShowWeightPicker(false); }} style={{
-                  display: "block", width: "100%", textAlign: "left", padding: "12px 6px", cursor: "pointer",
-                  background: "none", border: "none", borderBottom: `1px solid ${INK_SOFT}18`,
-                  fontSize: 15, fontWeight: Number(data.goalWeight) === w ? 700 : 400,
-                  color: Number(data.goalWeight) === w ? GOLD : TEXT
-                }}>{w} kg</button>
-              ))}
-            </div>
-          </BottomSheet>
-        )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, marginBottom: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
           <div>
             <div style={{ fontSize: 10, color: SLATE }}>Latest</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16 }}>{latestWeight ? latestWeight.weight + " kg" : "—"}</div>
@@ -1745,7 +1748,6 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: incrementColor }}>{incrementLabel}</div>
           </div>
         </div>
-        <ProgressBar pct={progressPct} tone="gold" />
       </Section>
 
       <Section title="Charts" right={
@@ -2040,16 +2042,48 @@ function BottomSheet({ title, onClose, children }) {
   );
 }
 
-function PaycheckSheet({ onClose, onConfirm }) {
+function PaycheckSheet({ onClose, onConfirm, computeSplit }) {
+  const [step, setStep] = useState("amount");
   const [amount, setAmount] = useState("");
+
+  function goToAsk() {
+    if (!Number(amount)) return;
+    setStep("ask");
+  }
+
+  const split = step === "ask" ? computeSplit(Number(amount)) : null;
+
   return (
-    <BottomSheet title="Received a paycheck" onClose={onClose}>
-      <Field label="Amount">
-        <input style={inputStyle} type="number" value={amount} onChange={e => setAmount(e.target.value)} autoFocus placeholder="0.00" />
-      </Field>
-      <SmallBtn tone="gold" onClick={() => onConfirm(amount)} style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
-        <Check size={13} /> Confirm paycheck
-      </SmallBtn>
+    <BottomSheet title={step === "amount" ? "Received a paycheck" : "Budget this paycheck?"} onClose={onClose}>
+      {step === "amount" ? (
+        <>
+          <Field label="Amount">
+            <input
+              style={inputStyle} type="number" inputMode="decimal" value={amount}
+              onChange={e => setAmount(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") goToAsk(); }}
+              autoFocus placeholder="0.00"
+            />
+          </Field>
+          <SmallBtn tone="gold" onClick={goToAsk} style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
+            <Check size={13} /> Continue
+          </SmallBtn>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.5, marginBottom: 14 }}>
+            Split this <b>{fmt(Number(amount))}</b> paycheck using your default budget — {fmt(split.rent)} rent, {fmt(split.essentials)} essentials, {fmt(split.discretionary)} discretionary, {fmt(split.savings)} savings?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <SmallBtn tone="gold" onClick={() => onConfirm(amount, true)} style={{ flex: 1, justifyContent: "center" }}>
+              <Check size={13} /> Budget it
+            </SmallBtn>
+            <SmallBtn tone="ghost" onClick={() => onConfirm(amount, false)} style={{ flex: 1, justifyContent: "center" }}>
+              Just log it
+            </SmallBtn>
+          </div>
+        </>
+      )}
     </BottomSheet>
   );
 }
@@ -2201,7 +2235,7 @@ function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransac
       )}
 
       <Section title="Log a transaction">
-        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
           {["expense", "income", "transfer"].map(t => (
             <button key={t} onClick={() => setFormType(t)} style={{
               flex: 1, padding: "8px 0", borderRadius: 999, border: "none", cursor: "pointer",
@@ -2210,30 +2244,72 @@ function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransac
             }}>{t}</button>
           ))}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          <Field label="Amount"><input style={inputStyle} type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" /></Field>
-          <Field label={formType === "transfer" ? "From account" : "Account"}>
-            <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
-              {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </Field>
-          {formType === "transfer" && (
-            <Field label="To account">
-              <select style={inputStyle} value={toAccountId} onChange={e => setToAccountId(e.target.value)}>
-                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </Field>
-          )}
-          {formType === "expense" && (
-            <Field label="Category">
-              <select style={inputStyle} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-                {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </Field>
-          )}
-          <Field label="Note"><input style={inputStyle} value={note} onChange={e => setNote(e.target.value)} placeholder="Optional" /></Field>
+
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Amount</div>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3 }}>
+            <span style={{ fontFamily: "Georgia, serif", fontSize: 20, color: SLATE }}>$</span>
+            <input
+              type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") submit(); }}
+              placeholder="0.00" autoFocus
+              style={{
+                border: "none", borderBottom: `2px solid ${INK_SOFT}40`, background: "transparent", color: TEXT,
+                fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 700, textAlign: "center", width: 160, padding: "2px 0"
+              }}
+            />
+          </div>
         </div>
-        <SmallBtn tone="gold" onClick={submit} style={{ marginTop: 12, width: "100%", justifyContent: "center" }}>
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: SLATE, marginBottom: 6 }}>{formType === "transfer" ? "From" : "Account"}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {data.accounts.map(a => (
+              <button key={a.id} onClick={() => setAccountId(a.id)} style={{
+                padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? GOLD : INK_SOFT + "40"}`,
+                background: accountId === a.id ? "rgba(201,161,61,0.12)" : "transparent", color: accountId === a.id ? GOLD : TEXT,
+                fontSize: 12.5, cursor: "pointer"
+              }}>{a.name}</button>
+            ))}
+          </div>
+        </div>
+
+        {formType === "transfer" && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: SLATE, marginBottom: 6 }}>To</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {data.accounts.map(a => (
+                <button key={a.id} onClick={() => setToAccountId(a.id)} style={{
+                  padding: "6px 12px", borderRadius: 999, border: `1px solid ${toAccountId === a.id ? GOLD : INK_SOFT + "40"}`,
+                  background: toAccountId === a.id ? "rgba(201,161,61,0.12)" : "transparent", color: toAccountId === a.id ? GOLD : TEXT,
+                  fontSize: 12.5, cursor: "pointer"
+                }}>{a.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {formType === "expense" && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: SLATE, marginBottom: 6 }}>Category</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {data.categories.map(c => (
+                <button key={c.id} onClick={() => setCategoryId(c.id)} style={{
+                  padding: "6px 12px", borderRadius: 999, border: `1px solid ${categoryId === c.id ? GOLD : INK_SOFT + "40"}`,
+                  background: categoryId === c.id ? "rgba(201,161,61,0.12)" : "transparent", color: categoryId === c.id ? GOLD : TEXT,
+                  fontSize: 12.5, cursor: "pointer"
+                }}>{c.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <input
+          value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note (optional)"
+          style={minimalInputStyle}
+        />
+
+        <SmallBtn tone="gold" onClick={submit} style={{ marginTop: 16, width: "100%", justifyContent: "center" }}>
           <Plus size={13} /> Add {formType}
         </SmallBtn>
       </Section>
