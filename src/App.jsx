@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, Plus, X, Check, Edit2, Trash2, Activity, ChevronLeft, ChevronRight, RefreshCw, Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal, AlertCircle, Clock, Lightbulb, CreditCard } from "lucide-react";
+import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Trash2, Activity, ChevronLeft, ChevronRight, RefreshCw, Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal, AlertCircle, Clock, Lightbulb, CreditCard } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const STORAGE_KEY = "antonio-finance-data";
@@ -59,6 +59,10 @@ function lerpColor(hexA, hexB, t) {
 function urgencyColor(daysLeft, totalDays) {
   const t = totalDays > 0 ? Math.min(1, Math.max(0, 1 - daysLeft / totalDays)) : 1;
   return lerpColor(SAGE, RUST, t);
+}
+function progressColor(pct) {
+  const t = Math.min(1, Math.max(0, pct / 100));
+  return lerpColor(RUST, SAGE, t);
 }
 
 function defaultData() {
@@ -248,17 +252,29 @@ function migrate(d) {
   return d;
 }
 
-function Section({ title, eyebrow, children, right }) {
+function Section({ title, eyebrow, children, right, collapsible = false, open = true, onToggle }) {
+  const header = (
+    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: collapsible && !open ? 0 : 14 }}>
+      <div>
+        {eyebrow && <div style={{ fontSize: 11, letterSpacing: "0.12em", color: SLATE, textTransform: "uppercase", marginBottom: 2 }}>{eyebrow}</div>}
+        <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>{title}</h2>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {right}
+        {collapsible && (open
+          ? <ChevronLeft size={16} style={{ transform: "rotate(-90deg)" }} color={SLATE} />
+          : <ChevronRight size={16} style={{ transform: "rotate(90deg)" }} color={SLATE} />)}
+      </div>
+    </div>
+  );
   return (
     <div style={{ marginBottom: 20, background: CARD, borderRadius: 22, padding: "18px 16px", border: `1px solid ${INK_SOFT}18` }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-        <div>
-          {eyebrow && <div style={{ fontSize: 11, letterSpacing: "0.12em", color: SLATE, textTransform: "uppercase", marginBottom: 2 }}>{eyebrow}</div>}
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>{title}</h2>
-        </div>
-        {right}
-      </div>
-      {children}
+      {collapsible ? (
+        <button onClick={onToggle} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          {header}
+        </button>
+      ) : header}
+      {(!collapsible || open) && children}
     </div>
   );
 }
@@ -633,8 +649,9 @@ export default function FinanceOS() {
   }
 
   function payBill(bill) {
-    updateAccountBalance(bill.accountId, -bill.amount);
-    addTransaction({ type: "expense", amount: bill.amount, accountId: bill.accountId, categoryId: bill.categoryId, note: "Bill: " + bill.name });
+    const checkingAccount = data.accounts.find(a => a.type === "checking") || data.accounts[0];
+    updateAccountBalance(checkingAccount.id, -bill.amount);
+    addTransaction({ type: "expense", amount: bill.amount, accountId: checkingAccount.id, categoryId: bill.categoryId, note: "Bill: " + bill.name });
     setData(d => ({
       ...d,
       bills: d.bills.map(b => b.id === bill.id ? { ...b, lastPaid: todayStr(), dueDate: addDays(b.dueDate, b.frequencyDays) } : b)
@@ -803,7 +820,7 @@ export default function FinanceOS() {
 
             <Section title="Accounts" eyebrow="quick view">
               {data.accounts.map(a => (
-                <Row key={a.id} left={a.name} right={fmt(a.balance)} />
+                <Row key={a.id} left={a.name} right={fmt(a.balance)} accent={a.type === "savings" ? GOLD : TEAL} />
               ))}
               <Row left="Net cash" right={fmt(totalBalance)} />
             </Section>
@@ -901,21 +918,27 @@ export default function FinanceOS() {
                     <CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />
                     {formatShortDate(b.dueDate)}
                   </span>
-                } right={fmt(b.amount)} />
+                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} />
               ))}
             </Section>
 
             <Section title="Goals">
               {data.goals.length === 0 && <Empty text="No goals yet — add one in the Goals tab." />}
-              {data.goals.map(g => (
-                <div key={g.id} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600 }}>{g.name}</span>
-                    <span style={{ color: SLATE }}>{fmt(g.saved)} / {fmt(g.target)}</span>
+              {data.goals.map(g => {
+                const pct = g.target > 0 ? (g.saved / g.target) * 100 : 0;
+                return (
+                  <div key={g.id} style={{
+                    marginBottom: 8, padding: "9px 10px", borderRadius: 6,
+                    borderLeft: `3px solid ${progressColor(pct)}`, background: PAPER_DIM
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
+                      <span style={{ fontWeight: 600 }}>{g.name}</span>
+                      <span style={{ color: SLATE }}>{fmt(g.saved)} / {fmt(g.target)}</span>
+                    </div>
+                    <ProgressBar pct={pct} tone="gold" />
                   </div>
-                  <ProgressBar pct={(g.saved / g.target) * 100} tone="gold" />
-                </div>
-              ))}
+                );
+              })}
             </Section>
           </>
         )}
@@ -1036,9 +1059,21 @@ function AddCategoryForm({ onAdd }) {
 function Empty({ text }) {
   return <div style={{ fontSize: 12.5, color: SLATE, fontStyle: "italic", padding: "6px 0" }}>{text}</div>;
 }
-function Row({ left, mid, right, onClick }) {
+function Row({ left, mid, right, onClick, accent }) {
+  if (accent) {
+    return (
+      <div onClick={onClick} style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 10px",
+        fontSize: 13, borderRadius: 6, marginBottom: 4, borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+      }}>
+        <span style={{ fontWeight: 600 }}>{left}</span>
+        {mid && <span style={{ color: SLATE }}>{mid}</span>}
+        <span>{right}</span>
+      </div>
+    );
+  }
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 13 }}>
+    <div onClick={onClick} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 13 }}>
       <span style={{ fontWeight: 600 }}>{left}</span>
       {mid && <span style={{ color: SLATE }}>{mid}</span>}
       <span>{right}</span>
@@ -1457,6 +1492,7 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
         return buckets;
       })();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [reflectionOpen, setReflectionOpen] = useState(true);
 
   const rows = [
     { key: "trained", label: "Trained", color: TEAL, bg: TEAL_BG, kind: "bool" },
@@ -1608,7 +1644,13 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
         </div>
       </Section>
 
-      <Section title="Identity" right={<span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>30-day avg: {identityAvg}</span>}>
+      <Section
+        title="Identity & review"
+        collapsible
+        open={reflectionOpen}
+        onToggle={() => setReflectionOpen(!reflectionOpen)}
+        right={<span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>{todayIdentity}/10 today</span>}
+      >
         <div style={{ fontSize: 12, color: SLATE, marginBottom: 10 }}>Acted like the person I'm becoming, today</div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <input type="range" min={0} max={10} step={1} value={todayIdentity}
@@ -1616,44 +1658,47 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
             style={{ flex: 1, accentColor: VIOLET }} />
           <div style={{ width: 30, textAlign: "center", fontFamily: "Georgia, serif", fontSize: 19, fontWeight: 700, color: VIOLET }}>{todayIdentity}</div>
         </div>
-      </Section>
+        <div style={{ fontSize: 10, color: SLATE, marginTop: 6 }}>30-day avg: {identityAvg}</div>
 
-      <Section title="Weekly review" right={
-        <span style={{ fontSize: 10, fontWeight: 700, color: VIOLET, background: VIOLET_BG, padding: "3px 9px", borderRadius: 10 }}>Sundays</span>
-      }>
-        {!showReviewForm ? (
-          <SmallBtn onClick={() => setShowReviewForm(true)} style={{ background: VIOLET }}><Plus size={13} /> New review</SmallBtn>
-        ) : (
-          <>
-            {[
-              ["wentWell", "What went well?"], ["wastedTime", "Where did I waste time?"], ["proud", "What made me proud?"],
-              ["hurtDecision", "What decisions hurt me?"], ["lesson", "Biggest lesson?"], ["nextFocus", "What deserves attention next week?"]
-            ].map(([key, label]) => (
-              <div key={key} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11.5, color: SLATE, marginBottom: 4 }}>{label}</div>
-                <textarea style={{ ...inputStyle, minHeight: 50, resize: "vertical" }} value={review[key]} onChange={e => setReview({ ...review, [key]: e.target.value })} />
-              </div>
-            ))}
-            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-              <SmallBtn onClick={submitReview} style={{ background: VIOLET }}><Check size={13} /> Save review</SmallBtn>
-              <SmallBtn tone="ghost" onClick={() => setShowReviewForm(false)}>Cancel</SmallBtn>
-            </div>
-          </>
-        )}
-        {data.weeklyReviews.length === 0 && !showReviewForm && <Empty text="No reviews yet — first one starts this Sunday." />}
-        {data.weeklyReviews.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            {data.weeklyReviews.slice(0, 4).map(w => (
-              <div key={w.id} style={{ padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: VIOLET }}>{w.date}</span>
-                  <DeleteBtn onDelete={() => deleteWeeklyReview(w.id)} />
-                </div>
-                <div style={{ fontSize: 11.5, color: SLATE }}>{w.lesson || "—"}</div>
-              </div>
-            ))}
+        <div style={{ borderTop: `1px solid ${INK_SOFT}18`, marginTop: 18, paddingTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontFamily: "Georgia, serif", fontSize: 15, color: TEXT, margin: 0 }}>Weekly review</h3>
+            <span style={{ fontSize: 10, fontWeight: 700, color: VIOLET, background: VIOLET_BG, padding: "3px 9px", borderRadius: 10 }}>Sundays</span>
           </div>
-        )}
+          {!showReviewForm ? (
+            <SmallBtn onClick={() => setShowReviewForm(true)} style={{ background: VIOLET }}><Plus size={13} /> New review</SmallBtn>
+          ) : (
+            <>
+              {[
+                ["wentWell", "What went well?"], ["wastedTime", "Where did I waste time?"], ["proud", "What made me proud?"],
+                ["hurtDecision", "What decisions hurt me?"], ["lesson", "Biggest lesson?"], ["nextFocus", "What deserves attention next week?"]
+              ].map(([key, label]) => (
+                <div key={key} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11.5, color: SLATE, marginBottom: 4 }}>{label}</div>
+                  <textarea style={{ ...inputStyle, minHeight: 50, resize: "vertical" }} value={review[key]} onChange={e => setReview({ ...review, [key]: e.target.value })} />
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                <SmallBtn onClick={submitReview} style={{ background: VIOLET }}><Check size={13} /> Save review</SmallBtn>
+                <SmallBtn tone="ghost" onClick={() => setShowReviewForm(false)}>Cancel</SmallBtn>
+              </div>
+            </>
+          )}
+          {data.weeklyReviews.length === 0 && !showReviewForm && <Empty text="No reviews yet — first one starts this Sunday." />}
+          {data.weeklyReviews.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              {data.weeklyReviews.slice(0, 4).map(w => (
+                <div key={w.id} style={{ padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: VIOLET }}>{w.date}</span>
+                    <DeleteBtn onDelete={() => deleteWeeklyReview(w.id)} />
+                  </div>
+                  <div style={{ fontSize: 11.5, color: SLATE }}>{w.lesson || "—"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Section>
 
       <Section title="Weight tracking">
@@ -2010,17 +2055,38 @@ function PaycheckSheet({ onClose, onConfirm }) {
 }
 
 function AccountsTab({ data, setData, editAccount, deleteAccount }) {
+  const [addOpen, setAddOpen] = useState(false);
+
   function addAccount(name, type) {
     if (!name) return;
     setData(d => ({ ...d, accounts: [...d.accounts, { id: uid(), name, balance: 0, type }] }));
+    setAddOpen(false);
   }
+
+  const totalBalance = data.accounts.reduce((s, a) => s + a.balance, 0);
+  const checkingTotal = data.accounts.filter(a => a.type === "checking").reduce((s, a) => s + a.balance, 0);
+  const savingsTotal = data.accounts.filter(a => a.type === "savings").reduce((s, a) => s + a.balance, 0);
+
   return (
-    <Section title="Accounts" eyebrow={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`}>
-      {data.accounts.length === 0 && <Empty text="No accounts yet — add one below." />}
+    <Section
+      title="Accounts"
+      eyebrow="Where your money lives"
+      right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add account</SmallBtn>}
+    >
+      {data.accounts.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <StatTile icon={Wallet} color={GOLD} value={fmt(totalBalance)} label="Total" caption={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`} />
+          <StatTile icon={Landmark} color={TEAL} value={fmt(checkingTotal)} label="Checking" caption="everyday spending" />
+          <StatTile icon={PiggyBank} color={GOLD} value={fmt(savingsTotal)} label="Savings" caption="set aside" />
+        </div>
+      )}
+
+      {addOpen && <AddAccountForm onAdd={addAccount} onCancel={() => setAddOpen(false)} />}
+
+      {data.accounts.length === 0 && !addOpen && <Empty text="No accounts yet — add one above." />}
       {data.accounts.map(a => (
         <AccountRow key={a.id} account={a} onSave={updates => editAccount(a.id, updates)} onDelete={() => deleteAccount(a.id)} />
       ))}
-      <AddAccountForm onAdd={addAccount} />
     </Section>
   );
 }
@@ -2046,10 +2112,15 @@ function AccountRow({ account, onSave, onDelete }) {
   }
   const typeInfo = ACCOUNT_TYPES.find(t => t.id === account.type) || ACCOUNT_TYPES[0];
   const TypeIcon = typeInfo.icon;
+  const accent = account.type === "savings" ? GOLD : TEAL;
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "10px 10px 10px 12px", marginBottom: 8, borderRadius: 8,
+      borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+    }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: PAPER_DIM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: CARD, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <TypeIcon size={15} color={SLATE} />
         </div>
         <div>
@@ -2066,15 +2137,11 @@ function AccountRow({ account, onSave, onDelete }) {
   );
 }
 
-function AddAccountForm({ onAdd }) {
-  const [open, setOpen] = useState(false);
+function AddAccountForm({ onAdd, onCancel }) {
   const [name, setName] = useState("");
   const [type, setType] = useState("checking");
-  if (!open) {
-    return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 10 }}><Plus size={13} /> Add account</SmallBtn>;
-  }
   return (
-    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8 }}>
         {ACCOUNT_TYPES.map(t => {
           const TypeIcon = t.icon;
@@ -2092,8 +2159,8 @@ function AddAccountForm({ onAdd }) {
       </div>
       <div style={{ display: "flex", gap: 6 }}>
         <input style={{ ...inputStyle, flex: 1 }} placeholder="Account name" value={name} onChange={e => setName(e.target.value)} autoFocus />
-        <SmallBtn tone="gold" onClick={() => { onAdd(name, type); setName(""); setOpen(false); }}><Check size={13} /></SmallBtn>
-        <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
+        <SmallBtn tone="gold" onClick={() => onAdd(name, type)}><Check size={13} /></SmallBtn>
+        <SmallBtn tone="ghost" onClick={onCancel}><X size={13} /></SmallBtn>
       </div>
     </div>
   );
@@ -2117,8 +2184,22 @@ function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransac
 
   const sorted = data.transactions.slice().sort((a, b) => b.date.localeCompare(a.date));
 
+  const period = getPeriod(data.nextPaycheck, data.cycleDays);
+  const periodTx = data.transactions.filter(t => t.date >= period.start && t.date <= period.end);
+  const periodIncome = periodTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const periodExpense = periodTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const periodNet = periodIncome - periodExpense;
+
   return (
     <>
+      {data.transactions.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <StatTile icon={TrendingUp} color={SAGE} value={fmt(periodIncome)} label="Income" caption="this period" />
+          <StatTile icon={TrendingDown} color={RUST} value={fmt(periodExpense)} label="Expense" caption="this period" />
+          <StatTile icon={Wallet} color={periodNet >= 0 ? SAGE : RUST} value={fmt(periodNet)} label="Net" caption="this period" />
+        </div>
+      )}
+
       <Section title="Log a transaction">
         <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
           {["expense", "income", "transfer"].map(t => (
@@ -2192,7 +2273,11 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
   }
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "9px 10px 9px 12px", marginBottom: 6, borderRadius: 8,
+      borderLeft: `3px solid ${color}`, background: PAPER_DIM
+    }}>
       <div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{tx.note || category?.name || (tx.type === "transfer" ? `Transfer to ${toAccount?.name || "—"}` : tx.type)}</div>
         <div style={{ fontSize: 11, color: SLATE }}>{tx.date} · {account?.name || "—"}</div>
@@ -2366,12 +2451,11 @@ function AddBillForm({ data, onAdd, onCancel }) {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState(todayStr());
   const [frequencyDays, setFrequencyDays] = useState(30);
-  const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id || "");
 
   function submit() {
     if (!name || !amount) return;
-    onAdd({ name, amount: Number(amount), dueDate, frequencyDays: Number(frequencyDays), accountId, categoryId });
+    onAdd({ name, amount: Number(amount), dueDate, frequencyDays: Number(frequencyDays), categoryId });
   }
 
   return (
@@ -2398,18 +2482,14 @@ function AddBillForm({ data, onAdd, onCancel }) {
         <Field label="Amount"><input style={inputStyle} type="number" value={amount} onChange={e => setAmount(e.target.value)} /></Field>
         <Field label="Next due"><input style={inputStyle} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></Field>
         <Field label="Repeats every (days)"><input style={inputStyle} type="number" value={frequencyDays} onChange={e => setFrequencyDays(e.target.value)} /></Field>
-        <Field label="Account">
-          <select style={inputStyle} value={accountId} onChange={e => setAccountId(e.target.value)}>
-            {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-        </Field>
         <Field label="Category">
           <select style={inputStyle} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
             {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: SLATE, marginTop: 10 }}>Settled from your Checking account when marked paid.</div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         <SmallBtn tone="gold" onClick={submit}><Check size={13} /> Save</SmallBtn>
         <SmallBtn tone="ghost" onClick={onCancel}><X size={13} /> Cancel</SmallBtn>
       </div>
@@ -2418,20 +2498,42 @@ function AddBillForm({ data, onAdd, onCancel }) {
 }
 
 function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }) {
+  const [addOpen, setAddOpen] = useState(false);
+
   function addGoal(name, target) {
     if (!name) return;
     setData(d => ({ ...d, goals: [...d.goals, { id: uid(), name, target: Number(target) || 0, saved: 0 }] }));
+    setAddOpen(false);
   }
+
+  const totalSaved = data.goals.reduce((s, g) => s + g.saved, 0);
+  const totalTarget = data.goals.reduce((s, g) => s + g.target, 0);
+  const totalRemaining = Math.max(0, totalTarget - totalSaved);
+  const completed = data.goals.filter(g => g.target > 0 && g.saved >= g.target).length;
+
   return (
-    <Section title="Goals" eyebrow={`${data.goals.length} goal${data.goals.length === 1 ? "" : "s"}`}>
-      {data.goals.length === 0 && <Empty text="No goals yet — add one below." />}
+    <Section
+      title="Goals"
+      eyebrow="What you're saving toward"
+      right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add goal</SmallBtn>}
+    >
+      {data.goals.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <StatTile icon={PiggyBank} color={SAGE} value={fmt(totalSaved)} label="Saved" caption="so far" />
+          <StatTile icon={Target} color={GOLD} value={fmt(totalRemaining)} label="Remaining" caption="to go" />
+          <StatTile icon={Check} color={SKY} value={data.goals.length} label="Goals" caption={`${completed} completed`} />
+        </div>
+      )}
+
+      {addOpen && <AddGoalForm onAdd={addGoal} onCancel={() => setAddOpen(false)} />}
+
+      {data.goals.length === 0 && !addOpen && <Empty text="No goals yet — add one above." />}
       {data.goals.map(g => (
         <GoalRow key={g.id} goal={g} data={data}
           onContribute={(amount, accountId) => contributeGoal(g, amount, accountId)}
           onSave={updates => editGoal(g.id, updates)}
           onDelete={() => deleteGoal(g.id)} />
       ))}
-      <AddGoalForm onAdd={addGoal} />
     </Section>
   );
 }
@@ -2444,6 +2546,7 @@ function GoalRow({ goal, data, onContribute, onSave, onDelete }) {
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const pct = goal.target > 0 ? (goal.saved / goal.target) * 100 : 0;
+  const accent = progressColor(pct);
 
   if (editing) {
     return (
@@ -2457,8 +2560,11 @@ function GoalRow({ goal, data, onContribute, onSave, onDelete }) {
   }
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+    <div style={{
+      marginBottom: 8, padding: "10px 10px 10px 12px", borderRadius: 8,
+      borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
         <span style={{ fontWeight: 600 }}>{goal.name}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: SLATE }}>{fmt(goal.saved)} / {fmt(goal.target)}</span>
@@ -2483,36 +2589,54 @@ function GoalRow({ goal, data, onContribute, onSave, onDelete }) {
   );
 }
 
-function AddGoalForm({ onAdd }) {
-  const [open, setOpen] = useState(false);
+function AddGoalForm({ onAdd, onCancel }) {
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
-  if (!open) return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 8 }}><Plus size={13} /> Add goal</SmallBtn>;
   return (
-    <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", gap: 6 }}>
       <input style={{ ...inputStyle, flex: 2 }} placeholder="Goal name" value={name} onChange={e => setName(e.target.value)} autoFocus />
       <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="Target" value={target} onChange={e => setTarget(e.target.value)} />
-      <SmallBtn tone="gold" onClick={() => { onAdd(name, target); setName(""); setTarget(""); setOpen(false); }}><Check size={13} /></SmallBtn>
-      <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
+      <SmallBtn tone="gold" onClick={() => onAdd(name, target)}><Check size={13} /></SmallBtn>
+      <SmallBtn tone="ghost" onClick={onCancel}><X size={13} /></SmallBtn>
     </div>
   );
 }
 
 function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
+  const [addOpen, setAddOpen] = useState(false);
+
   function addDebt(name, total, rate) {
     if (!name) return;
     setData(d => ({ ...d, debts: [...d.debts, { id: uid(), name, total: Number(total) || 0, rate: Number(rate) || 0, paid: 0 }] }));
+    setAddOpen(false);
   }
+
+  const totalRemaining = data.debts.reduce((s, x) => s + Math.max(0, x.total - x.paid), 0);
+  const totalPaid = data.debts.reduce((s, x) => s + x.paid, 0);
+
   return (
-    <Section title="Debt" eyebrow={`${data.debts.length} tracked`}>
-      {data.debts.length === 0 && <Empty text="No debts tracked — add one below." />}
+    <Section
+      title="Debt"
+      eyebrow="What's left to pay off"
+      right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add debt</SmallBtn>}
+    >
+      {data.debts.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <StatTile icon={TrendingDown} color={RUST} value={fmt(totalRemaining)} label="Remaining" caption="left to pay" />
+          <StatTile icon={Check} color={SAGE} value={fmt(totalPaid)} label="Paid off" caption="so far" />
+          <StatTile icon={CreditCard} color={SKY} value={data.debts.length} label="Debts" caption="tracked" />
+        </div>
+      )}
+
+      {addOpen && <AddDebtForm onAdd={addDebt} onCancel={() => setAddOpen(false)} />}
+
+      {data.debts.length === 0 && !addOpen && <Empty text="No debts tracked — add one above." />}
       {data.debts.map(x => (
         <DebtRow key={x.id} debt={x} data={data}
           onPay={(amount, accountId) => payDebt(x, amount, accountId)}
           onSave={updates => editDebt(x.id, updates)}
           onDelete={() => deleteDebt(x.id)} />
       ))}
-      <AddDebtForm onAdd={addDebt} />
     </Section>
   );
 }
@@ -2527,6 +2651,7 @@ function DebtRow({ debt, data, onPay, onSave, onDelete }) {
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const remaining = Math.max(0, debt.total - debt.paid);
   const pct = debt.total > 0 ? (debt.paid / debt.total) * 100 : 0;
+  const accent = progressColor(pct);
 
   if (editing) {
     return (
@@ -2541,8 +2666,11 @@ function DebtRow({ debt, data, onPay, onSave, onDelete }) {
   }
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+    <div style={{
+      marginBottom: 8, padding: "10px 10px 10px 12px", borderRadius: 8,
+      borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
         <span style={{ fontWeight: 600 }}>{debt.name} <span style={{ color: SLATE, fontWeight: 400 }}>({debt.rate}% APR)</span></span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: SLATE }}>{fmt(remaining)} left</span>
@@ -2567,19 +2695,17 @@ function DebtRow({ debt, data, onPay, onSave, onDelete }) {
   );
 }
 
-function AddDebtForm({ onAdd }) {
-  const [open, setOpen] = useState(false);
+function AddDebtForm({ onAdd, onCancel }) {
   const [name, setName] = useState("");
   const [total, setTotal] = useState("");
   const [rate, setRate] = useState("");
-  if (!open) return <SmallBtn onClick={() => setOpen(true)} style={{ marginTop: 8 }}><Plus size={13} /> Add debt</SmallBtn>;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 6 }}>
       <input style={{ ...inputStyle, flex: 2, minWidth: 100 }} placeholder="Debt name" value={name} onChange={e => setName(e.target.value)} autoFocus />
       <input style={{ ...inputStyle, flex: 1, minWidth: 80 }} type="number" placeholder="Total" value={total} onChange={e => setTotal(e.target.value)} />
       <input style={{ ...inputStyle, flex: 1, minWidth: 70 }} type="number" step="0.1" placeholder="APR %" value={rate} onChange={e => setRate(e.target.value)} />
-      <SmallBtn tone="gold" onClick={() => { onAdd(name, total, rate); setName(""); setTotal(""); setRate(""); setOpen(false); }}><Check size={13} /></SmallBtn>
-      <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
+      <SmallBtn tone="gold" onClick={() => onAdd(name, total, rate)}><Check size={13} /></SmallBtn>
+      <SmallBtn tone="ghost" onClick={onCancel}><X size={13} /></SmallBtn>
     </div>
   );
 }
