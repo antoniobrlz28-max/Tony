@@ -1287,12 +1287,12 @@ function Row({ left, mid, right, onClick, accent }) {
   if (accent) {
     return (
       <div onClick={onClick} style={{
-        display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "9px 10px",
+        display: "grid", gridTemplateColumns: "1fr 122px 1fr", alignItems: "center", padding: "9px 10px",
         fontSize: 13, borderRadius: 6, marginBottom: 4, borderLeft: `3px solid ${accent}`, background: PAPER_DIM
       }}>
         <span style={{ fontWeight: 600 }}>{left}</span>
         {mid ? <span style={{ color: SLATE, justifySelf: "center", textAlign: "center" }}>{mid}</span> : <span />}
-        <span style={{ justifySelf: "end" }}>{right}</span>
+        <span style={{ justifySelf: "end", fontWeight: 700, color: GOLD }}>{right}</span>
       </div>
     );
   }
@@ -2487,7 +2487,7 @@ function AccountRow({ account, onSave, onDelete }) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(account.balance)}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{fmt(account.balance)}</span>
         <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
         <DeleteBtn onDelete={onDelete} />
       </div>
@@ -2804,6 +2804,7 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
   const BillIcon = BILL_ICONS[bill.name] || BILL_ICONS.Other;
   const daysUntil = daysBetween(todayStr(), bill.dueDate);
   const accent = urgencyColor(daysUntil, bill.frequencyDays);
+  const paidToday = bill.lastPaid === todayStr();
 
   if (editing) {
     return (
@@ -2833,12 +2834,25 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
             <CountdownPill days={daysUntil} totalDays={bill.frequencyDays} />
             <span style={{ fontSize: 11, color: SLATE }}>{formatShortDate(bill.dueDate)}</span>
+            <span style={{
+              display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: 999,
+              background: `${SLATE}1f`, color: SLATE, border: `1px solid ${SLATE}40`,
+              fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap"
+            }}>{bill.frequencyDays}d cycle</span>
           </div>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(bill.amount)}</span>
-        <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 10px", fontSize: 11 }}><CreditCard size={11} /> Pay</SmallBtn>
+        <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{fmt(bill.amount)}</span>
+        {paidToday ? (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 999,
+            background: `${SAGE}22`, color: SAGE, border: `1px solid ${SAGE}55`,
+            fontSize: 11, fontWeight: 700, whiteSpace: "nowrap"
+          }}><Check size={11} /> Paid</span>
+        ) : (
+          <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 10px", fontSize: 11 }}><CreditCard size={11} /> Mark paid</SmallBtn>
+        )}
         <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
         <DeleteBtn onDelete={onDelete} />
       </div>
