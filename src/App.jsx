@@ -1045,7 +1045,7 @@ export default function FinanceOS() {
               {data.accounts.map(a => (
                 <Row key={a.id} left={a.name} right={fmt(a.balance)} accent={a.type === "savings" ? GOLD : TEAL} />
               ))}
-              <Row left="Net cash" right={fmt(totalBalance)} />
+              <Row left="Net cash" right={fmt(totalBalance)} accent={SKY} rightColor={SKY} />
             </Section>
 
             <Section
@@ -1067,6 +1067,19 @@ export default function FinanceOS() {
                   />
                 </div>
               </div>
+
+              {incomeThisPeriod > 0 && (
+                <button
+                  onClick={() => applySplit(computeSuggestedSplit(incomeThisPeriod))}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
+                    padding: "9px 0", marginBottom: 14, borderRadius: 8, border: `1px solid ${GOLD}55`,
+                    background: "rgba(201,161,61,0.10)", color: GOLD, fontSize: 12, fontWeight: 700, cursor: "pointer"
+                  }}
+                >
+                  <RefreshCw size={12} /> Rebuild budget from actual rent
+                </button>
+              )}
 
               {spentThisPeriod > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -1126,7 +1139,7 @@ export default function FinanceOS() {
                     <CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />
                     {formatShortDate(b.dueDate)}
                   </span>
-                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} />
+                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} rightColor={VIOLET} />
               ))}
             </Section>
 
@@ -1283,7 +1296,7 @@ function AddCategoryForm({ onAdd }) {
 function Empty({ text }) {
   return <div style={{ fontSize: 12.5, color: SLATE, fontStyle: "italic", padding: "6px 0" }}>{text}</div>;
 }
-function Row({ left, mid, right, onClick, accent }) {
+function Row({ left, mid, right, onClick, accent, rightColor = GOLD }) {
   if (accent) {
     return (
       <div onClick={onClick} style={{
@@ -1292,7 +1305,7 @@ function Row({ left, mid, right, onClick, accent }) {
       }}>
         <span style={{ fontWeight: 600 }}>{left}</span>
         {mid ? <span style={{ color: SLATE, justifySelf: "center", textAlign: "center" }}>{mid}</span> : <span />}
-        <span style={{ justifySelf: "end", fontWeight: 700, color: GOLD }}>{right}</span>
+        <span style={{ justifySelf: "end", fontWeight: 700, color: rightColor }}>{right}</span>
       </div>
     );
   }
@@ -2576,7 +2589,7 @@ function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransac
             <input
               type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") submit(); }}
-              placeholder="0.00" autoFocus
+              placeholder="0.00"
               style={{
                 border: "none", borderBottom: `2px solid ${INK_SOFT}40`, background: "transparent", color: TEXT,
                 fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 700, textAlign: "center", width: 160, padding: "2px 0"
