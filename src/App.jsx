@@ -266,6 +266,21 @@ export default function FinanceOS() {
     applyEffect(merged, 1);
     setData(d => ({ ...d, transactions: d.transactions.map(t => t.id === oldTx.id ? merged : t) }));
   }
+  function importTransactions(rows, accountId, adjustBalance) {
+    if (!rows.length || !accountId) return;
+    setData(d => {
+      const txs = rows.map(r => ({
+        id: uid(), type: r.type, amount: r.amount, accountId, date: r.date, note: r.note,
+        ...(r.type === "expense" ? { categoryId: r.categoryId } : {}),
+      }));
+      let accounts = d.accounts;
+      if (adjustBalance) {
+        const delta = rows.reduce((s, r) => s + (r.type === "income" ? r.amount : -r.amount), 0);
+        accounts = d.accounts.map(a => a.id === accountId ? { ...a, balance: a.balance + delta } : a);
+      }
+      return { ...d, accounts, transactions: [...txs, ...d.transactions] };
+    });
+  }
 
   function editAccount(id, updates) {
     setData(d => ({ ...d, accounts: d.accounts.map(a => a.id === id ? { ...a, ...updates, balance: Number(updates.balance) } : a) }));
@@ -726,7 +741,8 @@ export default function FinanceOS() {
 
         {tab === "transactions" && (
           <TransactionsTab data={data} addIncome={addIncome} addExpense={addExpense} addTransfer={addTransfer}
-            editTransaction={editTransaction} deleteTransaction={deleteTransaction} />
+            editTransaction={editTransaction} deleteTransaction={deleteTransaction}
+            importTransactions={importTransactions} />
         )}
 
         {tab === "bills" && (

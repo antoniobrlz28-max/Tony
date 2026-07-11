@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Plus, TrendingUp, TrendingDown, Wallet, Check, X, Edit2 } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Wallet, Check, X, Edit2, Upload } from "lucide-react";
 import { GOLD, INK, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
 import { fmt, getPeriod } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
+import { ImportCSV } from "./ImportCSV.jsx";
 
-export function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransaction, deleteTransaction }) {
+export function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransaction, deleteTransaction, importTransactions }) {
   const [formType, setFormType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const [toAccountId, setToAccountId] = useState(data.accounts[1]?.id || data.accounts[0]?.id || "");
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id || "");
   const [note, setNote] = useState("");
+  const [showImport, setShowImport] = useState(false);
 
   function submit() {
     if (formType === "income") addIncome({ amount, accountId, note });
@@ -21,6 +23,10 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
   }
 
   const sorted = data.transactions.slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  if (showImport) {
+    return <ImportCSV data={data} onImport={importTransactions} onBack={() => setShowImport(false)} />;
+  }
 
   const period = getPeriod(data.nextPaycheck, data.cycleDays);
   const periodTx = data.transactions.filter(t => t.date >= period.start && t.date <= period.end);
@@ -118,7 +124,8 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
         </SmallBtn>
       </Section>
 
-      <Section title="Recent transactions" eyebrow={`${data.transactions.length} total`}>
+      <Section title="Recent transactions" eyebrow={`${data.transactions.length} total`}
+        right={<SmallBtn tone="ghost" onClick={() => setShowImport(true)}><Upload size={12} /> Import CSV</SmallBtn>}>
         {sorted.length === 0 && <Empty text="No transactions yet." />}
         {sorted.map(tx => (
           <TransactionRow key={tx.id} tx={tx} data={data}
