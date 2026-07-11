@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Trash2, Activity, ChevronLeft, ChevronRight, RefreshCw, Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal, AlertCircle, Clock, Lightbulb, CreditCard } from "lucide-react";
+import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Trash2, Activity, ChevronLeft, ChevronRight, RefreshCw, Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal, AlertCircle, Clock, Lightbulb, CreditCard, Flame, Dumbbell, Wine } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const STORAGE_KEY = "antonio-finance-data";
@@ -1926,44 +1926,67 @@ function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, ed
       )}
 
       <Section title="This month at a glance">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-          <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 8, padding: "10px 10px" }}>
-            <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Trained</div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: TEAL, marginTop: 2 }}>{trainedCount} days</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+          <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: "12px 12px" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${TEAL}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+              <Dumbbell size={13} color={TEAL} />
+            </div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: TEXT }}>{trainedCount} days</div>
+            <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 3 }}>Trained</div>
           </div>
-          <div style={{ background: activeFast ? AMBER_BG : CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 8, padding: "10px 10px" }}>
-            <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>{activeFast ? "Currently fasting" : "Fasted"}</div>
+          <div style={{
+            background: activeFast ? `${AMBER}14` : CARD, borderRadius: 14, padding: "12px 12px",
+            border: activeFast ? `1px solid ${AMBER}55` : `1px solid ${INK_SOFT}22`,
+            borderLeft: activeFast ? `3px solid ${AMBER}` : `1px solid ${INK_SOFT}22`
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${AMBER}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Flame size={13} color={AMBER} />
+              </div>
+              {activeFast && <span style={{ fontSize: 9, fontWeight: 700, color: AMBER, textTransform: "uppercase", letterSpacing: "0.05em" }}>Active</span>}
+            </div>
             {activeFast ? (
-              <div style={{ marginTop: 4 }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: AMBER, marginBottom: 6 }}>
+              <div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 2 }}>
                   {Math.floor(activeFast.remaining / 60)}h {activeFast.remaining % 60}m left
                 </div>
+                <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>Currently fasting</div>
                 <FastBar pct={activeFast.pct} />
               </div>
             ) : (
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-                <div>
-                  <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: AMBER }}>{fastedThisWeek}</div>
-                  <div style={{ fontSize: 9.5, color: SLATE }}>this week</div>
+              <>
+                <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>Fasted</div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT }}>{fastedThisWeek}</div>
+                    <div style={{ fontSize: 9.5, color: SLATE }}>this week</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT }}>{fastingCount}</div>
+                    <div style={{ fontSize: 9.5, color: SLATE }}>this month</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: AMBER }}>{fastingCount}</div>
-                  <div style={{ fontSize: 9.5, color: SLATE }}>this month</div>
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
-        <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 8, padding: "10px 10px" }}>
-          <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Drinks</div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: drinksThisWeek > 0 ? CORAL : SLATE }}>{drinksThisWeek}</div>
-              <div style={{ fontSize: 9.5, color: SLATE }}>this week</div>
+        <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: "12px 12px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${CORAL}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Wine size={13} color={CORAL} />
+              </div>
+              <span style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em" }}>Drinks</span>
             </div>
-            <div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: totalDrinks > 0 ? CORAL : SLATE }}>{totalDrinks}</div>
-              <div style={{ fontSize: 9.5, color: SLATE }}>this month</div>
+            <div style={{ display: "flex", gap: 18 }}>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: drinksThisWeek > 0 ? CORAL : TEXT }}>{drinksThisWeek}</div>
+                <div style={{ fontSize: 9.5, color: SLATE }}>this week</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: totalDrinks > 0 ? CORAL : TEXT }}>{totalDrinks}</div>
+                <div style={{ fontSize: 9.5, color: SLATE }}>this month</div>
+              </div>
             </div>
           </div>
         </div>
