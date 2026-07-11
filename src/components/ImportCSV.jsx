@@ -49,18 +49,20 @@ function parseMoney(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Keyword rules for auto-categorization, matched against the existing category names
+// Keyword rules for auto-categorization, matched against the existing category names.
+// Order matters: ATM/P2P first, because bank descriptions embed street/branch names
+// ("1415 MARKET ST ATM CASH W/D") that would otherwise trip the merchant rules.
 const CATEGORY_RULES = [
-  { match: /rent|landlord|property|lease/i, cat: "rent" },
-  { match: /grocer|walmart|target|albertson|kroger|aldi|market|supermercado|food store/i, cat: "essentials" },
-  { match: /fuel|gas|shell|conoco|phillips|circle k|quiktrip|qt \d|kum ?& ?go|exxon|chevron/i, cat: "essentials" },
-  { match: /pharmacy|walgreen|cvs|clinic|medical|dental/i, cat: "essentials" },
-  { match: /electric|water|utility|internet|wifi|comcast|xfinity|cox |att |t-mobile|verizon|phone/i, cat: "essentials" },
-  { match: /netflix|spotify|hulu|disney|hbo|max |youtube|prime|openai|chatgpt|claude|subscription|patreon/i, cat: "discretionary" },
-  { match: /uber|lyft|doordash|grubhub|instacart/i, cat: "discretionary" },
-  { match: /restaurant|grill|cafe|coffee|taco|pizza|sushi|burger|bar |brewing|liquor|lounge|diner|kitchen/i, cat: "discretionary" },
-  { match: /atm|withdrawal|cash app|zelle|venmo|paypal/i, cat: "discretionary" },
+  { match: /atm|cash w.?d|withdrawal|cash app|zelle|venmo|paypal/i, cat: "discretionary" },
   { match: /transfer to sav|savings transfer/i, cat: "savings" },
+  { match: /rent|landlord|property|lease/i, cat: "rent" },
+  { match: /grocer|wal-?mart|wm supercenter|costco|sams club|target|albertson|kroger|king soopers|soopers|safeway|sprouts|trader joe|whole foods|aldi|market|supermercado|carniceria|food store/i, cat: "essentials" },
+  { match: /fuel|gas|shell|conoco|phillips|sinclair|murphy|circle k|quiktrip|qt \d|kum ?& ?go|exxon|chevron/i, cat: "essentials" },
+  { match: /pharmacy|walgreen|cvs|clinic|medical|dental/i, cat: "essentials" },
+  { match: /electric|water|utility|internet|wifi|comcast|xfinity|cox |att |t-?mobile|verizon|phone/i, cat: "essentials" },
+  { match: /netflix|spotify|hulu|disney|hbo|max |youtube|prime|openai|chatgpt|claude|subscription|patreon|onlyfans/i, cat: "discretionary" },
+  { match: /uber|lyft|doordash|grubhub|instacart/i, cat: "discretionary" },
+  { match: /restaurant|grill|cafe|coffee|taco|pizza|sushi|burger|bar |brewing|liquor|wine|lounge|diner|kitchen/i, cat: "discretionary" },
 ];
 
 function pickCategory(note, categories) {
