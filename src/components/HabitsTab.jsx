@@ -560,32 +560,6 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         </div>
       </Section>
 
-      <Section title="Activity, last 90 days">
-        <div style={{ overflowX: "auto", paddingBottom: 4 }}>
-          <div style={{ display: "flex", gap: 2 }}>
-            {Array.from({ length: 90 }, (_, i) => addDays(todayStr(), -(89 - i))).map(d => {
-              const log = logFor(d);
-              let score = -1;
-              if (log) {
-                score = 0;
-                if (log.trained) score++;
-                if ((log.fastingHours || 0) > 0) score++;
-                if (!(log.alcoholDrinks > 0)) score++;
-              }
-              const scale = [PAPER_DIM, "#2E5A3A", "#3E8A4E", "#5FC96E"];
-              return <div key={d} title={d} style={{ width: 5, height: 22, borderRadius: 2, background: score < 0 ? PAPER_DIM : scale[score], flexShrink: 0 }} />;
-            })}
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 9.5, color: SLATE }}>
-          <span>Less</span>
-          {[PAPER_DIM, "#2E5A3A", "#3E8A4E", "#5FC96E"].map((c, i) => (
-            <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
-          ))}
-          <span>More</span>
-        </div>
-      </Section>
-
       {fastDate && (
         <FastingModal date={fastDate} log={logFor(fastDate)} onClose={() => setFastDate(null)}
           blockNew={!!activeFast && fastDate !== todayStr()}
@@ -603,8 +577,7 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
           </div>
           <div style={{
             background: activeFast ? `${AMBER}14` : CARD, borderRadius: 14, padding: "12px 12px",
-            border: activeFast ? `1px solid ${AMBER}55` : `1px solid ${INK_SOFT}22`,
-            borderLeft: activeFast ? `3px solid ${AMBER}` : `1px solid ${INK_SOFT}22`
+            border: `1px solid ${INK_SOFT}22`
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${AMBER}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>

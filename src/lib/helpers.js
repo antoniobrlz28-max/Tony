@@ -45,7 +45,7 @@ export function payoffProjection(debt) {
   return { monthsLeft: Math.ceil(monthsLeft), payoffDate: addDays(todayStr(), Math.round(monthsLeft * 30)) };
 }
 
-export function daysInMonthCount(ym) {
+function daysInMonthCount(ym) {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m, 0).getDate();
 }

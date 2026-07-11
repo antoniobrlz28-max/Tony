@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw } from "lucide-react";
-import { PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, CHART_COLORS, VIOLET, VIOLET_BG, SKY } from "./lib/constants.js";
+import { Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, VIOLET, VIOLET_BG, SKY } from "./lib/constants.js";
 import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, progressColor, formatDuration, getPeriod } from "./lib/helpers.js";
 import { defaultData, generateDemoData, migrate } from "./lib/data.js";
 import { Section, ProgressBar, CountdownPill, SmallBtn, useLongPress, IconBtn, DeleteBtn, inputStyle, Empty, Row, StatTile } from "./components/shared.jsx";
@@ -669,49 +669,6 @@ export default function FinanceOS() {
                 >
                   <RefreshCw size={12} /> Rebuild budget from actual rent
                 </button>
-              )}
-
-              {spentThisPeriod > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                  <div style={{ position: "relative", width: 140, height: 140, flexShrink: 0 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={data.categories.map((c, i) => ({ name: c.name, value: categorySpend(c.id), color: CHART_COLORS[i % CHART_COLORS.length] }))}
-                          dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={65} paddingAngle={2}
-                        >
-                          {data.categories.map((c, i) => <Cell key={c.id} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={v => fmt(v)} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{
-                      position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-                      alignItems: "center", justifyContent: "center", pointerEvents: "none", textAlign: "center"
-                    }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>
-                        {periodBudgetTotal > 0 ? Math.round((spentThisPeriod / periodBudgetTotal) * 100) : 0}%
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>{fmt(spentThisPeriod)}</div>
-                      <div style={{ fontSize: 9, color: SLATE }}>of {fmt(periodBudgetTotal)}</div>
-                    </div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    {data.categories.map((c, i) => {
-                      const spent = categorySpend(c.id);
-                      if (spent <= 0) return null;
-                      return (
-                        <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: 4, background: CHART_COLORS[i % CHART_COLORS.length], display: "inline-block" }} />
-                            <span style={{ fontSize: 12 }}>{c.name}</span>
-                          </div>
-                          <span style={{ fontSize: 12, fontWeight: 700 }}>{fmt(spent)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               )}
 
               {data.categories.map(c => (

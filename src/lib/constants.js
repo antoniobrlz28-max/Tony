@@ -17,7 +17,6 @@ export const SLATE = "#93A1AF";
 export const TEAL = "#2FA898", TEAL_BG = "#DCF3EF";
 export const AMBER = "#E2A13B", AMBER_BG = "#FBEAD0";
 export const CORAL = "#E2703B", CORAL_BG = "#FBE0D0";
-export const CHART_COLORS = ["#2FA898", "#E2A13B", "#E2703B", "#8B6FD1", "#54725A", "#B8902E", "#6E9BC9", "#C97F9E"];
 export const ABSTINENCE_COLORS = ["#A8264F", "#2C3E42", "#1F8A70", "#5B4636", "#C0392B", "#2A3F8F", "#6B4E9C", "#3D6B4F"];
 export const ACCOUNT_TYPES = [
   { id: "checking", label: "Checking", icon: Landmark },
