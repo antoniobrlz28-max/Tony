@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Plus, Check, AlertCircle, Clock, Receipt, Lightbulb, CreditCard, Edit2, X } from "lucide-react";
-import { SAGE, RUST, GOLD, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, BILL_TEMPLATES, BILL_ICONS } from "../lib/constants.js";
+import { Plus, Check, AlertCircle, Clock, Receipt, Lightbulb, CreditCard, Edit2, X, Settings2, Repeat, CalendarDays, ChevronLeft } from "lucide-react";
+import { SAGE, RUST, GOLD, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, BILL_TEMPLATES, BILL_ICONS } from "../lib/constants.js";
 import { uid, fmt, todayStr, daysBetween, urgencyColor, formatShortDate } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, CountdownPill, Field, inputStyle } from "./shared.jsx";
 
 export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
   const [addOpen, setAddOpen] = useState(false);
+  const [showSubs, setShowSubs] = useState(false);
 
   function addBill(bill) {
     setData(d => ({ ...d, bills: [...d.bills, { id: uid(), lastPaid: null, ...bill }] }));
@@ -27,11 +28,20 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
     { key: "upcoming", label: "Upcoming", items: upcoming },
   ].filter(g => g.items.length > 0);
 
+  if (showSubs) {
+    return <SubscriptionsView data={data} deleteBill={deleteBill} onBack={() => setShowSubs(false)} />;
+  }
+
   return (
     <Section
       title="Bills"
       eyebrow="Stay on top of what's due"
-      right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add bill</SmallBtn>}
+      right={
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <IconBtn icon={Settings2} onClick={() => setShowSubs(true)} label="Manage subscriptions" />
+          <SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add bill</SmallBtn>
+        </div>
+      }
     >
       {data.bills.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
@@ -44,16 +54,14 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
           />
           <StatTile
             icon={Clock}
-            color={SAGE}
-            valueColor={SAGE}
+            color={GOLD}
             value={fmt(dueThisWeekTotal)}
             label="Due this week"
             caption={`${dueThisWeek.length} bill${dueThisWeek.length === 1 ? "" : "s"}`}
           />
           <StatTile
             icon={Receipt}
-            color={SAGE}
-            valueColor={SAGE}
+            color={SKY}
             value={fmt(totalAmount)}
             label="Total"
             caption={`${data.bills.length} bill${data.bills.length === 1 ? "" : "s"}`}
@@ -86,7 +94,7 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
             <Lightbulb size={14} color={covered ? SAGE : RUST} />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: TEXT }}>You have {fmt(accountsTotal)} across all accounts</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: TEXT }}>You have <span style={{ color: SAGE, fontWeight: 700 }}>{fmt(accountsTotal)}</span> across all accounts</div>
             <div style={{ fontSize: 11, color: SLATE, marginTop: 1 }}>
               {covered ? "Plenty to cover your upcoming bills." : `You're ${fmt(totalAmount - accountsTotal)} short of covering everything due.`}
             </div>
@@ -94,6 +102,60 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
         </div>
       )}
     </Section>
+  );
+}
+
+function SubscriptionsView({ data, deleteBill, onBack }) {
+  const monthlyOf = b => b.amount * (30 / Math.max(1, Number(b.frequencyDays) || 30));
+  const sorted = data.bills.slice().sort((a, b) => monthlyOf(b) - monthlyOf(a));
+  const monthlyTotal = sorted.reduce((s, b) => s + monthlyOf(b), 0);
+  const maxMonthly = sorted.length ? monthlyOf(sorted[0]) : 0;
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
+        <ChevronLeft size={16} /> Back to Bills
+      </button>
+      <Section title="Subscriptions & recurring" eyebrow="every bill, normalized to a monthly cost">
+        {sorted.length === 0 ? (
+          <Empty text="No recurring bills yet — add some in the Bills tab." />
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+              <StatTile icon={Repeat} color={SKY} value={fmt(monthlyTotal)} label="Per month" caption={`${sorted.length} recurring bill${sorted.length === 1 ? "" : "s"}`} />
+              <StatTile icon={CalendarDays} color={GOLD} value={fmt(monthlyTotal * 12)} label="Per year" caption="at current pace" />
+            </div>
+            {sorted.map(b => {
+              const BillIcon = BILL_ICONS[b.name] || BILL_ICONS.Other;
+              const monthly = monthlyOf(b);
+              const share = monthlyTotal > 0 ? (monthly / monthlyTotal) * 100 : 0;
+              return (
+                <div key={b.id} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 8, background: PAPER_DIM }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: CARD, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <BillIcon size={14} color={SLATE} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{b.name}</div>
+                        <div style={{ fontSize: 10.5, color: SLATE }}>{fmt(b.amount)} every {b.frequencyDays}d · {Math.round(share)}% of recurring spend</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: TEXT }}>{fmt(monthly)}<span style={{ fontSize: 10, fontWeight: 400, color: SLATE }}>/mo</span></span>
+                      <DeleteBtn onDelete={() => deleteBill(b.id)} />
+                    </div>
+                  </div>
+                  <div style={{ height: 5, background: CARD, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: (maxMonthly > 0 ? (monthly / maxMonthly) * 100 : 0) + "%", background: SKY, borderRadius: 3 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </Section>
+    </div>
   );
 }
 
@@ -136,16 +198,11 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
             <CountdownPill days={daysUntil} totalDays={bill.frequencyDays} />
             <span style={{ fontSize: 11, color: SLATE }}>{formatShortDate(bill.dueDate)}</span>
-            <span style={{
-              display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: 999,
-              background: `${SLATE}1f`, color: SLATE, border: `1px solid ${SLATE}40`,
-              fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap"
-            }}>{bill.frequencyDays}d cycle</span>
           </div>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: SAGE }}>{fmt(bill.amount)}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{fmt(bill.amount)}</span>
         {paidToday ? (
           <span style={{
             display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 999,

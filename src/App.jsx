@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import { Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, VIOLET, VIOLET_BG, SKY } from "./lib/constants.js";
+import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, VIOLET, VIOLET_BG } from "./lib/constants.js";
 import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
 import { defaultData, generateDemoData, migrate } from "./lib/data.js";
 import { Section, ProgressBar, CountdownPill, SmallBtn, useLongPress, IconBtn, DeleteBtn, inputStyle, Empty, Row, StatTile } from "./components/shared.jsx";
@@ -626,7 +626,7 @@ export default function FinanceOS() {
               {data.accounts.map(a => (
                 <Row key={a.id} left={a.name} right={fmt(a.balance)} pill />
               ))}
-              <Row left="Net cash" right={fmt(totalBalance)} accent={SKY} />
+              <Row left="Net cash" right={fmt(totalBalance)} pill />
             </Section>
 
             <Section
@@ -655,7 +655,7 @@ export default function FinanceOS() {
                   }}
                 >
                   <span style={{ fontSize: 12, color: SLATE }}>Rent</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: SAGE }}>{fmt(data.fixedRent)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{fmt(data.fixedRent)}</span>
                 </button>
               )}
 
@@ -687,7 +687,7 @@ export default function FinanceOS() {
                     <CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />
                     {formatShortDate(b.dueDate)}
                   </span>
-                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} />
+                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} rightColor={TEXT} />
               ))}
             </Section>
 
@@ -701,7 +701,7 @@ export default function FinanceOS() {
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                       <span style={{ fontWeight: 600 }}>{g.name}</span>
-                      <span style={{ color: SAGE }}>{fmt(g.saved)} / {fmt(g.target)}</span>
+                      <span style={{ color: SLATE }}><span style={{ color: SAGE, fontWeight: 700 }}>{fmt(g.saved)}</span> / {fmt(g.target)}</span>
                     </div>
                     <ProgressBar pct={pct} tone="gold" />
                   </div>
@@ -818,7 +818,7 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
         <span style={{ fontWeight: 600 }}>{category.name} <span style={{ color: SLATE, fontWeight: 400 }}>({category.percent}%)</span></span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: pct > 100 ? RUST : SAGE }}>{fmt(spent)} / {fmt(budget)}</span>
+          <span style={{ color: pct > 100 ? RUST : SLATE }}>{fmt(spent)} / {fmt(budget)}</span>
           <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
           <DeleteBtn onDelete={onDelete} />
         </div>
@@ -826,7 +826,7 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
       <div style={{ height: 8, background: PAPER_DIM, borderRadius: 4, overflow: "hidden", border: `1px solid ${INK_SOFT}18` }}>
         <div style={{ height: "100%", width: Math.min(100, pct) + "%", background: barColor, borderRadius: 4, transition: "width 0.3s" }} />
       </div>
-      <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SAGE, marginTop: 4 }}>
+      <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SLATE, marginTop: 4 }}>
         {pct > 100 ? `${fmt(spent - budget)} over budget` : `${fmt(Math.max(0, budget - spent))} left`}
       </div>
     </div>

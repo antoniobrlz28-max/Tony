@@ -139,7 +139,7 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
   const toAccount = data.accounts.find(a => a.id === tx.toAccountId);
 
   const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "-" : "";
-  const color = tx.type === "expense" ? RUST : SAGE;
+  const color = tx.type === "income" ? SAGE : tx.type === "expense" ? RUST : SLATE;
 
   if (editing) {
     return (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, TrendingDown, Check, CreditCard, Lightbulb, Edit2, X } from "lucide-react";
-import { SAGE, SKY, GOLD, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
+import { RUST, SAGE, SKY, GOLD, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
 import { uid, fmt, formatShortDate, payoffProjection } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
@@ -27,7 +27,7 @@ export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
     >
       {data.debts.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={TrendingDown} color={SAGE} valueColor={SAGE} value={fmt(totalRemaining)} label="Remaining" caption="left to pay" />
+          <StatTile icon={TrendingDown} color={RUST} valueColor={RUST} value={fmt(totalRemaining)} label="Remaining" caption="left to pay" />
           <StatTile icon={Check} color={SAGE} valueColor={SAGE} value={fmt(totalPaid)} label="Paid off" caption="so far" />
           <StatTile icon={CreditCard} color={SKY} value={data.debts.length} label="Debts" caption="tracked" />
         </div>
@@ -88,7 +88,7 @@ function DebtRow({ debt, data, onPay, onSave, onDelete }) {
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
         <span style={{ fontWeight: 600 }}>{debt.name} <span style={{ color: SLATE, fontWeight: 400 }}>({debt.rate}% APR)</span></span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: SAGE }}>{fmt(remaining)} left</span>
+          <span style={{ color: SLATE }}>{fmt(remaining)} left</span>
           <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
           <DeleteBtn onDelete={onDelete} />
         </div>
