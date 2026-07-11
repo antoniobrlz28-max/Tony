@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import { Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, VIOLET, VIOLET_BG, SKY } from "./lib/constants.js";
 import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, progressColor, formatDuration, getPeriod } from "./lib/helpers.js";
@@ -12,6 +12,7 @@ import { BillsTab } from "./components/BillsTab.jsx";
 import { GoalsTab } from "./components/GoalsTab.jsx";
 import { DebtTab } from "./components/DebtTab.jsx";
 import { HabitsTab } from "./components/HabitsTab.jsx";
+import { SettingsTab } from "./components/SettingsTab.jsx";
 
 export default function FinanceOS() {
   const [data, setData] = useState(() => defaultData());
@@ -207,6 +208,12 @@ export default function FinanceOS() {
   }
   function setFixedRent(val) {
     setData(d => ({ ...d, fixedRent: Number(val) || 0 }));
+  }
+  function setNextPaycheck(val) {
+    setData(d => ({ ...d, nextPaycheck: val }));
+  }
+  function setCycleDays(val) {
+    setData(d => ({ ...d, cycleDays: Math.max(1, Number(val) || 1) }));
   }
   function receivePaycheck(amount, shouldBudget) {
     const amt = Number(amount);
@@ -408,23 +415,17 @@ export default function FinanceOS() {
       <div style={{ background: INK, color: PAPER, padding: "18px 16px 16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <h1 style={{ fontFamily: "Georgia, serif", fontSize: 21, margin: 0, letterSpacing: "0.01em" }}>Life OS</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {confirmAction ? (
-              <>
-                <span style={{ fontSize: 10.5, color: "#E0A0A0" }}>Overwrite all data?</span>
-                <button onClick={confirmAction === "demo" ? loadDemoData : clearData} style={{ fontSize: 10.5, fontWeight: 700, background: "none", border: "none", color: GOLD, cursor: "pointer" }}>Confirm</button>
-                <button onClick={() => setConfirmAction(null)} style={{ fontSize: 10.5, background: "none", border: "none", color: SLATE, cursor: "pointer" }}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => setConfirmAction("demo")} style={{ fontSize: 10.5, background: "none", border: "none", color: "#8A97A3", cursor: "pointer", textDecoration: "underline" }}>Load demo data</button>
-                <button onClick={() => setConfirmAction("empty")} style={{ fontSize: 10.5, background: "none", border: "none", color: "#8A97A3", cursor: "pointer", textDecoration: "underline" }}>Empty fields</button>
-              </>
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: saving ? GOLD : SLATE }}>
               {saving && <RefreshCw size={11} className="spinner" />}
               {saving ? "saving…" : "saved"}
             </span>
+            <button onClick={() => setTab("settings")} aria-label="Settings" style={{
+              background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex",
+              color: tab === "settings" ? GOLD : "#8A97A3"
+            }}>
+              <SettingsIcon size={18} />
+            </button>
           </div>
         </div>
         {tab !== "habits" ? (
@@ -495,7 +496,7 @@ export default function FinanceOS() {
                   {daysUntilPayday > 0 && (
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 9, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Safe to spend</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: SAGE }}>
                         {fmt(Math.max(0, (incomeThisPeriod - spentThisPeriod) / daysUntilPayday))}
                         <span style={{ fontSize: 10, fontWeight: 400, color: SLATE }}>/day</span>
                       </div>
@@ -566,7 +567,7 @@ export default function FinanceOS() {
                 if (suggestion <= 0) return null;
                 return (
                   <div style={{ background: PAPER_DIM, borderRadius: 10, padding: "12px 14px", marginTop: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{fmt(leftover)} unspent so far this period</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: SAGE }}>{fmt(leftover)} unspent so far this period</div>
                     <div style={{ fontSize: 12, color: SLATE, marginTop: 2 }}>Consider moving {fmt(suggestion)} toward "{openGoal.name}"</div>
                   </div>
                 );
@@ -625,7 +626,7 @@ export default function FinanceOS() {
               {data.accounts.map(a => (
                 <Row key={a.id} left={a.name} right={fmt(a.balance)} accent={a.type === "savings" ? GOLD : TEAL} />
               ))}
-              <Row left="Net cash" right={fmt(totalBalance)} accent={SKY} rightColor={SKY} />
+              <Row left="Net cash" right={fmt(totalBalance)} accent={SKY} />
             </Section>
 
             <Section
@@ -654,7 +655,7 @@ export default function FinanceOS() {
                   }}
                 >
                   <span style={{ fontSize: 12, color: SLATE }}>Rent</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{fmt(data.fixedRent)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: SAGE }}>{fmt(data.fixedRent)}</span>
                 </button>
               )}
 
@@ -686,7 +687,7 @@ export default function FinanceOS() {
                     <CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />
                     {formatShortDate(b.dueDate)}
                   </span>
-                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} rightColor={VIOLET} />
+                } right={fmt(b.amount)} accent={urgencyColor(daysBetween(todayStr(), b.dueDate), b.frequencyDays)} />
               ))}
             </Section>
 
@@ -701,7 +702,7 @@ export default function FinanceOS() {
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                       <span style={{ fontWeight: 600 }}>{g.name}</span>
-                      <span style={{ color: SLATE }}>{fmt(g.saved)} / {fmt(g.target)}</span>
+                      <span style={{ color: SAGE }}>{fmt(g.saved)} / {fmt(g.target)}</span>
                     </div>
                     <ProgressBar pct={pct} tone="gold" />
                   </div>
@@ -739,6 +740,21 @@ export default function FinanceOS() {
 
         {tab === "debt" && (
           <DebtTab data={data} setData={setData} payDebt={payDebt} editDebt={editDebt} deleteDebt={deleteDebt} />
+        )}
+
+        {tab === "settings" && (
+          <SettingsTab
+            data={data}
+            setFixedRent={setFixedRent}
+            setGoalWeight={setGoalWeight}
+            setNextPaycheck={setNextPaycheck}
+            setCycleDays={setCycleDays}
+            confirmAction={confirmAction}
+            setConfirmAction={setConfirmAction}
+            loadDemoData={loadDemoData}
+            clearData={clearData}
+            onBack={() => setTab("dashboard")}
+          />
         )}
       </div>
 
@@ -803,7 +819,7 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
         <span style={{ fontWeight: 600 }}>{category.name} <span style={{ color: SLATE, fontWeight: 400 }}>({category.percent}%)</span></span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: pct > 100 ? RUST : SLATE }}>{fmt(spent)} / {fmt(budget)}</span>
+          <span style={{ color: pct > 100 ? RUST : SAGE }}>{fmt(spent)} / {fmt(budget)}</span>
           <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
           <DeleteBtn onDelete={onDelete} />
         </div>
@@ -811,7 +827,7 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
       <div style={{ height: 8, background: PAPER_DIM, borderRadius: 4, overflow: "hidden", border: `1px solid ${INK_SOFT}18` }}>
         <div style={{ height: "100%", width: Math.min(100, pct) + "%", background: barColor, borderRadius: 4, transition: "width 0.3s" }} />
       </div>
-      <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SLATE, marginTop: 4 }}>
+      <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SAGE, marginTop: 4 }}>
         {pct > 100 ? `${fmt(spent - budget)} over budget` : `${fmt(Math.max(0, budget - spent))} left`}
       </div>
     </div>

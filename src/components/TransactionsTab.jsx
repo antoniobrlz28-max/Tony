@@ -32,9 +32,9 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
     <>
       {data.transactions.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={TrendingUp} color={SAGE} value={fmt(periodIncome)} label="Income" caption="this period" />
-          <StatTile icon={TrendingDown} color={RUST} value={fmt(periodExpense)} label="Expense" caption="this period" />
-          <StatTile icon={Wallet} color={periodNet >= 0 ? SAGE : RUST} value={fmt(periodNet)} label="Net" caption="this period" />
+          <StatTile icon={TrendingUp} color={SAGE} valueColor={SAGE} value={fmt(periodIncome)} label="Income" caption="this period" />
+          <StatTile icon={TrendingDown} color={RUST} valueColor={RUST} value={fmt(periodExpense)} label="Expense" caption="this period" />
+          <StatTile icon={Wallet} color={periodNet >= 0 ? SAGE : RUST} valueColor={periodNet >= 0 ? SAGE : RUST} value={fmt(periodNet)} label="Net" caption="this period" />
         </div>
       )}
 
@@ -139,7 +139,7 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
   const toAccount = data.accounts.find(a => a.id === tx.toAccountId);
 
   const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "-" : "";
-  const color = tx.type === "income" ? SAGE : tx.type === "expense" ? RUST : SLATE;
+  const color = tx.type === "expense" ? RUST : SAGE;
 
   if (editing) {
     return (

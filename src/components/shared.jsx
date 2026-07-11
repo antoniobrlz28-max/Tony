@@ -138,7 +138,7 @@ export const minimalInputStyle = {
 export function Empty({ text }) {
   return <div style={{ fontSize: 12.5, color: SLATE, fontStyle: "italic", padding: "6px 0" }}>{text}</div>;
 }
-export function Row({ left, mid, right, onClick, accent, rightColor = GOLD }) {
+export function Row({ left, mid, right, onClick, accent, rightColor = SAGE }) {
   if (accent) {
     return (
       <div onClick={onClick} style={{
@@ -155,7 +155,7 @@ export function Row({ left, mid, right, onClick, accent, rightColor = GOLD }) {
     <div onClick={onClick} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 13 }}>
       <span style={{ fontWeight: 600 }}>{left}</span>
       {mid && <span style={{ color: SLATE }}>{mid}</span>}
-      <span>{right}</span>
+      <span style={{ fontWeight: 700, color: SAGE }}>{right}</span>
     </div>
   );
 }
@@ -184,13 +184,13 @@ export function BottomSheet({ title, onClose, children }) {
   );
 }
 
-export function StatTile({ icon: Icon, color, value, label, caption }) {
+export function StatTile({ icon: Icon, color, value, label, caption, valueColor }) {
   return (
     <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: "12px 10px", minWidth: 0 }}>
       <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${color}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
         <Icon size={13} color={color} />
       </div>
-      <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.15, overflowWrap: "break-word" }}>{value}</div>
+      <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: valueColor || TEXT, lineHeight: 1.15, overflowWrap: "break-word" }}>{value}</div>
       <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 3 }}>{label}</div>
       <div style={{ fontSize: 9.5, color, marginTop: 2 }}>{caption}</div>
     </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Check, AlertCircle, Clock, Receipt, Lightbulb, CreditCard, Edit2, X } from "lucide-react";
-import { SAGE, RUST, GOLD, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, BILL_TEMPLATES, BILL_ICONS } from "../lib/constants.js";
+import { SAGE, RUST, GOLD, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, BILL_TEMPLATES, BILL_ICONS } from "../lib/constants.js";
 import { uid, fmt, todayStr, daysBetween, urgencyColor, formatShortDate } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, CountdownPill, Field, inputStyle } from "./shared.jsx";
 
@@ -44,14 +44,16 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
           />
           <StatTile
             icon={Clock}
-            color={GOLD}
+            color={SAGE}
+            valueColor={SAGE}
             value={fmt(dueThisWeekTotal)}
             label="Due this week"
             caption={`${dueThisWeek.length} bill${dueThisWeek.length === 1 ? "" : "s"}`}
           />
           <StatTile
             icon={Receipt}
-            color={SKY}
+            color={SAGE}
+            valueColor={SAGE}
             value={fmt(totalAmount)}
             label="Total"
             caption={`${data.bills.length} bill${data.bills.length === 1 ? "" : "s"}`}
@@ -143,7 +145,7 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{fmt(bill.amount)}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: SAGE }}>{fmt(bill.amount)}</span>
         {paidToday ? (
           <span style={{
             display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 999,

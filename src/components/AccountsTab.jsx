@@ -25,9 +25,9 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
     >
       {data.accounts.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={Wallet} color={GOLD} value={fmt(totalBalance)} label="Total" caption={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`} />
-          <StatTile icon={Landmark} color={TEAL} value={fmt(checkingTotal)} label="Checking" caption="everyday spending" />
-          <StatTile icon={PiggyBank} color={GOLD} value={fmt(savingsTotal)} label="Savings" caption="set aside" />
+          <StatTile icon={Wallet} color={SAGE} valueColor={SAGE} value={fmt(totalBalance)} label="Total" caption={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`} />
+          <StatTile icon={Landmark} color={SAGE} valueColor={SAGE} value={fmt(checkingTotal)} label="Checking" caption="everyday spending" />
+          <StatTile icon={PiggyBank} color={SAGE} valueColor={SAGE} value={fmt(savingsTotal)} label="Savings" caption="set aside" />
         </div>
       )}
 
@@ -79,7 +79,7 @@ function AccountRow({ account, onSave, onDelete }) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>{fmt(account.balance)}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: SAGE }}>{fmt(account.balance)}</span>
         <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
         <DeleteBtn onDelete={onDelete} />
       </div>

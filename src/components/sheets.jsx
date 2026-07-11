@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { GOLD, PAPER_DIM, SLATE, VIOLET, TEXT } from "../lib/constants.js";
+import { SAGE, PAPER_DIM, SLATE, VIOLET, TEXT } from "../lib/constants.js";
 import { fmt, todayStr } from "../lib/helpers.js";
 import { BottomSheet, Field, SmallBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
 
@@ -79,7 +79,7 @@ export function DailyCheckInSheet({ onClose, todayLog, upsertHabitLog, safeToSpe
       {daysUntilPayday > 0 && (
         <div style={{ background: PAPER_DIM, borderRadius: 10, padding: "10px 12px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 11.5, color: SLATE }}>Safe to spend</span>
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: GOLD }}>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: SAGE }}>
             {fmt(safeToSpendPerDay)}<span style={{ fontSize: 11, fontWeight: 400, color: SLATE }}>/day</span>
           </span>
         </div>
