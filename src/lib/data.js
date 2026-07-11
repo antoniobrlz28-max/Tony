@@ -4,10 +4,13 @@ import { ABSTINENCE_COLORS } from "./constants.js";
 export function defaultData() {
   return {
     accounts: [{ id: uid(), name: "Checking", balance: 0, type: "checking" }],
+    // Rent is dollar-anchored (fixedRent); its percent is derived live, never stored.
+    // The other percents are shares of the income LEFT AFTER rent, and sum to 100.
     categories: [
-      { id: "cat_rent", name: "Rent", percent: 30 },
-      { id: "cat_ess", name: "Essentials", percent: 30 },
-      { id: "cat_disc", name: "Discretionary", percent: 20 },
+      { id: "cat_rent", name: "Rent", percent: 0 },
+      { id: "cat_groc", name: "Groceries", percent: 10 },
+      { id: "cat_ess", name: "Essentials", percent: 12 },
+      { id: "cat_disc", name: "Discretionary", percent: 58 },
       { id: "cat_sav", name: "Savings", percent: 20 },
     ],
     transactions: [],
@@ -35,12 +38,13 @@ export function generateDemoData() {
     { id: uid(), name: "Savings", balance: 150, type: "savings" },
   ];
   const categories = [
-    { id: uid(), name: "Rent", percent: 35 },
-    { id: uid(), name: "Essentials", percent: 15 },
-    { id: uid(), name: "Discretionary", percent: 35 },
-    { id: uid(), name: "Savings", percent: 15 },
+    { id: uid(), name: "Rent", percent: 0 },
+    { id: uid(), name: "Groceries", percent: 10 },
+    { id: uid(), name: "Essentials", percent: 12 },
+    { id: uid(), name: "Discretionary", percent: 58 },
+    { id: uid(), name: "Savings", percent: 20 },
   ];
-  const [rentCat, essCat, discCat] = categories;
+  const [rentCat, grocCat, essCat, discCat] = categories;
   const checkingId = accounts[0].id;
 
   // Modeled on 18 months of real statement patterns (anonymized): biweekly paychecks
@@ -48,7 +52,7 @@ export function generateDemoData() {
   // small cash-adjacent outflows — ATM withdrawals (~11/mo), Zelle out (~7/mo),
   // dining/coffee (~18/mo), liquor/bars (~12/mo), rideshare (~10/mo), convenience
   // stores (~9/mo) — with small infrequent groceries, almost no gas, and a stack of
-  // subscriptions. Three months of history so trends and "vs avg" have real depth.
+  // subscriptions. Four months of history so trends and "vs avg" have real depth.
   const transactions = [];
   const diningSpots = ["Taco spot", "Late-night diner", "Coffee shop", "Burger run", "Sushi counter", "Food hall"];
   const barNotes = ["Liquor store", "Bar tab"];
@@ -62,12 +66,12 @@ export function generateDemoData() {
     { note: "Content subscription", amount: 5 },
   ];
 
-  // 6 biweekly pay periods; next payday is d(3), so the current period started d(-11)
-  for (let p = 0; p < 6; p++) {
+  // 9 biweekly pay periods (~4 months); next payday is d(3), so the current period started d(-11)
+  for (let p = 0; p < 9; p++) {
     const base = -11 - p * 14;
     const day = () => Math.min(0, base + rand(0, 13));
     // One paycheck per period, occasionally a light one
-    transactions.push({ id: uid(), type: "income", amount: p === 3 ? rand(1300, 1500) : rand(1700, 2750), accountId: checkingId, date: d(base), note: "Paycheck" });
+    transactions.push({ id: uid(), type: "income", amount: p === 3 || p === 7 ? rand(1300, 1500) : rand(1700, 2750), accountId: checkingId, date: d(base), note: "Paycheck" });
     // ATM cash — the single biggest habit line; mostly $40-120, sometimes a big pull
     for (let i = 0; i < rand(5, 6); i++) {
       transactions.push({ id: uid(), type: "expense", amount: rand(0, 5) === 0 ? rand(140, 220) : rand(40, 120), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: "ATM cash withdrawal" });
@@ -89,14 +93,14 @@ export function generateDemoData() {
     }
     transactions.push({ id: uid(), type: "expense", amount: rand(25, 55), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: "Food delivery" });
     for (let i = 0; i < 2; i++) {
-      transactions.push({ id: uid(), type: "expense", amount: rand(15, 60), accountId: checkingId, categoryId: essCat.id, date: d(day()), note: "Groceries" });
+      transactions.push({ id: uid(), type: "expense", amount: rand(15, 60), accountId: checkingId, categoryId: grocCat.id, date: d(day()), note: "Groceries" });
     }
     if (p % 2 === 0) {
       transactions.push({ id: uid(), type: "expense", amount: rand(22, 32), accountId: checkingId, categoryId: essCat.id, date: d(day()), note: "Gas" });
     }
   }
   // Rent lands monthly, plus subscriptions and small monthly credits
-  for (let m = 0; m < 3; m++) {
+  for (let m = 0; m < 4; m++) {
     transactions.push({ id: uid(), type: "expense", amount: rand(1620, 1690), accountId: checkingId, categoryId: rentCat.id, date: d(-8 - m * 30), note: "Rent" });
     for (const sub of subscriptions) {
       transactions.push({ id: uid(), type: "expense", amount: sub.amount, accountId: checkingId, categoryId: discCat.id, date: d(-rand(1, 28) - m * 30), note: sub.note });

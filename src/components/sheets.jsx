@@ -34,7 +34,7 @@ export function PaycheckSheet({ onClose, onConfirm, computeSplit }) {
       ) : (
         <>
           <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.5, marginBottom: 14 }}>
-            Split this <b>{fmt(Number(amount))}</b> paycheck using your default budget — {fmt(split.rent)} rent, {fmt(split.essentials)} essentials, {fmt(split.discretionary)} discretionary, {fmt(split.savings)} savings?
+            Split this <b>{fmt(Number(amount))}</b> paycheck — {fmt(split.rent)} set aside for rent, then {fmt(split.groceries)} groceries, {fmt(split.essentials)} essentials, {fmt(split.discretionary)} discretionary, {fmt(split.savings)} savings?
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <SmallBtn tone="gold" onClick={() => onConfirm(amount, true)} style={{ flex: 1, justifyContent: "center" }}>

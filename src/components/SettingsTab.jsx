@@ -24,7 +24,7 @@ export function SettingsTab({ data, setFixedRent, setGoalWeight, setNextPaycheck
 
       <Section title="Budget">
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <Field label="Fixed rent each paycheck">
+          <Field label="Monthly rent">
             <input style={inputStyle} type="number" value={data.fixedRent} onChange={e => setFixedRent(e.target.value)} />
           </Field>
           <Field label="Goal weight (kg)">

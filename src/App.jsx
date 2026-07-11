@@ -58,7 +58,13 @@ export default function FinanceOS() {
   const periodTx = data.transactions.filter(t => t.date >= period.start && t.date <= period.end);
   const incomeThisPeriod = periodTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const spentThisPeriod = periodTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-  const catPercentTotal = data.categories.reduce((s, c) => s + Number(c.percent || 0), 0);
+  // Rent is dollar-anchored: fixedRent is the MONTHLY rent, pro-rated to this pay
+  // period's length. Every other category's percent is a share of what's left.
+  const isRentCategory = c => c.name.toLowerCase().includes("rent");
+  const rentBudgetThisPeriod = ((Number(data.fixedRent) || 0) * period.totalDays) / 30;
+  const afterRentIncome = Math.max(0, incomeThisPeriod - rentBudgetThisPeriod);
+  const rentPctOfIncome = incomeThisPeriod > 0 ? Math.round((rentBudgetThisPeriod / incomeThisPeriod) * 100) : null;
+  const catPercentTotal = data.categories.filter(c => !isRentCategory(c)).reduce((s, c) => s + Number(c.percent || 0), 0);
   const currentMonth = todayStr().slice(0, 7);
   const habitDaysElapsed = Number(todayStr().slice(8, 10));
   const habitDaysLogged = data.habits.filter(h => h.date.startsWith(currentMonth) && h.date <= todayStr()).length;
@@ -175,8 +181,9 @@ export default function FinanceOS() {
   function categorySpend(catId) {
     return periodTx.filter(t => t.type === "expense" && t.categoryId === catId).reduce((s, t) => s + t.amount, 0);
   }
-  function categoryBudget(pct) {
-    return (incomeThisPeriod * pct) / 100;
+  function categoryBudget(c) {
+    if (isRentCategory(c)) return rentBudgetThisPeriod;
+    return (afterRentIncome * Number(c.percent || 0)) / 100;
   }
 
   function updateAccountBalance(accountId, delta) {
@@ -192,19 +199,17 @@ export default function FinanceOS() {
     addTransaction({ type: "income", amount: Number(amount), accountId, note });
   }
 
+  // The suggested split: rent share pro-rated from monthly rent, then a repeatable
+  // 10/12/58/20 split of the remainder — groceries broken out, discretionary kept
+  // realistic to actual habits instead of a wishful number, savings a fifth.
   function computeSuggestedSplit(incomeAmount) {
-    const fixedRent = Number(data.fixedRent) || 0;
-    const remainingAfterRent = Math.max(0, incomeAmount - fixedRent);
-    // "future expenses" — bills other than rent already due before the next paycheck
-    const cycleEnd = addDays(todayStr(), data.cycleDays);
-    const upcomingBills = data.bills
-      .filter(b => !b.name.toLowerCase().includes("rent") && b.dueDate >= todayStr() && b.dueDate <= cycleEnd)
-      .reduce((s, b) => s + b.amount, 0);
-    const afterBills = Math.max(0, remainingAfterRent - upcomingBills);
-    const essentials = Math.round(afterBills * 0.45);
-    const discretionary = Math.round(afterBills * 0.25);
-    const savings = Math.max(0, Math.round(afterBills - essentials - discretionary));
-    return { income: incomeAmount, rent: fixedRent, upcomingBills, essentials, discretionary, savings };
+    const rent = Math.round(((Number(data.fixedRent) || 0) * (Number(data.cycleDays) || 14)) / 30);
+    const afterRent = Math.max(0, incomeAmount - rent);
+    const groceries = Math.round(afterRent * 0.10);
+    const essentials = Math.round(afterRent * 0.12);
+    const discretionary = Math.round(afterRent * 0.58);
+    const savings = Math.max(0, afterRent - groceries - essentials - discretionary);
+    return { income: incomeAmount, rent, afterRent, groceries, essentials, discretionary, savings };
   }
   function setFixedRent(val) {
     setData(d => ({ ...d, fixedRent: Number(val) || 0 }));
@@ -225,16 +230,25 @@ export default function FinanceOS() {
     setShowPaycheckSheet(false);
   }
   function applySplit(split) {
-    const { income, rent, essentials, discretionary, savings } = split;
-    const pct = n => Math.round((n / income) * 100);
-    const map = { rent: pct(rent), essentials: pct(essentials), discretionary: pct(discretionary), savings: pct(savings) };
-    setData(d => ({
-      ...d,
-      categories: d.categories.map(c => {
-        const key = ["rent", "essentials", "discretionary", "savings"].find(k => c.name.toLowerCase().includes(k));
-        return key ? { ...c, percent: map[key] } : c;
-      }),
-    }));
+    const { afterRent, groceries, essentials, discretionary, savings } = split;
+    const pct = n => (afterRent > 0 ? Math.round((n / afterRent) * 100) : 0);
+    const targets = [
+      { key: "grocer", percent: pct(groceries) },
+      { key: "essentials", percent: pct(essentials) },
+      { key: "discretionary", percent: pct(discretionary) },
+      { key: "savings", percent: pct(savings) },
+    ];
+    setData(d => {
+      let categories = d.categories;
+      if (!categories.some(c => c.name.toLowerCase().includes("grocer"))) {
+        categories = [...categories, { id: uid(), name: "Groceries", percent: 0 }];
+      }
+      categories = categories.map(c => {
+        const t = targets.find(t => c.name.toLowerCase().includes(t.key));
+        return t ? { ...c, percent: t.percent } : c;
+      });
+      return { ...d, categories };
+    });
   }
   function addExpense({ amount, accountId, categoryId, note }) {
     if (!amount || !accountId || !categoryId) return;
@@ -646,12 +660,12 @@ export default function FinanceOS() {
 
             <Section
               title="Budget split"
-              eyebrow={`Income this period: ${fmt(incomeThisPeriod)}`}
-              right={<span style={{ fontSize: 11, color: catPercentTotal !== 100 ? RUST : SLATE }}>{catPercentTotal}% allocated</span>}
+              eyebrow={`Income this period: ${fmt(incomeThisPeriod)} · after rent: ${fmt(afterRentIncome)}`}
+              right={<span style={{ fontSize: 11, color: catPercentTotal !== 100 ? RUST : SLATE }}>{catPercentTotal}% of after-rent</span>}
             >
               {editingRent ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                  <span style={{ fontSize: 12, color: SLATE, flexShrink: 0 }}>Rent</span>
+                  <span style={{ fontSize: 12, color: SLATE, flexShrink: 0 }}>Monthly rent</span>
                   <input
                     type="number" inputMode="decimal" value={data.fixedRent} autoFocus
                     onChange={e => setFixedRent(e.target.value)}
@@ -669,8 +683,11 @@ export default function FinanceOS() {
                     background: "none", border: "none", padding: "4px 2px", marginBottom: 14, cursor: "pointer", textAlign: "left"
                   }}
                 >
-                  <span style={{ fontSize: 12, color: SLATE }}>Rent</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{fmt(data.fixedRent)}</span>
+                  <span style={{ fontSize: 12, color: SLATE }}>Monthly rent</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>
+                    {fmt(data.fixedRent)}
+                    {rentPctOfIncome !== null && <span style={{ fontSize: 11, fontWeight: 400, color: SLATE }}> · {rentPctOfIncome}% of income</span>}
+                  </span>
                 </button>
               )}
 
@@ -683,12 +700,13 @@ export default function FinanceOS() {
                     background: "rgba(201,161,61,0.10)", color: GOLD, fontSize: 12, fontWeight: 700, cursor: "pointer"
                   }}
                 >
-                  <RefreshCw size={12} /> Rebuild budget from actual rent
+                  <RefreshCw size={12} /> Rebuild budget from monthly rent
                 </button>
               )}
 
               {data.categories.map(c => (
-                <CategoryRow key={c.id} category={c} spent={categorySpend(c.id)} budget={categoryBudget(c.percent)}
+                <CategoryRow key={c.id} category={c} spent={categorySpend(c.id)} budget={categoryBudget(c)}
+                  fixed={isRentCategory(c)} derivedPct={rentPctOfIncome}
                   onSave={updates => editCategory(c.id, updates)} onDelete={() => deleteCategory(c.id)} />
               ))}
               <AddCategoryForm onAdd={addCategory} />
@@ -812,7 +830,7 @@ export default function FinanceOS() {
   );
 }
 
-function CategoryRow({ category, spent, budget, onSave, onDelete }) {
+function CategoryRow({ category, spent, budget, fixed = false, derivedPct = null, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(category.name);
   const [percent, setPercent] = useState(category.percent);
@@ -822,17 +840,20 @@ function CategoryRow({ category, spent, budget, onSave, onDelete }) {
     return (
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
         <input style={{ ...inputStyle, flex: 2 }} value={name} onChange={e => setName(e.target.value)} />
-        <input style={{ ...inputStyle, flex: 1 }} type="number" value={percent} onChange={e => setPercent(e.target.value)} />
-        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave({ name, percent }); setEditing(false); }} label="Save" />
+        {!fixed && <input style={{ ...inputStyle, flex: 1 }} type="number" value={percent} onChange={e => setPercent(e.target.value)} />}
+        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave(fixed ? { name, percent: category.percent } : { name, percent }); setEditing(false); }} label="Save" />
         <IconBtn icon={X} onClick={() => setEditing(false)} label="Cancel" />
       </div>
     );
   }
   const barColor = lerpColor(SAGE, RUST, Math.min(1, pct / 100));
+  const pctLabel = fixed
+    ? (derivedPct !== null ? `${derivedPct}% of income · from monthly rent` : "from monthly rent")
+    : `${category.percent}% of after-rent`;
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-        <span style={{ fontWeight: 600 }}>{category.name} <span style={{ color: SLATE, fontWeight: 400 }}>({category.percent}%)</span></span>
+        <span style={{ fontWeight: 600 }}>{category.name} <span style={{ color: SLATE, fontWeight: 400, fontSize: 11.5 }}>({pctLabel})</span></span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: pct > 100 ? RUST : SLATE }}>{fmt(spent)} / {fmt(budget)}</span>
           <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />

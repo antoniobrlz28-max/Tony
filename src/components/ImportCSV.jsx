@@ -56,7 +56,7 @@ const CATEGORY_RULES = [
   { match: /atm|cash w.?d|withdrawal|cash app|zelle|venmo|paypal/i, cat: "discretionary" },
   { match: /transfer to sav|savings transfer/i, cat: "savings" },
   { match: /rent|landlord|property|lease/i, cat: "rent" },
-  { match: /grocer|wal-?mart|wm supercenter|costco|sams club|target|albertson|kroger|king soopers|soopers|safeway|sprouts|trader joe|whole foods|aldi|market|supermercado|carniceria|food store/i, cat: "essentials" },
+  { match: /grocer|wal-?mart|wm supercenter|costco|sams club|target|albertson|kroger|king soopers|soopers|safeway|sprouts|trader joe|whole foods|aldi|market|supermercado|carniceria|food store/i, cat: "grocer", alt: "essentials" },
   { match: /fuel|gas|shell|conoco|phillips|sinclair|murphy|circle k|quiktrip|qt \d|kum ?& ?go|exxon|chevron/i, cat: "essentials" },
   { match: /pharmacy|walgreen|cvs|clinic|medical|dental/i, cat: "essentials" },
   { match: /electric|water|utility|internet|wifi|comcast|xfinity|cox |att |t-?mobile|verizon|phone/i, cat: "essentials" },
@@ -68,8 +68,10 @@ const CATEGORY_RULES = [
 function pickCategory(note, categories) {
   const rule = CATEGORY_RULES.find(r => r.match.test(note));
   if (rule) {
-    const hit = categories.find(c => c.name.toLowerCase().includes(rule.cat));
-    if (hit) return hit.id;
+    for (const key of [rule.cat, rule.alt].filter(Boolean)) {
+      const hit = categories.find(c => c.name.toLowerCase().includes(key));
+      if (hit) return hit.id;
+    }
   }
   const disc = categories.find(c => c.name.toLowerCase().includes("discretionary"));
   return (disc || categories[0])?.id;
