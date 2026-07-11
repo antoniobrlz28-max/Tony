@@ -155,8 +155,7 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "9px 10px 9px 12px", marginBottom: 6, borderRadius: 8,
-      borderLeft: `3px solid ${color}`, background: PAPER_DIM
+      padding: "9px 12px", marginBottom: 6, borderRadius: 8, background: PAPER_DIM
     }}>
       <div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{tx.note || category?.name || (tx.type === "transfer" ? `Transfer to ${toAccount?.name || "—"}` : tx.type)}</div>

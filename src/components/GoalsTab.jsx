@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, PiggyBank, Target, Check, X, Edit2 } from "lucide-react";
 import { SAGE, SKY, CARD, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
-import { uid, fmt, progressColor } from "../lib/helpers.js";
+import { uid, fmt } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
 export function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }) {
@@ -53,7 +53,6 @@ function GoalRow({ goal, data, onContribute, onSave, onDelete }) {
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const pct = goal.target > 0 ? (goal.saved / goal.target) * 100 : 0;
-  const accent = progressColor(pct);
 
   if (editing) {
     return (
@@ -68,8 +67,7 @@ function GoalRow({ goal, data, onContribute, onSave, onDelete }) {
 
   return (
     <div style={{
-      marginBottom: 8, padding: "10px 10px 10px 12px", borderRadius: 8,
-      borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+      marginBottom: 8, padding: "10px 12px", borderRadius: 8, background: PAPER_DIM
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
         <span style={{ fontWeight: 600 }}>{goal.name}</span>

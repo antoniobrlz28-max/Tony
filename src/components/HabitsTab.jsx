@@ -925,11 +925,11 @@ function HabitLogRow({ log, onSave, onDelete }) {
     return (
       <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 8 }}>
-          <Field label="Weight (kg)"><input style={minimalInputStyle} type="number" value={f.weight} onChange={e => setF({ ...f, weight: e.target.value })} /></Field>
-          <Field label="Sleep time"><input style={minimalInputStyle} type="time" value={f.sleepTime} onChange={e => setF({ ...f, sleepTime: e.target.value })} /></Field>
-          <Field label="Wake time"><input style={minimalInputStyle} type="time" value={f.wakeTime} onChange={e => setF({ ...f, wakeTime: e.target.value })} /></Field>
-          <Field label="Drinks"><input style={minimalInputStyle} type="number" value={f.alcoholDrinks} onChange={e => setF({ ...f, alcoholDrinks: e.target.value })} /></Field>
-          <Field label="Training note"><input style={minimalInputStyle} value={f.trainingNote} onChange={e => setF({ ...f, trainingNote: e.target.value })} placeholder="e.g. RDL 3x10" /></Field>
+          <Field label="Weight (kg)"><input style={inputStyle} type="number" value={f.weight} onChange={e => setF({ ...f, weight: e.target.value })} /></Field>
+          <Field label="Sleep time"><input style={inputStyle} type="time" value={f.sleepTime} onChange={e => setF({ ...f, sleepTime: e.target.value })} /></Field>
+          <Field label="Wake time"><input style={inputStyle} type="time" value={f.wakeTime} onChange={e => setF({ ...f, wakeTime: e.target.value })} /></Field>
+          <Field label="Drinks"><input style={inputStyle} type="number" value={f.alcoholDrinks} onChange={e => setF({ ...f, alcoholDrinks: e.target.value })} /></Field>
+          <Field label="Training note"><input style={inputStyle} value={f.trainingNote} onChange={e => setF({ ...f, trainingNote: e.target.value })} placeholder="e.g. RDL 3x10" /></Field>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: SLATE, marginBottom: 10 }}>
           <input type="checkbox" checked={f.trained} onChange={e => setF({ ...f, trained: e.target.checked })} /> Trained

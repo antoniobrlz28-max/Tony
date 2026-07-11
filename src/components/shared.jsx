@@ -138,12 +138,14 @@ export const minimalInputStyle = {
 export function Empty({ text }) {
   return <div style={{ fontSize: 12.5, color: SLATE, fontStyle: "italic", padding: "6px 0" }}>{text}</div>;
 }
-export function Row({ left, mid, right, onClick, accent, rightColor = SAGE }) {
-  if (accent) {
+export function Row({ left, mid, right, onClick, accent, pill, rightColor = SAGE }) {
+  if (accent || pill) {
     return (
       <div onClick={onClick} style={{
-        display: "grid", gridTemplateColumns: "1fr 122px 1fr", alignItems: "center", padding: "9px 10px",
-        fontSize: 13, borderRadius: 6, marginBottom: 4, borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+        display: "grid", gridTemplateColumns: "1fr 122px 1fr", alignItems: "center",
+        padding: accent ? "9px 10px" : "9px 12px",
+        fontSize: 13, borderRadius: 6, marginBottom: 4, background: PAPER_DIM,
+        ...(accent ? { borderLeft: `3px solid ${accent}` } : {})
       }}>
         <span style={{ fontWeight: 600 }}>{left}</span>
         {mid ? <span style={{ color: SLATE, justifySelf: "center", textAlign: "center" }}>{mid}</span> : <span />}

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import { Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, VIOLET, VIOLET_BG, SKY } from "./lib/constants.js";
-import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, progressColor, formatDuration, getPeriod } from "./lib/helpers.js";
+import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
 import { defaultData, generateDemoData, migrate } from "./lib/data.js";
 import { Section, ProgressBar, CountdownPill, SmallBtn, useLongPress, IconBtn, DeleteBtn, inputStyle, Empty, Row, StatTile } from "./components/shared.jsx";
 import { PaycheckSheet, DailyCheckInSheet } from "./components/sheets.jsx";
@@ -624,7 +624,7 @@ export default function FinanceOS() {
 
             <Section title="Accounts" eyebrow="quick view">
               {data.accounts.map(a => (
-                <Row key={a.id} left={a.name} right={fmt(a.balance)} accent={a.type === "savings" ? GOLD : TEAL} />
+                <Row key={a.id} left={a.name} right={fmt(a.balance)} pill />
               ))}
               <Row left="Net cash" right={fmt(totalBalance)} accent={SKY} />
             </Section>
@@ -697,8 +697,7 @@ export default function FinanceOS() {
                 const pct = g.target > 0 ? (g.saved / g.target) * 100 : 0;
                 return (
                   <div key={g.id} style={{
-                    marginBottom: 8, padding: "9px 10px", borderRadius: 6,
-                    borderLeft: `3px solid ${progressColor(pct)}`, background: PAPER_DIM
+                    marginBottom: 8, padding: "9px 12px", borderRadius: 6, background: PAPER_DIM
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                       <span style={{ fontWeight: 600 }}>{g.name}</span>

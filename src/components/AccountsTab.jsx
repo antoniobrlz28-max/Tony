@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Wallet, Landmark, PiggyBank, Check, X, Edit2 } from "lucide-react";
-import { ACCOUNT_TYPES, GOLD, TEAL, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, SAGE } from "../lib/constants.js";
+import { ACCOUNT_TYPES, GOLD, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, SAGE } from "../lib/constants.js";
 import { uid, fmt } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle } from "./shared.jsx";
 
@@ -62,12 +62,10 @@ function AccountRow({ account, onSave, onDelete }) {
   }
   const typeInfo = ACCOUNT_TYPES.find(t => t.id === account.type) || ACCOUNT_TYPES[0];
   const TypeIcon = typeInfo.icon;
-  const accent = account.type === "savings" ? GOLD : TEAL;
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "10px 10px 10px 12px", marginBottom: 8, borderRadius: 8,
-      borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+      padding: "10px 12px", marginBottom: 8, borderRadius: 8, background: PAPER_DIM
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: CARD, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

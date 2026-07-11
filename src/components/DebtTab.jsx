@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, TrendingDown, Check, CreditCard, Lightbulb, Edit2, X } from "lucide-react";
 import { SAGE, SKY, GOLD, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
-import { uid, fmt, formatShortDate, progressColor, payoffProjection } from "../lib/helpers.js";
+import { uid, fmt, formatShortDate, payoffProjection } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
 export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
@@ -67,7 +67,6 @@ function DebtRow({ debt, data, onPay, onSave, onDelete }) {
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
   const remaining = Math.max(0, debt.total - debt.paid);
   const pct = debt.total > 0 ? (debt.paid / debt.total) * 100 : 0;
-  const accent = progressColor(pct);
   const projection = payoffProjection(debt);
 
   if (editing) {
@@ -84,8 +83,7 @@ function DebtRow({ debt, data, onPay, onSave, onDelete }) {
 
   return (
     <div style={{
-      marginBottom: 8, padding: "10px 10px 10px 12px", borderRadius: 8,
-      borderLeft: `3px solid ${accent}`, background: PAPER_DIM
+      marginBottom: 8, padding: "10px 12px", borderRadius: 8, background: PAPER_DIM
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
         <span style={{ fontWeight: 600 }}>{debt.name} <span style={{ color: SLATE, fontWeight: 400 }}>({debt.rate}% APR)</span></span>
