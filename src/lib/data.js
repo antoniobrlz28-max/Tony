@@ -21,7 +21,7 @@ export function defaultData() {
     goalWeight: 80,
     nextPaycheck: "2026-07-17",
     cycleDays: 14,
-    fixedRent: 820,
+    fixedRent: 1650,
   };
 }
 
@@ -31,65 +31,89 @@ export function generateDemoData() {
   const rand = (min, max) => Math.round(min + Math.random() * (max - min));
 
   const accounts = [
-    { id: uid(), name: "Checking", balance: 340.15, type: "checking" },
-    { id: uid(), name: "Savings", balance: 620, type: "savings" },
+    { id: uid(), name: "Checking", balance: 470, type: "checking" },
+    { id: uid(), name: "Savings", balance: 150, type: "savings" },
   ];
   const categories = [
-    { id: uid(), name: "Rent", percent: 30 },
-    { id: uid(), name: "Essentials", percent: 30 },
-    { id: uid(), name: "Discretionary", percent: 25 },
+    { id: uid(), name: "Rent", percent: 35 },
+    { id: uid(), name: "Essentials", percent: 15 },
+    { id: uid(), name: "Discretionary", percent: 35 },
     { id: uid(), name: "Savings", percent: 15 },
   ];
   const [rentCat, essCat, discCat] = categories;
   const checkingId = accounts[0].id;
 
-  // Modeled on ~4 months of real statement patterns (anonymized, rescaled): irregular
-  // paycheck amounts, a recurring transfer that functions as rent, and frequent small
-  // discretionary spend (rideshare, dining/bars, convenience store, ATM cash) plus a
-  // handful of recurring subscriptions. Two pay periods so "vs avg spend" has prior data.
+  // Modeled on 18 months of real statement patterns (anonymized): biweekly paychecks
+  // that swing ~$1.3k-2.9k, ~$1,650 monthly rent, and spend dominated by frequent
+  // small cash-adjacent outflows — ATM withdrawals (~11/mo), Zelle out (~7/mo),
+  // dining/coffee (~18/mo), liquor/bars (~12/mo), rideshare (~10/mo), convenience
+  // stores (~9/mo) — with small infrequent groceries, almost no gas, and a stack of
+  // subscriptions. Three months of history so trends and "vs avg" have real depth.
   const transactions = [];
-  const diningSpots = ["Taco spot", "Late-night diner", "Coffee shop", "Bar tab", "Pizza place", "Sushi counter"];
-  const rideshareNotes = ["Rideshare - night out", "Rideshare - airport", "Rideshare - home"];
+  const diningSpots = ["Taco spot", "Late-night diner", "Coffee shop", "Burger run", "Sushi counter", "Food hall"];
+  const barNotes = ["Liquor store", "Bar tab"];
+  const rideshareNotes = ["Rideshare - night out", "Rideshare - home", "Rideshare - work"];
   const subscriptions = [
-    { note: "Streaming service", amount: 15.99 },
-    { note: "AI tool subscription", amount: 20 },
-    { note: "Phone bill", amount: 65 },
-    { note: "Internet", amount: 60 },
+    { note: "Music streaming", amount: 14.99 },
+    { note: "AI assistant sub", amount: 21 },
+    { note: "AI chat sub", amount: 21 },
+    { note: "Cloud storage", amount: 2 },
+    { note: "Prepaid phone", amount: 58 },
+    { note: "Content subscription", amount: 5 },
   ];
 
-  for (const offset of [-6, -20]) {
-    // Irregular income - two uneven paychecks per period, not a flat number
-    transactions.push({ id: uid(), type: "income", amount: rand(650, 1150), accountId: checkingId, date: d(offset), note: "Paycheck" });
-    transactions.push({ id: uid(), type: "income", amount: rand(550, 1000), accountId: checkingId, date: d(offset + 7), note: "Paycheck" });
-    // Recurring large transfer out that functions as rent
-    transactions.push({ id: uid(), type: "expense", amount: 820, accountId: checkingId, categoryId: rentCat.id, date: d(offset), note: "Rent transfer" });
-    // Groceries / gas / essentials
-    transactions.push({ id: uid(), type: "expense", amount: rand(60, 110), accountId: checkingId, categoryId: essCat.id, date: d(offset + 1), note: "Groceries" });
-    transactions.push({ id: uid(), type: "expense", amount: rand(30, 55), accountId: checkingId, categoryId: essCat.id, date: d(offset + 5), note: "Gas" });
-    transactions.push({ id: uid(), type: "expense", amount: rand(10, 25), accountId: checkingId, categoryId: essCat.id, date: d(offset + 9), note: "Convenience store" });
-    // High-frequency small discretionary spend: rideshare, dining/bars, cash
-    for (let i = 0; i < 5; i++) {
-      transactions.push({ id: uid(), type: "expense", amount: rand(8, 45), accountId: checkingId, categoryId: discCat.id, date: d(offset + rand(0, 13)), note: diningSpots[rand(0, diningSpots.length - 1)] });
+  // 6 biweekly pay periods; next payday is d(3), so the current period started d(-11)
+  for (let p = 0; p < 6; p++) {
+    const base = -11 - p * 14;
+    const day = () => Math.min(0, base + rand(0, 13));
+    // One paycheck per period, occasionally a light one
+    transactions.push({ id: uid(), type: "income", amount: p === 3 ? rand(1300, 1500) : rand(1700, 2750), accountId: checkingId, date: d(base), note: "Paycheck" });
+    // ATM cash — the single biggest habit line; mostly $40-120, sometimes a big pull
+    for (let i = 0; i < rand(5, 6); i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(0, 5) === 0 ? rand(140, 220) : rand(40, 120), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: "ATM cash withdrawal" });
     }
+    for (let i = 0; i < rand(3, 4); i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(6, 18) * 5, accountId: checkingId, categoryId: discCat.id, date: d(day()), note: "Zelle out" });
+    }
+    for (let i = 0; i < 9; i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(8, 36), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: diningSpots[rand(0, diningSpots.length - 1)] });
+    }
+    for (let i = 0; i < rand(5, 6); i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(10, 28), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: barNotes[rand(0, barNotes.length - 1)] });
+    }
+    for (let i = 0; i < rand(4, 5); i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(12, 38), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: rideshareNotes[rand(0, rideshareNotes.length - 1)] });
+    }
+    for (let i = 0; i < rand(4, 5); i++) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(8, 25), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: "Convenience store" });
+    }
+    transactions.push({ id: uid(), type: "expense", amount: rand(25, 55), accountId: checkingId, categoryId: discCat.id, date: d(day()), note: "Food delivery" });
     for (let i = 0; i < 2; i++) {
-      transactions.push({ id: uid(), type: "expense", amount: rand(9, 22), accountId: checkingId, categoryId: discCat.id, date: d(offset + rand(0, 13)), note: rideshareNotes[rand(0, rideshareNotes.length - 1)] });
+      transactions.push({ id: uid(), type: "expense", amount: rand(15, 60), accountId: checkingId, categoryId: essCat.id, date: d(day()), note: "Groceries" });
     }
-    transactions.push({ id: uid(), type: "expense", amount: rand(20, 60), accountId: checkingId, categoryId: discCat.id, date: d(offset + rand(0, 13)), note: "ATM cash withdrawal" });
+    if (p % 2 === 0) {
+      transactions.push({ id: uid(), type: "expense", amount: rand(22, 32), accountId: checkingId, categoryId: essCat.id, date: d(day()), note: "Gas" });
+    }
   }
-  for (const sub of subscriptions) {
-    transactions.push({ id: uid(), type: "expense", amount: sub.amount, accountId: checkingId, categoryId: discCat.id, date: d(-rand(1, 27)), note: sub.note });
+  // Rent lands monthly, plus subscriptions and small monthly credits
+  for (let m = 0; m < 3; m++) {
+    transactions.push({ id: uid(), type: "expense", amount: rand(1620, 1690), accountId: checkingId, categoryId: rentCat.id, date: d(-8 - m * 30), note: "Rent" });
+    for (const sub of subscriptions) {
+      transactions.push({ id: uid(), type: "expense", amount: sub.amount, accountId: checkingId, categoryId: discCat.id, date: d(-rand(1, 28) - m * 30), note: sub.note });
+    }
+    transactions.push({ id: uid(), type: "income", amount: rand(2, 6), accountId: checkingId, date: d(-rand(1, 28) - m * 30), note: "ATM fee rebate" });
+    transactions.push({ id: uid(), type: "income", amount: rand(4, 12) * 5, accountId: checkingId, date: d(-rand(1, 28) - m * 30), note: "Zelle in" });
   }
-  transactions.push({ id: uid(), type: "expense", amount: 35, accountId: checkingId, categoryId: essCat.id, date: d(-1), note: "Groceries" });
 
   const bills = [
-    { id: uid(), name: "Phone", amount: 65, dueDate: d(11), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-19) },
-    { id: uid(), name: "Internet", amount: 60, dueDate: d(4), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-26) },
-    { id: uid(), name: "Rent", amount: 820, dueDate: d(8), frequencyDays: 30, accountId: checkingId, categoryId: rentCat.id, lastPaid: d(-6) },
+    { id: uid(), name: "Rent", amount: 1650, dueDate: d(8), frequencyDays: 30, accountId: checkingId, categoryId: rentCat.id, lastPaid: d(-22) },
+    { id: uid(), name: "Phone", amount: 58, dueDate: d(11), frequencyDays: 30, accountId: checkingId, categoryId: essCat.id, lastPaid: d(-19) },
+    { id: uid(), name: "Subscription", amount: 14.99, dueDate: d(4), frequencyDays: 30, accountId: checkingId, categoryId: discCat.id, lastPaid: d(-26) },
   ];
 
   const goals = [
-    { id: uid(), name: "Emergency cushion", target: 1500, saved: 620 },
-    { id: uid(), name: "New laptop", target: 1200, saved: 150 },
+    { id: uid(), name: "Emergency cushion", target: 1500, saved: 150 },
+    { id: uid(), name: "New laptop", target: 1200, saved: 0 },
   ];
 
   const debts = [
@@ -165,7 +189,7 @@ export function generateDemoData() {
 
   return {
     accounts, categories, transactions, bills, goals, debts, habits, foodItems, abstinence, weeklyReviews,
-    goalWeight: 80, nextPaycheck: d(3), cycleDays: 14, fixedRent: 820,
+    goalWeight: 80, nextPaycheck: d(3), cycleDays: 14, fixedRent: 1650,
   };
 }
 
@@ -192,7 +216,7 @@ export function migrate(d) {
       return { ...rest, alcoholDrinks: alcohol ? 1 : 0 };
     })
   };
-  if (d.fixedRent === undefined) d = { ...d, fixedRent: 820 };
+  if (d.fixedRent === undefined) d = { ...d, fixedRent: 1650 };
   d = { ...d, debts: d.debts.map(x => x.payments ? x : { ...x, payments: [] }) };
   return d;
 }
