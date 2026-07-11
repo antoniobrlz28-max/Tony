@@ -20,7 +20,9 @@ export default function FinanceOS() {
   const [confirmAction, setConfirmAction] = useState(null); // "demo" | "empty" | null
   const [showPaycheckSheet, setShowPaycheckSheet] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [editingRent, setEditingRent] = useState(false);
   const paydayLongPress = useLongPress(() => setShowPaycheckSheet(true));
+  const rentLongPress = useLongPress(() => setEditingRent(true));
   function loadDemoData() {
     setData(generateDemoData());
     setConfirmAction(null);
@@ -631,20 +633,30 @@ export default function FinanceOS() {
               eyebrow={`Income this period: ${fmt(incomeThisPeriod)}`}
               right={<span style={{ fontSize: 11, color: catPercentTotal !== 100 ? RUST : SLATE }}>{catPercentTotal}% allocated</span>}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, background: PAPER_DIM, borderRadius: 10, padding: "10px 12px" }}>
-                <div>
-                  <div style={{ fontSize: 11, color: TEXT, fontWeight: 600 }}>Fixed rent each paycheck</div>
-                  <div style={{ fontSize: 10, color: SLATE, marginTop: 1 }}>Used when suggesting a paycheck split</div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 13, color: SLATE }}>$</span>
+              {editingRent ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                  <span style={{ fontSize: 12, color: SLATE, flexShrink: 0 }}>Rent</span>
                   <input
-                    type="number" inputMode="decimal" value={data.fixedRent}
+                    type="number" inputMode="decimal" value={data.fixedRent} autoFocus
                     onChange={e => setFixedRent(e.target.value)}
-                    style={{ ...inputStyle, width: 80, padding: "6px 8px", fontWeight: 700 }}
+                    onBlur={() => setEditingRent(false)}
+                    onKeyDown={e => { if (e.key === "Enter") setEditingRent(false); }}
+                    style={{ ...inputStyle, flex: 1, padding: "6px 10px", fontWeight: 700 }}
                   />
+                  <IconBtn icon={Check} color={SAGE} onClick={() => setEditingRent(false)} label="Save" />
                 </div>
-              </div>
+              ) : (
+                <button
+                  {...rentLongPress}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+                    background: "none", border: "none", padding: "4px 2px", marginBottom: 14, cursor: "pointer", textAlign: "left"
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: SLATE }}>Rent</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{fmt(data.fixedRent)}</span>
+                </button>
+              )}
 
               {incomeThisPeriod > 0 && (
                 <button
