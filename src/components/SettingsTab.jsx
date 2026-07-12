@@ -2,7 +2,7 @@ import { ChevronLeft, Check, RefreshCw, Trash2 } from "lucide-react";
 import { TEXT, SLATE, RUST } from "../lib/constants.js";
 import { Section, Field, SmallBtn, inputStyle } from "./shared.jsx";
 
-export function SettingsTab({ data, setFixedRent, setGoalWeight, setNextPaycheck, setCycleDays, confirmAction, setConfirmAction, loadDemoData, clearData, onBack }) {
+export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarget, setNextPaycheck, setCycleDays, confirmAction, setConfirmAction, loadDemoData, clearData, onBack }) {
   return (
     <div>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
@@ -23,9 +23,15 @@ export function SettingsTab({ data, setFixedRent, setGoalWeight, setNextPaycheck
       </Section>
 
       <Section title="Budget">
+        <Field label="Monthly rent">
+          <input style={inputStyle} type="number" value={data.fixedRent} onChange={e => setFixedRent(e.target.value)} />
+        </Field>
+      </Section>
+
+      <Section title="Nutrition & body" eyebrow="drives the calorie ring and macro targets">
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <Field label="Monthly rent">
-            <input style={inputStyle} type="number" value={data.fixedRent} onChange={e => setFixedRent(e.target.value)} />
+          <Field label="Daily calorie target">
+            <input style={inputStyle} type="number" value={data.calorieTarget} onChange={e => setCalorieTarget(e.target.value)} />
           </Field>
           <Field label="Goal weight (kg)">
             <input style={inputStyle} type="number" value={data.goalWeight} onChange={e => setGoalWeight(e.target.value)} />

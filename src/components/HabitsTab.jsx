@@ -8,8 +8,9 @@ import {
 import { todayStr, addDays, monthDates, shiftMonth, formatDuration } from "../lib/helpers.js";
 import {
   Section, IconBtn, DeleteBtn, SmallBtn, Field, Empty, HeatCell, FastBar, BottomSheet,
-  inputStyle, minimalInputStyle, useLongPress,
+  inputStyle, minimalInputStyle,
 } from "./shared.jsx";
+import { NutritionLog } from "./Nutrition.jsx";
 
 function FastingModal({ date, log, onClose, onSave, blockNew }) {
   const hasFast = (log?.fastingHours || 0) > 0;
@@ -776,141 +777,6 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         )}
       </div>
     </>
-  );
-}
-
-function FoodItemRow({ item, onSave, onDelete }) {
-  const [editing, setEditing] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-  const [f, setF] = useState({ name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat });
-  const longPress = useLongPress(() => setRevealed(true));
-  if (editing) {
-    return (
-      <div style={{ padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-          <input style={{ ...inputStyle, flex: 2 }} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="Item name" />
-          <input style={{ ...inputStyle, flex: 1 }} type="number" value={f.protein} onChange={e => setF({ ...f, protein: e.target.value })} placeholder="Protein" />
-          <input style={{ ...inputStyle, flex: 1 }} type="number" value={f.carbs} onChange={e => setF({ ...f, carbs: e.target.value })} placeholder="Carbs" />
-          <input style={{ ...inputStyle, flex: 1 }} type="number" value={f.fat} onChange={e => setF({ ...f, fat: e.target.value })} placeholder="Fat" />
-          <input style={{ ...inputStyle, flex: 1 }} type="number" value={f.calories} onChange={e => setF({ ...f, calories: e.target.value })} placeholder="Calories" />
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <SmallBtn tone="gold" onClick={() => { onSave(f); setEditing(false); }}><Check size={12} /> Save</SmallBtn>
-          <SmallBtn tone="ghost" onClick={() => setEditing(false)}>Cancel</SmallBtn>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div {...longPress} onClick={() => revealed && setRevealed(false)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 12.5, cursor: "pointer", userSelect: "none" }}>
-      <div>
-        <div style={{ fontWeight: 600 }}>{item.name}</div>
-        <div style={{ color: SLATE, fontSize: 11 }}>P {item.protein || 0}g · C {item.carbs || 0}g · F {item.fat || 0}g</div>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontWeight: 700, color: AMBER }}>{item.calories || 0} cal</span>
-        {revealed && (
-          <>
-            <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-            <DeleteBtn onDelete={onDelete} />
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function NutritionLog({ data, addFoodItem, editFoodItem, deleteFoodItem }) {
-  const [viewDate, setViewDate] = useState(todayStr());
-  const [form, setForm] = useState({ name: "", protein: "", carbs: "", fat: "", calories: "" });
-  const [showAddSheet, setShowAddSheet] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const items = data.foodItems.filter(f => f.date === viewDate);
-  const totals = items.reduce((acc, f) => ({
-    protein: acc.protein + Number(f.protein || 0),
-    carbs: acc.carbs + Number(f.carbs || 0),
-    fat: acc.fat + Number(f.fat || 0),
-    calories: acc.calories + Number(f.calories || 0),
-  }), { protein: 0, carbs: 0, fat: 0, calories: 0 });
-
-  function submit() {
-    if (!form.name) return;
-    addFoodItem({ date: viewDate, name: form.name, protein: Number(form.protein) || 0, carbs: Number(form.carbs) || 0, fat: Number(form.fat) || 0, calories: Number(form.calories) || 0 });
-    setForm({ name: "", protein: "", carbs: "", fat: "", calories: "" });
-    setShowAddSheet(false);
-  }
-
-  const historyDays = Array.from({ length: 14 }, (_, i) => addDays(todayStr(), -i));
-  const historyTotals = historyDays.map(d => {
-    const dayItems = data.foodItems.filter(f => f.date === d);
-    return {
-      date: d,
-      calories: dayItems.reduce((s, f) => s + Number(f.calories || 0), 0),
-      protein: dayItems.reduce((s, f) => s + Number(f.protein || 0), 0),
-      count: dayItems.length,
-    };
-  }).filter(d => d.count > 0);
-
-  return (
-    <Section title="Nutrition log" eyebrow="logged separately, by item" right={
-      <button onClick={() => setShowHistory(!showHistory)} style={{
-        fontSize: 11, fontWeight: 600, border: `1px solid ${INK_SOFT}40`, borderRadius: 999, padding: "4px 11px",
-        background: showHistory ? VIOLET : "transparent", color: showHistory ? "white" : TEXT, cursor: "pointer"
-      }}>History</button>
-    }>
-      {showHistory ? (
-        <div>
-          {historyTotals.length === 0 && <Empty text="No nutrition logged in the past 2 weeks yet." />}
-          {historyTotals.map(d => (
-            <div key={d.date} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 12.5 }}>
-              <span style={{ color: SLATE }}>{d.date}</span>
-              <span>{d.count} item{d.count === 1 ? "" : "s"} · P {d.protein.toFixed(0)}g</span>
-              <span style={{ fontWeight: 700, color: AMBER }}>{d.calories.toFixed(0)} cal</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            <Field label="Date"><input style={inputStyle} type="date" value={viewDate} onChange={e => setViewDate(e.target.value)} /></Field>
-          </div>
-
-          {items.length > 0 && (
-            <div style={{ background: PAPER_DIM, borderRadius: 14, padding: "12px 14px", marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Daily total</span>
-                <span style={{ fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 700, color: AMBER }}>{totals.calories.toFixed(0)} <span style={{ fontSize: 12, fontWeight: 400, color: SLATE }}>cal</span></span>
-              </div>
-              <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-                <span style={{ fontSize: 12, color: TEXT }}>P <b>{totals.protein.toFixed(0)}</b>g</span>
-                <span style={{ fontSize: 12, color: TEXT }}>C <b>{totals.carbs.toFixed(0)}</b>g</span>
-                <span style={{ fontSize: 12, color: TEXT }}>F <b>{totals.fat.toFixed(0)}</b>g</span>
-              </div>
-            </div>
-          )}
-
-          {items.length === 0 && <Empty text="No items logged for this date yet." />}
-          {items.map(item => (
-            <FoodItemRow key={item.id} item={item} onSave={updates => editFoodItem(item.id, updates)} onDelete={() => deleteFoodItem(item.id)} />
-          ))}
-
-          <SmallBtn onClick={() => setShowAddSheet(true)} style={{ marginTop: 12, background: AMBER }}><Plus size={13} /> Add item</SmallBtn>
-
-          {showAddSheet && (
-            <BottomSheet title="Add food item" onClose={() => setShowAddSheet(false)}>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <Field label="Item name"><input style={minimalInputStyle} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Chicken breast" autoFocus /></Field>
-                <Field label="Calories"><input style={minimalInputStyle} type="number" value={form.calories} onChange={e => setForm({ ...form, calories: e.target.value })} /></Field>
-                <Field label="Protein (g)"><input style={minimalInputStyle} type="number" value={form.protein} onChange={e => setForm({ ...form, protein: e.target.value })} /></Field>
-                <Field label="Carbs (g)"><input style={minimalInputStyle} type="number" value={form.carbs} onChange={e => setForm({ ...form, carbs: e.target.value })} /></Field>
-                <Field label="Fat (g)"><input style={minimalInputStyle} type="number" value={form.fat} onChange={e => setForm({ ...form, fat: e.target.value })} /></Field>
-              </div>
-              <SmallBtn onClick={submit} style={{ marginTop: 18, background: AMBER, width: "100%", justifyContent: "center" }}><Plus size={13} /> Add item</SmallBtn>
-            </BottomSheet>
-          )}
-        </>
-      )}
-    </Section>
   );
 }
 

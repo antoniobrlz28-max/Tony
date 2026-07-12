@@ -22,6 +22,7 @@ export function defaultData() {
     abstinence: [],
     weeklyReviews: [],
     goalWeight: 80,
+    calorieTarget: 2200,
     nextPaycheck: "2026-07-17",
     cycleDays: 14,
     fixedRent: 1650,
@@ -165,14 +166,40 @@ export function generateDemoData() {
   const todayFastStart = String(startH).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
   habits.push({ id: uid(), date: today, trained: false, weight: 89.6, alcoholDrinks: 0, trainingNote: "", fastingHours: 16, fastingStart: todayFastStart, fastCompleted: false, identityScore: 7 });
 
-  const foodItems = [
-    { id: uid(), date: d(-1), name: "Chicken breast", calories: 280, protein: 42, carbs: 0, fat: 8 },
-    { id: uid(), date: d(-1), name: "Rice, 1 cup", calories: 205, protein: 4, carbs: 45, fat: 0 },
-    { id: uid(), date: d(-2), name: "Salmon fillet", calories: 350, protein: 34, carbs: 0, fat: 22 },
-    { id: uid(), date: d(-2), name: "Steamed broccoli", calories: 55, protein: 4, carbs: 11, fat: 0 },
-    { id: uid(), date: d(-4), name: "Protein shake", calories: 160, protein: 30, carbs: 6, fat: 2 },
-    { id: uid(), date: today, name: "Greek yogurt", calories: 130, protein: 17, carbs: 9, fat: 4 },
-  ];
+  // 10 days of meal-tagged food logs so the calorie ring, macro bars, quick-add
+  // chips, and 7-day chart all render with realistic variation. Today is mid-day:
+  // breakfast + lunch logged, dinner still open.
+  const menu = {
+    Breakfast: [
+      { name: "Eggs & toast", calories: 380, protein: 22, carbs: 30, fat: 18 },
+      { name: "Greek yogurt", calories: 130, protein: 17, carbs: 9, fat: 4 },
+      { name: "Breakfast burrito", calories: 540, protein: 24, carbs: 52, fat: 26 },
+    ],
+    Lunch: [
+      { name: "Chicken burrito bowl", calories: 650, protein: 42, carbs: 70, fat: 22 },
+      { name: "Turkey sandwich", calories: 450, protein: 28, carbs: 48, fat: 16 },
+      { name: "Taco plate", calories: 720, protein: 30, carbs: 66, fat: 36 },
+    ],
+    Dinner: [
+      { name: "Chicken breast & rice", calories: 520, protein: 46, carbs: 50, fat: 12 },
+      { name: "Salmon & veggies", calories: 480, protein: 38, carbs: 14, fat: 28 },
+      { name: "Pasta night", calories: 780, protein: 26, carbs: 96, fat: 30 },
+    ],
+    Snack: [
+      { name: "Protein shake", calories: 160, protein: 30, carbs: 6, fat: 2 },
+      { name: "Tortilla chips", calories: 210, protein: 3, carbs: 24, fat: 11 },
+      { name: "Late-night tacos", calories: 430, protein: 18, carbs: 40, fat: 22 },
+    ],
+  };
+  const pickMeal = meal => menu[meal][rand(0, menu[meal].length - 1)];
+  const foodItems = [];
+  for (let i = 9; i >= 1; i--) {
+    for (const [meal, odds] of [["Breakfast", 0.7], ["Lunch", 0.9], ["Dinner", 0.85], ["Snack", 0.5]]) {
+      if (Math.random() < odds) foodItems.push({ id: uid(), date: d(-i), meal, ...pickMeal(meal) });
+    }
+  }
+  foodItems.push({ id: uid(), date: today, meal: "Breakfast", ...menu.Breakfast[1] });
+  foodItems.push({ id: uid(), date: today, meal: "Lunch", ...menu.Lunch[0] });
 
   const abstinence = [
     { id: uid(), name: "Quit Vaping", color: ABSTINENCE_COLORS[2], startedAt: new Date(Date.now() - 12 * 86400000 - 3 * 3600000).toISOString(), history: [4 * 86400] },
@@ -193,7 +220,7 @@ export function generateDemoData() {
 
   return {
     accounts, categories, transactions, bills, goals, debts, habits, foodItems, abstinence, weeklyReviews,
-    goalWeight: 80, nextPaycheck: d(3), cycleDays: 14, fixedRent: 1650,
+    goalWeight: 80, calorieTarget: 2200, nextPaycheck: d(3), cycleDays: 14, fixedRent: 1650,
   };
 }
 
@@ -221,6 +248,7 @@ export function migrate(d) {
     })
   };
   if (d.fixedRent === undefined) d = { ...d, fixedRent: 1650 };
+  if (d.calorieTarget === undefined) d = { ...d, calorieTarget: 2200 };
   d = { ...d, debts: d.debts.map(x => x.payments ? x : { ...x, payments: [] }) };
   return d;
 }

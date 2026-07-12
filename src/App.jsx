@@ -361,6 +361,9 @@ export default function FinanceOS() {
   function setGoalWeight(val) {
     setData(d => ({ ...d, goalWeight: Number(val) }));
   }
+  function setCalorieTarget(val) {
+    setData(d => ({ ...d, calorieTarget: Number(val) || 0 }));
+  }
   function addFoodItem(item) {
     if (!item.name) return;
     setData(d => ({ ...d, foodItems: [{ id: uid(), ...item }, ...d.foodItems] }));
@@ -780,6 +783,7 @@ export default function FinanceOS() {
             data={data}
             setFixedRent={setFixedRent}
             setGoalWeight={setGoalWeight}
+            setCalorieTarget={setCalorieTarget}
             setNextPaycheck={setNextPaycheck}
             setCycleDays={setCycleDays}
             confirmAction={confirmAction}
