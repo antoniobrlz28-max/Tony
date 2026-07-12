@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
-import { Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, TEAL, TEAL_BG, VIOLET, VIOLET_BG } from "./lib/constants.js";
+import { Cell, BarChart, Bar, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, ACCENT, RUST, SAGE, SLATE, TEAL, VIOLET, VIOLET_BG } from "./lib/constants.js";
 import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
 import { defaultData, generateDemoData, migrate } from "./lib/data.js";
 import { Section, ProgressBar, CountdownPill, SmallBtn, useLongPress, IconBtn, DeleteBtn, inputStyle, Empty, Row, StatTile } from "./components/shared.jsx";
@@ -69,20 +69,28 @@ export default function FinanceOS() {
   const habitDaysElapsed = Number(todayStr().slice(8, 10));
   const habitDaysLogged = data.habits.filter(h => h.date.startsWith(currentMonth) && h.date <= todayStr()).length;
 
-  // Cumulative spend curve for this period, vs a flat budget reference line
-  const periodBudgetTotal = incomeThisPeriod;
+  // Cumulative spend curve for this period, with last period's curve (aligned by
+  // day index) as a dashed comparison line running the full period width.
   const cumulativeSpendData = (() => {
-    const todayIdx = Math.min(period.dayIndex, period.totalDays);
-    let running = 0;
+    const prevStart = addDays(period.start, -period.totalDays);
+    const prevTx = data.transactions.filter(t => t.type === "expense" && t.date >= prevStart && t.date < period.start);
+    const todayIdx = Math.min(period.dayIndex, period.totalDays - 1);
+    let running = 0, prevRunning = 0;
     const out = [];
-    for (let i = 0; i <= todayIdx; i++) {
+    for (let i = 0; i < period.totalDays; i++) {
       const d = addDays(period.start, i);
-      if (d > todayStr()) break;
-      running += periodTx.filter(t => t.type === "expense" && t.date === d).reduce((s, t) => s + t.amount, 0);
-      out.push({ day: i + 1, spend: Math.round(running), budget: Math.round(periodBudgetTotal) });
+      const pd = addDays(prevStart, i);
+      prevRunning += prevTx.filter(t => t.date === pd).reduce((s, t) => s + t.amount, 0);
+      let spend = null;
+      if (i <= todayIdx && d <= todayStr()) {
+        running += periodTx.filter(t => t.type === "expense" && t.date === d).reduce((s, t) => s + t.amount, 0);
+        spend = Math.round(running);
+      }
+      out.push({ day: i + 1, spend, last: Math.round(prevRunning) });
     }
     return out;
   })();
+  const hasLastPeriod = cumulativeSpendData.some(p => p.last > 0);
 
   // Average spend of the prior 3 completed periods (only counting periods that actually have data)
   const priorPeriodsAvg = (() => {
@@ -448,13 +456,13 @@ export default function FinanceOS() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <h1 style={{ fontFamily: "Georgia, serif", fontSize: 21, margin: 0, letterSpacing: "0.01em" }}>Life OS</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: saving ? GOLD : SLATE }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: saving ? ACCENT : SLATE }}>
               {saving && <RefreshCw size={11} className="spinner" />}
               {saving ? "saving…" : "saved"}
             </span>
             <button onClick={() => setTab("settings")} aria-label="Settings" style={{
               background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex",
-              color: tab === "settings" ? GOLD : "#8A97A3"
+              color: tab === "settings" ? ACCENT : "#8A97A3"
             }}>
               <SettingsIcon size={18} />
             </button>
@@ -465,16 +473,16 @@ export default function FinanceOS() {
             <div style={{ marginTop: 14 }}>
               <button onClick={() => setShowPaycheckSheet(true)} style={{
                 width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                background: "rgba(201,161,61,0.14)", border: `1px solid ${GOLD}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
+                background: "rgba(77,159,255,0.14)", border: `1px solid ${ACCENT}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
               }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: GOLD }}>Payday is today — tap to add your paycheck</span>
-                <Plus size={16} color={GOLD} />
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: ACCENT }}>Payday is today — tap to add your paycheck</span>
+                <Plus size={16} color={ACCENT} />
               </button>
             </div>
           )
         ) : (
           <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#C9C2AE", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#A7B0BE", marginBottom: 6 }}>
               <span>THIS MONTH</span>
               <span>{habitDaysLogged} of {habitDaysElapsed} days logged</span>
             </div>
@@ -551,23 +559,30 @@ export default function FinanceOS() {
                   )}
                 </div>
                 {cumulativeSpendData.length > 1 && (
-                  <div style={{ height: 140, marginTop: 10 }}>
+                  <div style={{ height: 150, marginTop: 10 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={cumulativeSpendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                      <ComposedChart data={cumulativeSpendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                         <defs>
                           <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={TEAL} stopOpacity={0.35} />
-                            <stop offset="100%" stopColor={TEAL} stopOpacity={0.02} />
+                            <stop offset="0%" stopColor={ACCENT} stopOpacity={0.35} />
+                            <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="day" tick={{ fontSize: 9, fill: SLATE }} />
                         <YAxis hide />
-                        <Tooltip formatter={v => fmt(v)} />
-                        <Area type="monotone" dataKey="budget" stroke="none" fill={PAPER_DIM} fillOpacity={1} />
-                        <Area type="monotone" dataKey="spend" stroke={TEAL} strokeWidth={2} fill="url(#spendFill)" />
-                      </AreaChart>
+                        <Tooltip formatter={(v, name) => [fmt(v), name === "last" ? "last period" : "this period"]} labelFormatter={d => `Day ${d}`} />
+                        {hasLastPeriod && (
+                          <Line type="monotone" dataKey="last" stroke={SLATE} strokeWidth={1.5} strokeDasharray="5 4" dot={false} />
+                        )}
+                        <Area type="monotone" dataKey="spend" stroke={ACCENT} strokeWidth={2} fill="url(#spendFill)" connectNulls={false} />
+                      </ComposedChart>
                     </ResponsiveContainer>
-                    <div style={{ textAlign: "right", fontSize: 9.5, color: SLATE, marginTop: -4 }}>shaded = budget ceiling</div>
+                    {hasLastPeriod && (
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 14, fontSize: 9.5, color: SLATE, marginTop: -4 }}>
+                        <span><span style={{ display: "inline-block", width: 14, height: 2, background: ACCENT, verticalAlign: "middle", marginRight: 4, borderRadius: 1 }} />this period</span>
+                        <span><span style={{ display: "inline-block", width: 14, borderTop: `2px dashed ${SLATE}`, verticalAlign: "middle", marginRight: 4 }} />last period</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -580,8 +595,8 @@ export default function FinanceOS() {
                   background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "12px 14px", cursor: "pointer"
                 }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: TEAL_BG, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Wallet size={16} color={TEAL} />
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(77,159,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Wallet size={16} color={ACCENT} />
                 </div>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: TEXT }}>
@@ -605,6 +620,39 @@ export default function FinanceOS() {
                 );
               })()}
             </Section>
+
+            {data.transactions.length > 0 && (
+              <Section
+                title="Latest transactions"
+                right={
+                  <button onClick={() => setTab("transactions")} style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", cursor: "pointer", color: SLATE, fontSize: 11.5, fontWeight: 600 }}>
+                    View all <ChevronRight size={13} />
+                  </button>
+                }
+              >
+                {data.transactions.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4).map(tx => {
+                  const TxIcon = tx.type === "income" ? TrendingUp : tx.type === "expense" ? TrendingDown : ArrowLeftRight;
+                  const txColor = tx.type === "income" ? SAGE : tx.type === "expense" ? RUST : SLATE;
+                  const catName = data.categories.find(c => c.id === tx.categoryId)?.name;
+                  return (
+                    <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${txColor}1a`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <TxIcon size={13} color={txColor} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.note || catName || tx.type}</div>
+                          <div style={{ fontSize: 10.5, color: SLATE }}>{formatShortDate(tx.date)}{catName ? ` · ${catName}` : ""}</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: txColor, flexShrink: 0 }}>
+                        {tx.type === "income" ? "+" : tx.type === "expense" ? "-" : ""}{fmt(tx.amount)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </Section>
+            )}
 
             {(budgetStreak > 0 || longestAbstinence || drinkSpendInsight || trainingIdentityInsight) && (
               <Section title="Momentum">
@@ -645,7 +693,7 @@ export default function FinanceOS() {
                       <Tooltip formatter={v => fmt(v)} />
                       <Bar dataKey="spend" radius={[4, 4, 0, 0]}>
                         {spendTrend.map((p, i) => (
-                          <Cell key={i} fill={p.income > 0 && p.spend > p.income ? RUST : TEAL} />
+                          <Cell key={i} fill={p.income > 0 && p.spend > p.income ? RUST : ACCENT} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -699,8 +747,8 @@ export default function FinanceOS() {
                   onClick={() => applySplit(computeSuggestedSplit(incomeThisPeriod))}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
-                    padding: "9px 0", marginBottom: 14, borderRadius: 8, border: `1px solid ${GOLD}55`,
-                    background: "rgba(201,161,61,0.10)", color: GOLD, fontSize: 12, fontWeight: 700, cursor: "pointer"
+                    padding: "9px 0", marginBottom: 14, borderRadius: 8, border: `1px solid ${ACCENT}55`,
+                    background: "rgba(77,159,255,0.10)", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer"
                   }}
                 >
                   <RefreshCw size={12} /> Rebuild budget from monthly rent
@@ -821,11 +869,11 @@ export default function FinanceOS() {
             }}>
               <div style={{
                 width: 34, height: 26, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center",
-                background: active ? GOLD : "transparent", transition: "background 0.2s"
+                background: active ? ACCENT : "transparent", transition: "background 0.2s"
               }}>
                 <Icon size={16} strokeWidth={active ? 2.4 : 1.8} />
               </div>
-              <span style={{ fontSize: 9, color: active ? GOLD : "#9AA5AE", fontWeight: active ? 700 : 400 }}>{n.label}</span>
+              <span style={{ fontSize: 9, color: active ? ACCENT : "#9AA5AE", fontWeight: active ? 700 : 400 }}>{n.label}</span>
             </button>
           );
         })}

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
-import { INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, GOLD, RUST, SAGE, SLATE, AMBER } from "../lib/constants.js";
+import { INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, ACCENT, RUST, SAGE, SLATE, AMBER } from "../lib/constants.js";
 import { urgencyColor } from "../lib/helpers.js";
 
 export function Section({ title, eyebrow, children, right, collapsible = false, open = true, onToggle }) {
@@ -31,7 +31,7 @@ export function Section({ title, eyebrow, children, right, collapsible = false, 
 }
 
 export function ProgressBar({ pct, tone = "sage" }) {
-  const color = pct > 100 ? RUST : tone === "gold" ? GOLD : SAGE;
+  const color = pct > 100 ? RUST : tone === "gold" ? ACCENT : SAGE;
   const width = Math.min(100, Math.max(0, pct));
   return (
     <div style={{ height: 6, background: PAPER_DIM, borderRadius: 3, overflow: "hidden", border: `1px solid ${INK_SOFT}18` }}>
@@ -75,7 +75,7 @@ export function CountdownPill({ days, totalDays }) {
 }
 
 export function SmallBtn({ children, onClick, tone = "ink", style }) {
-  const bg = tone === "ink" ? INK : tone === "gold" ? GOLD : tone === "rust" ? RUST : "transparent";
+  const bg = tone === "ink" ? "#28313D" : tone === "gold" ? ACCENT : tone === "rust" ? RUST : "transparent";
   const color = tone === "ghost" ? TEXT : PAPER;
   return (
     <button
@@ -174,7 +174,7 @@ export function HeatCell({ filled, color, bg, label, onClick }) {
 
 export function BottomSheet({ title, onClose, children }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(22,35,46,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(4,7,12,0.65)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }} onClick={onClose}>
       <div style={{ background: CARD, borderRadius: "20px 20px 0 0", padding: "18px 16px 24px", width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 -10px 30px rgba(0,0,0,0.3)" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h3 style={{ fontFamily: "Georgia, serif", fontSize: 17, color: TEXT, margin: 0 }}>{title}</h3>

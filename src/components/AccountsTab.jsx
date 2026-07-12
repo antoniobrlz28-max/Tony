@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Wallet, Landmark, PiggyBank, Check, X, Edit2 } from "lucide-react";
-import { ACCOUNT_TYPES, GOLD, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, SAGE } from "../lib/constants.js";
+import { ACCOUNT_TYPES, ACCENT, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, SAGE } from "../lib/constants.js";
 import { uid, fmt } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle } from "./shared.jsx";
 
@@ -97,8 +97,8 @@ function AddAccountForm({ onAdd, onCancel }) {
           return (
             <button key={t.id} onClick={() => setType(t.id)} style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              padding: "8px 10px", borderRadius: 10, border: `1px solid ${active ? GOLD : INK_SOFT + "40"}`,
-              background: active ? "rgba(201,161,61,0.12)" : "transparent", color: active ? GOLD : TEXT, cursor: "pointer"
+              padding: "8px 10px", borderRadius: 10, border: `1px solid ${active ? ACCENT : INK_SOFT + "40"}`,
+              background: active ? "rgba(77,159,255,0.12)" : "transparent", color: active ? ACCENT : TEXT, cursor: "pointer"
             }}>
               <TypeIcon size={14} /> <span style={{ fontSize: 12.5 }}>{t.label}</span>
             </button>

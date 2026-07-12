@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, PiggyBank, Target, Check, X, Edit2 } from "lucide-react";
-import { SAGE, GOLD, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM } from "../lib/constants.js";
+import { SAGE, ACCENT, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM } from "../lib/constants.js";
 import { uid, fmt } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
@@ -27,7 +27,7 @@ export function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }
       {data.goals.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           <StatTile icon={PiggyBank} color={SAGE} valueColor={SAGE} value={fmt(totalSaved)} label="Saved" caption="so far" />
-          <StatTile icon={Target} color={GOLD} value={fmt(totalRemaining)} label="Remaining" caption="to go" />
+          <StatTile icon={Target} color={ACCENT} value={fmt(totalRemaining)} label="Remaining" caption="to go" />
           <StatTile icon={Check} color={SKY} value={data.goals.length} label="Goals" caption={`${completed} completed`} />
         </div>
       )}

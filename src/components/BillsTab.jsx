@@ -1,12 +1,75 @@
 import { useState } from "react";
-import { Plus, Check, AlertCircle, Clock, Receipt, Lightbulb, CreditCard, Edit2, X, Settings2, Repeat, CalendarDays, ChevronLeft } from "lucide-react";
-import { SAGE, RUST, GOLD, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, BILL_TEMPLATES, BILL_ICONS } from "../lib/constants.js";
-import { uid, fmt, todayStr, daysBetween, urgencyColor, formatShortDate } from "../lib/helpers.js";
+import { Plus, Check, AlertCircle, Clock, Receipt, Lightbulb, CreditCard, Edit2, X, Settings2, Repeat, CalendarDays, ChevronLeft, List } from "lucide-react";
+import { SAGE, RUST, ACCENT, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, BILL_TEMPLATES, BILL_ICONS } from "../lib/constants.js";
+import { uid, fmt, todayStr, addDays, daysBetween, urgencyColor, formatShortDate } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, CountdownPill, Field, inputStyle } from "./shared.jsx";
+
+const fmtCompact = v => (v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${Math.round(v)}`);
+
+function BillsCalendar({ bills }) {
+  const today = todayStr();
+  const dow = new Date(today + "T00:00:00").getDay();
+  const gridStart = addDays(today, -dow);
+  const days = Array.from({ length: 14 }, (_, i) => addDays(gridStart, i));
+  const windowBills = bills.filter(b => b.dueDate >= gridStart && b.dueDate <= days[13]);
+  // Rough bill-vs-subscription split for the summary strip: subscription-scale = under $100
+  const subs = windowBills.filter(b => b.amount < 100);
+  const bigs = windowBills.filter(b => b.amount >= 100);
+  const total = windowBills.reduce((s, b) => s + b.amount, 0);
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, color: SLATE, marginBottom: 8, textAlign: "center", fontWeight: 600 }}>
+        {formatShortDate(gridStart)} – {formatShortDate(days[13])}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+        {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(d => (
+          <div key={d} style={{ textAlign: "center", fontSize: 8.5, fontWeight: 700, color: SLATE, letterSpacing: "0.06em" }}>{d}</div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+        {days.map(d => {
+          const due = windowBills.filter(b => b.dueDate === d);
+          const dayTotal = due.reduce((s, b) => s + b.amount, 0);
+          const isToday = d === today;
+          const isPast = d < today;
+          return (
+            <div key={d} style={{
+              minHeight: 62, borderRadius: 8, padding: "5px 3px", background: PAPER_DIM,
+              border: isToday ? `1px solid ${ACCENT}88` : `1px solid transparent`,
+              opacity: isPast && !isToday ? 0.45 : 1,
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 3
+            }}>
+              <div style={{ fontSize: 10, fontWeight: isToday ? 800 : 600, color: isToday ? ACCENT : SLATE }}>{Number(d.slice(8, 10))}</div>
+              <div style={{ display: "flex", gap: 2, flexWrap: "wrap", justifyContent: "center" }}>
+                {due.slice(0, 2).map(b => {
+                  const BillIcon = BILL_ICONS[b.name] || BILL_ICONS.Other;
+                  return (
+                    <div key={b.id} title={`${b.name} ${fmt(b.amount)}`} style={{ width: 18, height: 18, borderRadius: "50%", background: `${SKY}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <BillIcon size={10} color={SKY} />
+                    </div>
+                  );
+                })}
+                {due.length > 2 && <span style={{ fontSize: 8.5, color: SLATE, fontWeight: 700 }}>+{due.length - 2}</span>}
+              </div>
+              {dayTotal > 0 && <div style={{ fontSize: 8.5, fontWeight: 700, color: TEXT, marginTop: "auto" }}>{fmtCompact(dayTotal)}</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", background: PAPER_DIM, borderRadius: 10, padding: "9px 12px", marginTop: 8, fontSize: 11 }}>
+        <span style={{ color: SLATE }}>{bigs.length} bill{bigs.length === 1 ? "" : "s"} <b style={{ color: TEXT }}>{fmt(bigs.reduce((s, b) => s + b.amount, 0))}</b></span>
+        <span style={{ color: SLATE }}>{subs.length} sub{subs.length === 1 ? "" : "s"} <b style={{ color: TEXT }}>{fmt(subs.reduce((s, b) => s + b.amount, 0))}</b></span>
+        <span style={{ color: SLATE }}>Total <b style={{ color: TEXT }}>{fmt(total)}</b></span>
+      </div>
+    </div>
+  );
+}
 
 export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
   const [addOpen, setAddOpen] = useState(false);
   const [showSubs, setShowSubs] = useState(false);
+  const [view, setView] = useState("list");
 
   function addBill(bill) {
     setData(d => ({ ...d, bills: [...d.bills, { id: uid(), lastPaid: null, ...bill }] }));
@@ -38,12 +101,25 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
       eyebrow="Stay on top of what's due"
       right={
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", border: `1px solid ${INK_SOFT}40`, borderRadius: 9, overflow: "hidden" }}>
+            {[["cal", CalendarDays], ["list", List]].map(([v, VIcon]) => (
+              <button key={v} onClick={() => setView(v)} aria-label={v === "cal" ? "Calendar view" : "List view"} style={{
+                display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 26,
+                background: view === v ? PAPER_DIM : "transparent", border: "none", cursor: "pointer",
+                color: view === v ? TEXT : SLATE
+              }}>
+                <VIcon size={13} />
+              </button>
+            ))}
+          </div>
           <IconBtn icon={Settings2} onClick={() => setShowSubs(true)} label="Manage subscriptions" />
           <SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add bill</SmallBtn>
         </div>
       }
     >
-      {data.bills.length > 0 && (
+      {view === "cal" && data.bills.length > 0 && <BillsCalendar bills={data.bills} />}
+
+      {view === "list" && data.bills.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           <StatTile
             icon={overdue.length === 0 ? Check : AlertCircle}
@@ -54,7 +130,7 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
           />
           <StatTile
             icon={Clock}
-            color={GOLD}
+            color={ACCENT}
             value={fmt(dueThisWeekTotal)}
             label="Due this week"
             caption={`${dueThisWeek.length} bill${dueThisWeek.length === 1 ? "" : "s"}`}
@@ -123,7 +199,7 @@ function SubscriptionsView({ data, deleteBill, onBack }) {
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
               <StatTile icon={Repeat} color={SKY} value={fmt(monthlyTotal)} label="Per month" caption={`${sorted.length} recurring bill${sorted.length === 1 ? "" : "s"}`} />
-              <StatTile icon={CalendarDays} color={GOLD} value={fmt(monthlyTotal * 12)} label="Per year" caption="at current pace" />
+              <StatTile icon={CalendarDays} color={ACCENT} value={fmt(monthlyTotal * 12)} label="Per year" caption="at current pace" />
             </div>
             {sorted.map(b => {
               const BillIcon = BILL_ICONS[b.name] || BILL_ICONS.Other;
@@ -241,8 +317,8 @@ function AddBillForm({ data, onAdd, onCancel }) {
           return (
             <button key={t} onClick={() => setName(t)} style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 6px",
-              borderRadius: 10, border: `1px solid ${active ? GOLD : INK_SOFT + "30"}`,
-              background: active ? "rgba(201,161,61,0.12)" : PAPER_DIM, color: active ? GOLD : TEXT, cursor: "pointer"
+              borderRadius: 10, border: `1px solid ${active ? ACCENT : INK_SOFT + "30"}`,
+              background: active ? "rgba(77,159,255,0.12)" : PAPER_DIM, color: active ? ACCENT : TEXT, cursor: "pointer"
             }}>
               <TemplateIcon size={15} />
               <span style={{ fontSize: 10.5 }}>{t}</span>

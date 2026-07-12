@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, TrendingDown, Check, CreditCard, Lightbulb, Edit2, X } from "lucide-react";
-import { RUST, SAGE, SKY, GOLD, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
+import { RUST, SAGE, SKY, ACCENT, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
 import { uid, fmt, formatShortDate, payoffProjection } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
@@ -35,8 +35,8 @@ export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
 
       {highestRateDebt && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: PAPER_DIM, borderRadius: 10, padding: "10px 12px", marginBottom: 16 }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${GOLD}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Lightbulb size={14} color={GOLD} />
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${ACCENT}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Lightbulb size={14} color={ACCENT} />
           </div>
           <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.4 }}>
             Put extra payments toward <b>{highestRateDebt.name}</b> first ({highestRateDebt.rate}% APR) — it's costing you the most in interest.

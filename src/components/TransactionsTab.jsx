@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, TrendingUp, TrendingDown, Wallet, Check, X, Edit2, Upload } from "lucide-react";
-import { GOLD, INK, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
+import { ACCENT, INK, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
 import { fmt, getPeriod } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
 import { ImportCSV } from "./ImportCSV.jsx";
@@ -49,7 +49,7 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
           {["expense", "income", "transfer"].map(t => (
             <button key={t} onClick={() => setFormType(t)} style={{
               flex: 1, padding: "8px 0", borderRadius: 999, border: "none", cursor: "pointer",
-              background: formType === t ? GOLD : PAPER_DIM, color: formType === t ? INK : TEXT,
+              background: formType === t ? ACCENT : PAPER_DIM, color: formType === t ? INK : TEXT,
               fontWeight: 700, fontSize: 12.5, textTransform: "capitalize"
             }}>{t}</button>
           ))}
@@ -76,8 +76,8 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {data.accounts.map(a => (
               <button key={a.id} onClick={() => setAccountId(a.id)} style={{
-                padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? GOLD : INK_SOFT + "40"}`,
-                background: accountId === a.id ? "rgba(201,161,61,0.12)" : "transparent", color: accountId === a.id ? GOLD : TEXT,
+                padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? ACCENT : INK_SOFT + "40"}`,
+                background: accountId === a.id ? "rgba(77,159,255,0.12)" : "transparent", color: accountId === a.id ? ACCENT : TEXT,
                 fontSize: 12.5, cursor: "pointer"
               }}>{a.name}</button>
             ))}
@@ -90,8 +90,8 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {data.accounts.map(a => (
                 <button key={a.id} onClick={() => setToAccountId(a.id)} style={{
-                  padding: "6px 12px", borderRadius: 999, border: `1px solid ${toAccountId === a.id ? GOLD : INK_SOFT + "40"}`,
-                  background: toAccountId === a.id ? "rgba(201,161,61,0.12)" : "transparent", color: toAccountId === a.id ? GOLD : TEXT,
+                  padding: "6px 12px", borderRadius: 999, border: `1px solid ${toAccountId === a.id ? ACCENT : INK_SOFT + "40"}`,
+                  background: toAccountId === a.id ? "rgba(77,159,255,0.12)" : "transparent", color: toAccountId === a.id ? ACCENT : TEXT,
                   fontSize: 12.5, cursor: "pointer"
                 }}>{a.name}</button>
               ))}
@@ -105,8 +105,8 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {data.categories.map(c => (
                 <button key={c.id} onClick={() => setCategoryId(c.id)} style={{
-                  padding: "6px 12px", borderRadius: 999, border: `1px solid ${categoryId === c.id ? GOLD : INK_SOFT + "40"}`,
-                  background: categoryId === c.id ? "rgba(201,161,61,0.12)" : "transparent", color: categoryId === c.id ? GOLD : TEXT,
+                  padding: "6px 12px", borderRadius: 999, border: `1px solid ${categoryId === c.id ? ACCENT : INK_SOFT + "40"}`,
+                  background: categoryId === c.id ? "rgba(77,159,255,0.12)" : "transparent", color: categoryId === c.id ? ACCENT : TEXT,
                   fontSize: 12.5, cursor: "pointer"
                 }}>{c.name}</button>
               ))}

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ChevronLeft, Upload, Check, TrendingUp, TrendingDown, FileText } from "lucide-react";
-import { SAGE, RUST, GOLD, SKY, SLATE, TEXT, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
+import { SAGE, RUST, ACCENT, SKY, SLATE, TEXT, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
 import { fmt } from "../lib/helpers.js";
 import { Section, SmallBtn, Empty, StatTile, inputStyle } from "./shared.jsx";
 
@@ -205,7 +205,7 @@ export function ImportCSV({ data, onImport, onBack }) {
             </div>
 
             {dupCount > 0 && (
-              <div style={{ fontSize: 11.5, color: GOLD, marginBottom: 10 }}>
+              <div style={{ fontSize: 11.5, color: ACCENT, marginBottom: 10 }}>
                 {dupCount} row{dupCount === 1 ? "" : "s"} look like duplicates of existing transactions and were unchecked.
               </div>
             )}
@@ -215,8 +215,8 @@ export function ImportCSV({ data, onImport, onBack }) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {data.accounts.map(a => (
                   <button key={a.id} onClick={() => setAccountId(a.id)} style={{
-                    padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? GOLD : INK_SOFT + "40"}`,
-                    background: accountId === a.id ? "rgba(201,161,61,0.12)" : "transparent", color: accountId === a.id ? GOLD : TEXT,
+                    padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? ACCENT : INK_SOFT + "40"}`,
+                    background: accountId === a.id ? "rgba(77,159,255,0.12)" : "transparent", color: accountId === a.id ? ACCENT : TEXT,
                     fontSize: 12.5, cursor: "pointer"
                   }}>{a.name}</button>
                 ))}
@@ -239,7 +239,7 @@ export function ImportCSV({ data, onImport, onBack }) {
                   <input type="checkbox" checked={t.include} onChange={() => toggleRow(t.key)} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {t.note} {t.dup && <span style={{ fontSize: 9.5, color: GOLD, fontWeight: 700 }}>DUP?</span>}
+                      {t.note} {t.dup && <span style={{ fontSize: 9.5, color: ACCENT, fontWeight: 700 }}>DUP?</span>}
                     </div>
                     <div style={{ fontSize: 10.5, color: SLATE }}>{t.date}</div>
                   </div>
