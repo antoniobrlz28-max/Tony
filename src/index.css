@@ -72,6 +72,38 @@ input[type="number"] {
   animation: spin 0.8s linear infinite;
 }
 
+/* Opening animation: the ring draws itself, the dot rides the arc and settles */
+@keyframes orbitDraw {
+  from {
+    stroke-dashoffset: 201;
+    opacity: 0.2;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+.splash-ring {
+  animation: orbitDraw 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes dotOrbit {
+  0% {
+    transform: rotate(-260deg);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(0deg);
+    opacity: 1;
+  }
+}
+.splash-dot {
+  transform-origin: -34px center;
+  animation: dotOrbit 1.05s cubic-bezier(0.34, 1.2, 0.4, 1) both;
+}
+
 /* Cards rise into place when a tab opens; .stagger makes them arrive in sequence */
 @keyframes fadeUp {
   from {

@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
-import { ChevronLeft, Check, RefreshCw, Trash2, Download, Upload, AlertCircle } from "lucide-react";
-import { TEXT, SLATE, SAGE, RUST, STORAGE_KEY } from "../lib/constants.js";
+import { ChevronLeft, Check, RefreshCw, Trash2, Download, Upload, AlertCircle, Shuffle } from "lucide-react";
+import { TEXT, SLATE, SAGE, RUST, ACCENT, PAPER_DIM, STORAGE_KEY } from "../lib/constants.js";
 import { todayStr } from "../lib/helpers.js";
 import { Section, Field, SmallBtn, Empty, inputStyle } from "./shared.jsx";
 
-export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarget, setNextPaycheck, setCycleDays, confirmAction, setConfirmAction, loadDemoData, clearData, onRestore, onBack }) {
+export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarget, setNextPaycheck, setCycleDays, confirmAction, setConfirmAction, loadDemoData, clearData, rollRandomData, onRestore, onBack }) {
   const [restoreMsg, setRestoreMsg] = useState(null); // { ok: boolean, text: string }
   const restoreRef = useRef(null);
 
@@ -86,6 +86,29 @@ export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarge
         <div style={{ fontSize: 11, color: SLATE, lineHeight: 1.5 }}>
           The backup is one small file ({sizeKB} KB) with everything — accounts, transactions, bills, habits, food logs.
           Restoring replaces what's currently in the app. Do this before clearing your browser or moving to a new device or URL.
+        </div>
+      </Section>
+
+      <Section title="Explore possibilities" eyebrow="see the app under a different life">
+        <button onClick={rollRandomData} style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+          background: "rgba(99,102,241,0.10)", border: `1px solid ${ACCENT}55`, borderRadius: 12, padding: "13px 14px"
+        }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${ACCENT}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Shuffle size={16} color={ACCENT} />
+          </div>
+          <div style={{ textAlign: "left", minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: ACCENT }}>Surprise me</div>
+            <div style={{ fontSize: 11, color: SLATE, marginTop: 1 }}>Generate a fresh randomized life every tap</div>
+          </div>
+        </button>
+        {data.demoPersona && (
+          <div style={{ fontSize: 11, color: SLATE, marginTop: 10, background: PAPER_DIM, borderRadius: 10, padding: "9px 12px" }}>
+            Currently showing: <b style={{ color: TEXT, textTransform: "capitalize" }}>{data.demoPersona}</b>
+          </div>
+        )}
+        <div style={{ fontSize: 10.5, color: SLATE, marginTop: 10, lineHeight: 1.5 }}>
+          Each tap invents a different income, spending style, sleep pattern, and habits — a fast way to see every screen, insight, and Life Score under new shapes. Overwrites what's in the app; download a backup first if you want to keep it.
         </div>
       </Section>
 

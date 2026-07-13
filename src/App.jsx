@@ -3,7 +3,7 @@ import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown,
 import { Cell, BarChart, Bar, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
 import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, ACCENT, RUST, SAGE, SLATE, TEAL, VIOLET, VIOLET_BG } from "./lib/constants.js";
 import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
-import { defaultData, generateDemoData, migrate } from "./lib/data.js";
+import { defaultData, generateDemoData, generateRandomData, migrate } from "./lib/data.js";
 import { Section, ProgressBar, CountdownPill, SmallBtn, useLongPress, IconBtn, DeleteBtn, inputStyle, Empty, Row, StatTile } from "./components/shared.jsx";
 import { PaycheckSheet, DailyCheckInSheet } from "./components/sheets.jsx";
 import { AccountsTab } from "./components/AccountsTab.jsx";
@@ -15,6 +15,7 @@ import { HabitsTab } from "./components/HabitsTab.jsx";
 import { SettingsTab } from "./components/SettingsTab.jsx";
 import { LifeScoreCard } from "./components/LifeScore.jsx";
 import { Orbit } from "./components/Orbit.jsx";
+import { SplashScreen } from "./components/SplashScreen.jsx";
 import { QuickAddFab, QuickAddSheet } from "./components/QuickAdd.jsx";
 import { computeLifeScore } from "./lib/scoreEngine.js";
 import { computeInsights } from "./lib/insightEngine.js";
@@ -27,6 +28,8 @@ export default function FinanceOS() {
   const [showPaycheckSheet, setShowPaycheckSheet] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const [personaToast, setPersonaToast] = useState(null);
   const [editingRent, setEditingRent] = useState(false);
   const paydayLongPress = useLongPress(() => setShowPaycheckSheet(true));
   const rentLongPress = useLongPress(() => setEditingRent(true));
@@ -37,6 +40,13 @@ export default function FinanceOS() {
   function clearData() {
     setData(defaultData());
     setConfirmAction(null);
+  }
+  function rollRandomData() {
+    const rolled = generateRandomData();
+    setData(rolled);
+    setPersonaToast(rolled.demoPersona);
+    setTab("dashboard");
+    setTimeout(() => setPersonaToast(null), 4200);
   }
   function restoreData(raw) {
     if (!raw || !Array.isArray(raw.accounts) || !Array.isArray(raw.transactions) || !Array.isArray(raw.categories)) {
@@ -495,6 +505,7 @@ export default function FinanceOS() {
 
   return (
     <div style={{ minHeight: "100vh", background: INK, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif", color: TEXT, paddingBottom: 70 }}>
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
       {/* Header + paycheck runway */}
       <div style={{ background: INK, color: PAPER, padding: "18px 16px 16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -952,6 +963,7 @@ export default function FinanceOS() {
             setConfirmAction={setConfirmAction}
             loadDemoData={loadDemoData}
             clearData={clearData}
+            rollRandomData={rollRandomData}
             onRestore={restoreData}
             onBack={() => setTab("dashboard")}
           />
@@ -986,6 +998,20 @@ export default function FinanceOS() {
         />
       )}
       {!showQuickAdd && tab !== "settings" && <QuickAddFab onClick={() => setShowQuickAdd(true)} />}
+
+      {personaToast && (
+        <div className="sheet-in" style={{
+          position: "fixed", left: 16, right: 16, bottom: 80, zIndex: 60, margin: "0 auto", maxWidth: 480,
+          display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${ACCENT}55`,
+          borderRadius: 14, padding: "12px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.5)"
+        }}>
+          <Orbit size={22} mode="logo" />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>New life generated</div>
+            <div style={{ fontSize: 11, color: SLATE, textTransform: "capitalize", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{personaToast}</div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: INK, display: "flex", borderTop: `1px solid ${INK_SOFT}22`, padding: "6px 6px" }}>
