@@ -304,7 +304,7 @@ export function ImportCSV({ data, onImport, addBill, onBack }) {
                 {data.accounts.map(a => (
                   <button key={a.id} onClick={() => setAccountId(a.id)} style={{
                     padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? ACCENT : INK_SOFT + "40"}`,
-                    background: accountId === a.id ? "rgba(99,102,241,0.12)" : "transparent", color: accountId === a.id ? ACCENT : TEXT,
+                    background: accountId === a.id ? "rgba(49,134,255,0.12)" : "transparent", color: accountId === a.id ? ACCENT : TEXT,
                     fontSize: 12.5, cursor: "pointer"
                   }}>{a.name}</button>
                 ))}

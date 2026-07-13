@@ -118,7 +118,7 @@ function AddAccountForm({ onAdd, onCancel }) {
             <button key={t.id} onClick={() => setType(t.id)} style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "8px 10px", borderRadius: 10, border: `1px solid ${active ? ACCENT : INK_SOFT + "40"}`,
-              background: active ? "rgba(99,102,241,0.12)" : "transparent", color: active ? ACCENT : TEXT, cursor: "pointer"
+              background: active ? "rgba(49,134,255,0.12)" : "transparent", color: active ? ACCENT : TEXT, cursor: "pointer"
             }}>
               <TypeIcon size={14} /> <span style={{ fontSize: 12.5 }}>{t.label}</span>
             </button>

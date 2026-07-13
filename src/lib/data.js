@@ -21,6 +21,9 @@ export function defaultData() {
     foodItems: [],
     abstinence: [],
     weeklyReviews: [],
+    tasks: [],
+    dismissedRecs: [],
+    recFeedback: [],
     goalWeight: 80,
     calorieTarget: 2200,
     nextPaycheck: "2026-07-17",
@@ -440,6 +443,9 @@ export function migrate(d) {
   };
   if (d.fixedRent === undefined) d = { ...d, fixedRent: 1650 };
   if (d.calorieTarget === undefined) d = { ...d, calorieTarget: 2200 };
+  if (!d.tasks) d = { ...d, tasks: [] };
+  if (!d.dismissedRecs) d = { ...d, dismissedRecs: [] };
+  if (!d.recFeedback) d = { ...d, recFeedback: [] };
   d = { ...d, debts: d.debts.map(x => x.payments ? x : { ...x, payments: [] }) };
   return d;
 }

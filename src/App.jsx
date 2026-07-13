@@ -19,6 +19,8 @@ import { SplashScreen } from "./components/SplashScreen.jsx";
 import { QuickAddFab, QuickAddSheet } from "./components/QuickAdd.jsx";
 import { computeLifeScore } from "./lib/scoreEngine.js";
 import { computeInsights } from "./lib/insightEngine.js";
+import { computeRecommendation } from "./lib/recommendationEngine.js";
+import { RecommendationCard, TodayCard } from "./components/TodayLoop.jsx";
 
 export default function FinanceOS() {
   const [data, setData] = useState(() => defaultData());
@@ -217,6 +219,15 @@ export default function FinanceOS() {
   // Life Score + cross-domain insights come from the deterministic engines
   const lifeScore = computeLifeScore(data);
   const insights = computeInsights(data);
+  // One recommendation, unless it's already a task today or was dismissed today
+  const recommendation = (() => {
+    const rec = computeRecommendation(data);
+    if (!rec) return null;
+    const t = todayStr();
+    if ((data.dismissedRecs || []).some(x => x.id === rec.id && x.date === t)) return null;
+    if ((data.tasks || []).some(x => x.sourceId === rec.id && x.date === t)) return null;
+    return rec;
+  })();
 
   const todayLog = data.habits.find(h => h.date === todayStr());
   const checkedInToday = !!(todayLog && (todayLog.identityScore !== undefined || todayLog.wakeTime || todayLog.weight));
@@ -464,6 +475,30 @@ export default function FinanceOS() {
     setData(d => ({ ...d, weeklyReviews: d.weeklyReviews.filter(w => w.id !== id) }));
   }
 
+  // ---- The closed loop: recommendation -> Today task -> feedback ----
+  function acceptRecommendation(rec) {
+    setData(d => ({
+      ...d,
+      tasks: [...(d.tasks || []), {
+        id: uid(), title: rec.title, date: todayStr(), domains: rec.domains,
+        source: "recommendation", sourceId: rec.id, status: "planned", helped: undefined,
+      }],
+    }));
+  }
+  function dismissRecommendation(rec) {
+    setData(d => ({ ...d, dismissedRecs: [...(d.dismissedRecs || []), { id: rec.id, date: todayStr() }] }));
+  }
+  function setTaskStatus(task, status) {
+    setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === task.id ? { ...t, status } : t) }));
+  }
+  function setTaskFeedback(task, helped) {
+    setData(d => ({
+      ...d,
+      tasks: d.tasks.map(t => t.id === task.id ? { ...t, helped } : t),
+      recFeedback: [...(d.recFeedback || []), { recId: task.sourceId, helped, date: todayStr() }],
+    }));
+  }
+
   function payBill(bill) {
     const checkingAccount = data.accounts.find(a => a.type === "checking") || data.accounts[0];
     updateAccountBalance(checkingAccount.id, -bill.amount);
@@ -530,7 +565,7 @@ export default function FinanceOS() {
             <div style={{ marginTop: 14 }}>
               <button onClick={() => setShowPaycheckSheet(true)} style={{
                 width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                background: "rgba(99,102,241,0.14)", border: `1px solid ${ACCENT}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
+                background: "rgba(49,134,255,0.14)", border: `1px solid ${ACCENT}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
               }}>
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: ACCENT }}>Payday is today — tap to add your paycheck</span>
                 <Plus size={16} color={ACCENT} />
@@ -572,6 +607,16 @@ export default function FinanceOS() {
             </div>
 
             <LifeScoreCard result={lifeScore} />
+
+            <RecommendationCard rec={recommendation} onAccept={acceptRecommendation} onDismiss={dismissRecommendation} />
+
+            <TodayCard
+              tasks={data.tasks || []}
+              onComplete={t => setTaskStatus(t, "completed")}
+              onSkip={t => setTaskStatus(t, "skipped")}
+              onReopen={t => setTaskStatus(t, "planned")}
+              onFeedback={setTaskFeedback}
+            />
 
             <button
               onClick={() => setShowCheckIn(true)}
@@ -672,7 +717,7 @@ export default function FinanceOS() {
                   background: PAPER_DIM, border: "none", borderRadius: 10, padding: "12px 14px", cursor: "pointer"
                 }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(99,102,241,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(49,134,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Wallet size={16} color={ACCENT} />
                 </div>
                 <div>
@@ -871,7 +916,7 @@ export default function FinanceOS() {
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
                     padding: "9px 0", marginBottom: 14, borderRadius: 8, border: `1px solid ${ACCENT}55`,
-                    background: "rgba(99,102,241,0.10)", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer"
+                    background: "rgba(49,134,255,0.10)", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer"
                   }}
                 >
                   <RefreshCw size={12} /> Rebuild budget from monthly rent

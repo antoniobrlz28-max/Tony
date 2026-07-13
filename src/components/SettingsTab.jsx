@@ -92,7 +92,7 @@ export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarge
       <Section title="Explore possibilities" eyebrow="see the app under a different life">
         <button onClick={rollRandomData} style={{
           width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
-          background: "rgba(99,102,241,0.10)", border: `1px solid ${ACCENT}55`, borderRadius: 12, padding: "13px 14px"
+          background: "rgba(49,134,255,0.10)", border: `1px solid ${ACCENT}55`, borderRadius: 12, padding: "13px 14px"
         }}>
           <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${ACCENT}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Shuffle size={16} color={ACCENT} />

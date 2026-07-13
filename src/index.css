@@ -14,7 +14,7 @@ html, body, #root {
 }
 
 body {
-  background: #050608;
+  background: #050811;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -33,7 +33,7 @@ input, select, textarea {
   transition: border-color 0.15s ease;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: #6366F1 !important;
+  border-color: #3186FF !important;
 }
 
 /* Numeric fields without the stepper arrows */
@@ -51,12 +51,12 @@ input[type="number"] {
   height: 6px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #222A3C;
+  background: #1B2536;
   border-radius: 3px;
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.35);
+  background: rgba(49, 134, 255, 0.35);
 }
 
 @keyframes spin {

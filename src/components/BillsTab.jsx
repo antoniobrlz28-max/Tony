@@ -322,7 +322,7 @@ function AddBillForm({ data, onAdd, onCancel }) {
             <button key={t} onClick={() => setName(t)} style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 6px",
               borderRadius: 10, border: `1px solid ${active ? ACCENT : INK_SOFT + "30"}`,
-              background: active ? "rgba(99,102,241,0.12)" : PAPER_DIM, color: active ? ACCENT : TEXT, cursor: "pointer"
+              background: active ? "rgba(49,134,255,0.12)" : PAPER_DIM, color: active ? ACCENT : TEXT, cursor: "pointer"
             }}>
               <TemplateIcon size={15} />
               <span style={{ fontSize: 10.5 }}>{t}</span>
