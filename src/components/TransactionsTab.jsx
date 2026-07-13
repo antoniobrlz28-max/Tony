@@ -1,11 +1,17 @@
 import { useState } from "react";
-import { Plus, TrendingUp, TrendingDown, Wallet, Check, X, Edit2, Upload, Search } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Wallet, ArrowLeftRight, Check, X, Edit2, Upload, Search } from "lucide-react";
 import { ACCENT, INK, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
-import { fmt, getPeriod } from "../lib/helpers.js";
+import { fmt, getPeriod, todayStr, addDays, formatShortDate } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
 import { ImportCSV } from "./ImportCSV.jsx";
 
 const PAGE_SIZE = 30;
+
+function dateLabel(date) {
+  if (date === todayStr()) return "Today";
+  if (date === addDays(todayStr(), -1)) return "Yesterday";
+  return formatShortDate(date);
+}
 
 export function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransaction, deleteTransaction, importTransactions, addBillFromImport }) {
   const [formType, setFormType] = useState("expense");
@@ -174,11 +180,26 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
         )}
         {data.transactions.length === 0 && <Empty text="No transactions yet." />}
         {data.transactions.length > 0 && filtered.length === 0 && <Empty text="Nothing matches those filters." />}
-        {filtered.slice(0, visible).map(tx => (
-          <TransactionRow key={tx.id} tx={tx} data={data}
-            onSave={updates => editTransaction(tx, updates)}
-            onDelete={() => deleteTransaction(tx)} />
-        ))}
+        {(() => {
+          const rows = [];
+          let lastDate = null;
+          for (const tx of filtered.slice(0, visible)) {
+            if (tx.date !== lastDate) {
+              lastDate = tx.date;
+              rows.push(
+                <div key={`h-${tx.date}`} style={{ fontSize: 10.5, fontWeight: 700, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em", margin: "14px 0 6px" }}>
+                  {dateLabel(tx.date)}
+                </div>
+              );
+            }
+            rows.push(
+              <TransactionRow key={tx.id} tx={tx} data={data}
+                onSave={updates => editTransaction(tx, updates)}
+                onDelete={() => deleteTransaction(tx)} />
+            );
+          }
+          return rows;
+        })()}
         {filtered.length > visible && (
           <SmallBtn tone="ghost" onClick={() => setVisible(v => v + 50)} style={{ marginTop: 8, width: "100%", justifyContent: "center" }}>
             Show more ({filtered.length - visible} remaining)
@@ -191,6 +212,7 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
 
 function TransactionRow({ tx, data, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [amount, setAmount] = useState(tx.amount);
   const [note, setNote] = useState(tx.note || "");
   const account = data.accounts.find(a => a.id === tx.accountId);
@@ -199,6 +221,10 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
 
   const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "-" : "";
   const color = tx.type === "income" ? SAGE : tx.type === "expense" ? RUST : SLATE;
+  const TxIcon = tx.type === "income" ? TrendingUp : tx.type === "expense" ? TrendingDown : ArrowLeftRight;
+  const sub = tx.type === "transfer"
+    ? `${account?.name || "—"} → ${toAccount?.name || "—"}`
+    : [category?.name, account?.name].filter(Boolean).join(" · ") || "—";
 
   if (editing) {
     return (
@@ -212,18 +238,30 @@ function TransactionRow({ tx, data, onSave, onDelete }) {
   }
 
   return (
-    <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "9px 12px", marginBottom: 6, borderRadius: 8, background: PAPER_DIM
+    <div onClick={() => setRevealed(r => !r)} style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+      padding: "9px 12px", marginBottom: 6, borderRadius: 10, background: PAPER_DIM,
+      cursor: "pointer", userSelect: "none"
     }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{tx.note || category?.name || (tx.type === "transfer" ? `Transfer to ${toAccount?.name || "—"}` : tx.type)}</div>
-        <div style={{ fontSize: 11, color: SLATE }}>{tx.date} · {account?.name || "—"}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${color}1a`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <TxIcon size={13} color={color} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {tx.note || category?.name || (tx.type === "transfer" ? `Transfer to ${toAccount?.name || "—"}` : tx.type)}
+          </div>
+          <div style={{ fontSize: 11, color: SLATE, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 13.5, fontWeight: 700, color }}>{sign}{fmt(tx.amount)}</span>
-        <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-        <DeleteBtn onDelete={onDelete} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }} onClick={e => revealed && e.stopPropagation()}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color, fontVariantNumeric: "tabular-nums" }}>{sign}{fmt(tx.amount)}</span>
+        {revealed && (
+          <>
+            <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
+            <DeleteBtn onDelete={onDelete} />
+          </>
+        )}
       </div>
     </div>
   );

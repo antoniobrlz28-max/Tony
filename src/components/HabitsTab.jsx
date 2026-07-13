@@ -351,7 +351,7 @@ function IdentityReviewPage({ todayIdentity, todayIdentityNote, identityAvg, ups
   );
 }
 
-export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, editHabitLog, deleteHabitLog, setGoalWeight, addFoodItem, editFoodItem, deleteFoodItem, addAbstinence, resetAbstinence, editAbstinence, deleteAbstinence, addWeeklyReview, deleteWeeklyReview }) {
+export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlcohol, editHabitLog, deleteHabitLog, addFoodItem, editFoodItem, deleteFoodItem, addAbstinence, resetAbstinence, editAbstinence, deleteAbstinence, addWeeklyReview, deleteWeeklyReview }) {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [showAbstinence, setShowAbstinence] = useState(false);
   const [showLogDaySheet, setShowLogDaySheet] = useState(false);
@@ -515,59 +515,8 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
 
   return (
     <>
-      <Section title="Monthly grid">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <IconBtn icon={ChevronLeft} onClick={() => setMonth(shiftMonth(month, -1))} label="Previous month" />
-          <span style={{ fontWeight: 700, fontSize: 14 }}>{new Date(month + "-01T00:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
-          <IconBtn icon={ChevronRight} onClick={() => setMonth(shiftMonth(month, 1))} label="Next month" />
-        </div>
-        <div style={{ overflowX: "auto", paddingBottom: 6 }}>
-          <div style={{ display: "inline-block" }}>
-            <div style={{ display: "flex", gap: 3, marginBottom: 4, marginLeft: 74 }}>
-              {dates.map(d => (
-                <div key={d} style={{ width: 26, minWidth: 26, textAlign: "center", fontSize: 9, color: SLATE, lineHeight: 1.1 }}>
-                  <div>{Number(d.slice(8, 10))}</div>
-                  <div style={{ fontWeight: 700, color: INK_SOFT }}>{weekdayLetter(d)}</div>
-                </div>
-              ))}
-            </div>
-            {rows.map(row => (
-              <div key={row.key} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 4 }}>
-                <div style={{ width: 70, fontSize: 11.5, fontWeight: 600, color: TEXT }}>{row.label}</div>
-                {dates.map(d => {
-                  const log = logFor(d);
-                  if (row.kind === "bool") {
-                    return <HeatCell key={d} filled={!!log?.[row.key]} color={row.color} bg={row.bg} onClick={() => toggleHabitBool(d, row.key)} />;
-                  }
-                  if (row.kind === "fasting") {
-                    const n = log?.fastingHours || 0;
-                    return <HeatCell key={d} filled={n > 0} color={row.color} bg={row.bg} label={n > 0 ? n : ""} onClick={() => setFastDate(d)} />;
-                  }
-                  if (row.kind === "tally") {
-                    const n = log?.alcoholDrinks || 0;
-                    return <HeatCell key={d} filled={n > 0} color={row.color} bg={row.bg} label={n > 0 ? n : ""} onClick={() => incrementAlcohol(d)} />;
-                  }
-                  // weight trend — read only, colored by direction vs previous logged weight
-                  if (!log?.weight) return <HeatCell key={d} filled={false} color={SLATE} bg={PAPER_DIM} />;
-                  const prev = weightBefore(d);
-                  const cur = Number(log.weight);
-                  const dir = prev == null ? "–" : cur < prev ? "↓" : cur > prev ? "↑" : "–";
-                  const col = dir === "↓" ? TEAL : dir === "↑" ? CORAL : SLATE;
-                  return <HeatCell key={d} filled={true} color={col} bg={PAPER_DIM} label={dir} />;
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {fastDate && (
-        <FastingModal date={fastDate} log={logFor(fastDate)} onClose={() => setFastDate(null)}
-          blockNew={!!activeFast && fastDate !== todayStr()}
-          onSave={updates => upsertHabitLog(fastDate, updates)} />
-      )}
-
-      <Section title="This month at a glance">
+      <Section title="This month at a glance"
+        right={<SmallBtn onClick={() => setShowLogDaySheet(true)} style={{ background: TEAL, padding: "6px 13px", minHeight: 30, fontSize: 11.5 }}><Plus size={12} /> Log day</SmallBtn>}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
           <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: "12px 12px" }}>
             <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${TEAL}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
@@ -633,7 +582,59 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         </div>
       </Section>
 
-      <div style={{ marginBottom: 20 }}>
+      <Section title="Monthly grid">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <IconBtn icon={ChevronLeft} onClick={() => setMonth(shiftMonth(month, -1))} label="Previous month" />
+          <span style={{ fontWeight: 700, fontSize: 14 }}>{new Date(month + "-01T00:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
+          <IconBtn icon={ChevronRight} onClick={() => setMonth(shiftMonth(month, 1))} label="Next month" />
+        </div>
+        <div style={{ overflowX: "auto", paddingBottom: 6 }}>
+          <div style={{ display: "inline-block" }}>
+            <div style={{ display: "flex", gap: 3, marginBottom: 4, marginLeft: 74 }}>
+              {dates.map(d => (
+                <div key={d} style={{ width: 26, minWidth: 26, textAlign: "center", fontSize: 9, color: SLATE, lineHeight: 1.1 }}>
+                  <div>{Number(d.slice(8, 10))}</div>
+                  <div style={{ fontWeight: 700, color: INK_SOFT }}>{weekdayLetter(d)}</div>
+                </div>
+              ))}
+            </div>
+            {rows.map(row => (
+              <div key={row.key} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 4 }}>
+                <div style={{ width: 70, fontSize: 11.5, fontWeight: 600, color: TEXT }}>{row.label}</div>
+                {dates.map(d => {
+                  const log = logFor(d);
+                  if (row.kind === "bool") {
+                    return <HeatCell key={d} filled={!!log?.[row.key]} color={row.color} bg={row.bg} onClick={() => toggleHabitBool(d, row.key)} />;
+                  }
+                  if (row.kind === "fasting") {
+                    const n = log?.fastingHours || 0;
+                    return <HeatCell key={d} filled={n > 0} color={row.color} bg={row.bg} label={n > 0 ? n : ""} onClick={() => setFastDate(d)} />;
+                  }
+                  if (row.kind === "tally") {
+                    const n = log?.alcoholDrinks || 0;
+                    return <HeatCell key={d} filled={n > 0} color={row.color} bg={row.bg} label={n > 0 ? n : ""} onClick={() => incrementAlcohol(d)} />;
+                  }
+                  // weight trend — read only, colored by direction vs previous logged weight
+                  if (!log?.weight) return <HeatCell key={d} filled={false} color={SLATE} bg={PAPER_DIM} />;
+                  const prev = weightBefore(d);
+                  const cur = Number(log.weight);
+                  const dir = prev == null ? "–" : cur < prev ? "↓" : cur > prev ? "↑" : "–";
+                  const col = dir === "↓" ? TEAL : dir === "↑" ? CORAL : SLATE;
+                  return <HeatCell key={d} filled={true} color={col} bg={PAPER_DIM} label={dir} />;
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {fastDate && (
+        <FastingModal date={fastDate} log={logFor(fastDate)} onClose={() => setFastDate(null)}
+          blockNew={!!activeFast && fastDate !== todayStr()}
+          onSave={updates => upsertHabitLog(fastDate, updates)} />
+      )}
+
+      <div className="fade-up" style={{ marginBottom: 20 }}>
         <button onClick={() => setShowIdentityReview(true)} style={{
           width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
           background: CARD, border: `1px solid ${INK_SOFT}18`, borderRadius: 22, padding: "18px 16px", cursor: "pointer"
@@ -646,20 +647,8 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         </button>
       </div>
 
-      <Section title="Weight tracking">
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: SLATE, marginBottom: 5 }}>Goal weight</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, width: 140 }}>
-            <input
-              type="number" inputMode="decimal" value={data.goalWeight}
-              onChange={e => setGoalWeight(e.target.value)}
-              style={{
-                ...inputStyle, width: "100%", fontWeight: 700, fontSize: 14
-              }}
-            />
-            <span style={{ fontSize: 13, color: SLATE }}>kg</span>
-          </div>
-        </div>
+      <Section title="Weight tracking"
+        right={<span style={{ fontSize: 10.5, fontWeight: 700, color: SLATE, background: PAPER_DIM, borderRadius: 999, padding: "4px 11px", whiteSpace: "nowrap" }}>Goal {data.goalWeight} kg</span>}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
           <div>
             <div style={{ fontSize: 10, color: SLATE }}>Latest</div>
@@ -731,57 +720,48 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         )}
       </Section>
 
-      <Section title="Log a day" eyebrow="wake time, sleep, weight, training">
-        <SmallBtn onClick={() => setShowLogDaySheet(true)} style={{ background: TEAL }}><Plus size={13} /> Add day</SmallBtn>
-        {showLogDaySheet && (
-          <BottomSheet title="Log a day" onClose={() => setShowLogDaySheet(false)}>
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <Field label="Date"><input style={minimalInputStyle} type="date" value={dayForm.date} onChange={e => setDayForm({ ...dayForm, date: e.target.value })} /></Field>
-              <Field label="Sleep time"><input style={minimalInputStyle} type="time" value={dayForm.sleepTime} onChange={e => setDayForm({ ...dayForm, sleepTime: e.target.value })} /></Field>
-              <Field label="Wake time"><input style={minimalInputStyle} type="time" value={dayForm.wakeTime} onChange={e => setDayForm({ ...dayForm, wakeTime: e.target.value })} /></Field>
-              <Field label="Weight (kg)"><input style={minimalInputStyle} type="number" value={dayForm.weight} onChange={e => setDayForm({ ...dayForm, weight: e.target.value })} /></Field>
-              <Field label="Training note"><input style={minimalInputStyle} value={dayForm.trainingNote} onChange={e => setDayForm({ ...dayForm, trainingNote: e.target.value })} placeholder="e.g. RDL 3x10" /></Field>
-            </div>
-            <SmallBtn onClick={() => { saveDayForm(); setShowLogDaySheet(false); }} style={{ marginTop: 18, background: TEAL, width: "100%", justifyContent: "center" }}><Plus size={13} /> Save day</SmallBtn>
-          </BottomSheet>
-        )}
-      </Section>
+      {showLogDaySheet && (
+        <BottomSheet title="Log a day" onClose={() => setShowLogDaySheet(false)}>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            <Field label="Date"><input style={minimalInputStyle} type="date" value={dayForm.date} onChange={e => setDayForm({ ...dayForm, date: e.target.value })} /></Field>
+            <Field label="Sleep time"><input style={minimalInputStyle} type="time" value={dayForm.sleepTime} onChange={e => setDayForm({ ...dayForm, sleepTime: e.target.value })} /></Field>
+            <Field label="Wake time"><input style={minimalInputStyle} type="time" value={dayForm.wakeTime} onChange={e => setDayForm({ ...dayForm, wakeTime: e.target.value })} /></Field>
+            <Field label="Weight (kg)"><input style={minimalInputStyle} type="number" value={dayForm.weight} onChange={e => setDayForm({ ...dayForm, weight: e.target.value })} /></Field>
+            <Field label="Training note"><input style={minimalInputStyle} value={dayForm.trainingNote} onChange={e => setDayForm({ ...dayForm, trainingNote: e.target.value })} placeholder="e.g. RDL 3x10" /></Field>
+          </div>
+          <SmallBtn onClick={() => { saveDayForm(); setShowLogDaySheet(false); }} style={{ marginTop: 18, background: TEAL, width: "100%", justifyContent: "center" }}><Plus size={13} /> Save day</SmallBtn>
+        </BottomSheet>
+      )}
 
       <NutritionLog data={data} addFoodItem={addFoodItem} editFoodItem={editFoodItem} deleteFoodItem={deleteFoodItem} />
 
-      <div style={{ marginBottom: 28 }}>
-        <button onClick={() => setShowAbstinence(true)} style={{
-          width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "none", border: "none", borderBottom: `1px solid ${INK_SOFT}22`, paddingBottom: 8, cursor: "pointer"
-        }}>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 19, color: TEXT, margin: 0 }}>Abstinence</h2>
-          <ChevronRight size={16} />
-        </button>
-      </div>
+      <button onClick={() => setShowAbstinence(true)} className="fade-up" style={{
+        width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+        background: CARD, border: `1px solid ${INK_SOFT}18`, borderRadius: 22, padding: "18px 16px",
+        cursor: "pointer", marginBottom: 20
+      }}>
+        <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>Abstinence</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {data.abstinence.length > 0 && (
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: SLATE }}>{data.abstinence.length} tracker{data.abstinence.length === 1 ? "" : "s"}</span>
+          )}
+          <ChevronRight size={16} color={SLATE} />
+        </div>
+      </button>
 
-      <div style={{ marginBottom: 28 }}>
-        <button onClick={() => setHistoryOpen(!historyOpen)} style={{
-          width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "none", border: "none", borderBottom: `1px solid ${INK_SOFT}22`, paddingBottom: 8, marginBottom: 10, cursor: "pointer"
-        }}>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 19, color: TEXT, margin: 0 }}>History</h2>
-          {historyOpen ? <ChevronLeft size={16} style={{ transform: "rotate(-90deg)" }} /> : <ChevronRight size={16} style={{ transform: "rotate(90deg)" }} />}
-        </button>
-        {historyOpen && (
-          <>
-            {data.habits.length === 0 && <Empty text="No days logged yet." />}
-            {data.habits.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map(h => (
-              <HabitLogRow key={h.id} log={h} onSave={updates => editHabitLog(h.id, updates)} onDelete={() => deleteHabitLog(h.id)} />
-            ))}
-          </>
-        )}
-      </div>
+      <Section title="History" eyebrow="every logged day" collapsible open={historyOpen} onToggle={() => setHistoryOpen(!historyOpen)}>
+        {data.habits.length === 0 && <Empty text="No days logged yet." />}
+        {data.habits.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map(h => (
+          <HabitLogRow key={h.id} log={h} onSave={updates => editHabitLog(h.id, updates)} onDelete={() => deleteHabitLog(h.id)} />
+        ))}
+      </Section>
     </>
   );
 }
 
 function HabitLogRow({ log, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [f, setF] = useState({
     weight: log.weight || "", wakeTime: log.wakeTime || "", sleepTime: log.sleepTime || "",
     trainingNote: log.trainingNote || "", trained: !!log.trained, alcoholDrinks: log.alcoholDrinks || 0,
@@ -809,17 +789,19 @@ function HabitLogRow({ log, onSave, onDelete }) {
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+    <div onClick={() => setRevealed(r => !r)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${INK_SOFT}18`, cursor: "pointer", userSelect: "none" }}>
       <div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{log.date}</div>
         <div style={{ fontSize: 11, color: SLATE }}>
           {log.trained ? "Trained" : "Rest"}{log.weight ? ` · ${log.weight}kg` : ""}{log.alcoholDrinks ? ` · ${log.alcoholDrinks} drink${log.alcoholDrinks === 1 ? "" : "s"}` : ""}
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-        <DeleteBtn onDelete={onDelete} />
-      </div>
+      {revealed && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
+          <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
+          <DeleteBtn onDelete={onDelete} />
+        </div>
+      )}
     </div>
   );
 }

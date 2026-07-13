@@ -608,17 +608,22 @@ export default function FinanceOS() {
                 </div>
               }
             >
-              <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Current spend this period</div>
-                    <div style={{ fontFamily: "Georgia, serif", fontSize: 28, marginTop: 2 }}>{fmt(spentThisPeriod)}</div>
-                    <div style={{ fontSize: 11, color: SAGE, marginTop: 2 }}>{fmt(incomeThisPeriod)} income this period</div>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: 34, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{fmt(spentThisPeriod)}</div>
+                    <div style={{ fontSize: 11.5, color: SLATE, marginTop: 3 }}>of <b style={{ color: SAGE }}>{fmt(incomeThisPeriod)}</b> income this period</div>
                   </div>
                   {vsAvg !== null && (
-                    <div style={{ textAlign: "right", fontSize: 11.5, color: vsAvg <= 0 ? SAGE : RUST, maxWidth: 130 }}>
-                      <span style={{ fontWeight: 700 }}>{fmt(Math.abs(vsAvg))}</span> {vsAvg <= 0 ? "below" : "above"} avg spend
-                    </div>
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginTop: 4,
+                      padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                      color: vsAvg <= 0 ? SAGE : RUST, background: vsAvg <= 0 ? `${SAGE}1a` : `${RUST}1a`,
+                      border: `1px solid ${vsAvg <= 0 ? SAGE : RUST}40`
+                    }}>
+                      {vsAvg <= 0 ? <TrendingDown size={11} /> : <TrendingUp size={11} />}
+                      {fmt(Math.abs(vsAvg))} vs avg
+                    </span>
                   )}
                 </div>
                 {cumulativeSpendData.length > 1 && (
@@ -655,7 +660,7 @@ export default function FinanceOS() {
                 {...paydayLongPress}
                 style={{
                   display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-                  background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 10, padding: "12px 14px", cursor: "pointer"
+                  background: PAPER_DIM, border: "none", borderRadius: 10, padding: "12px 14px", cursor: "pointer"
                 }}
               >
                 <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(77,159,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Check, Edit2 } from "lucide-react";
 import { BarChart, Bar, XAxis, ReferenceLine, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { TEAL, AMBER, CORAL, RUST, SLATE, TEXT, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
 import { todayStr, addDays } from "../lib/helpers.js";
-import { Section, IconBtn, DeleteBtn, SmallBtn, Field, Empty, BottomSheet, inputStyle, minimalInputStyle, useLongPress } from "./shared.jsx";
+import { Section, IconBtn, DeleteBtn, SmallBtn, Field, Empty, BottomSheet, inputStyle, minimalInputStyle } from "./shared.jsx";
 
 const MEALS = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
@@ -57,7 +57,6 @@ function FoodItemRow({ item, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [f, setF] = useState({ name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat });
-  const longPress = useLongPress(() => setRevealed(true));
   if (editing) {
     return (
       <div style={{ padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
@@ -76,12 +75,12 @@ function FoodItemRow({ item, onSave, onDelete }) {
     );
   }
   return (
-    <div {...longPress} onClick={() => revealed && setRevealed(false)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 12.5, cursor: "pointer", userSelect: "none" }}>
+    <div onClick={() => setRevealed(r => !r)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${INK_SOFT}18`, fontSize: 12.5, cursor: "pointer", userSelect: "none" }}>
       <div>
         <div style={{ fontWeight: 600 }}>{item.name}</div>
         <div style={{ color: SLATE, fontSize: 11 }}>P {item.protein || 0}g · C {item.carbs || 0}g · F {item.fat || 0}g</div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => revealed && e.stopPropagation()}>
         <span style={{ fontWeight: 700, color: AMBER }}>{item.calories || 0} cal</span>
         {revealed && (
           <>
