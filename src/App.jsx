@@ -13,6 +13,10 @@ import { GoalsTab } from "./components/GoalsTab.jsx";
 import { DebtTab } from "./components/DebtTab.jsx";
 import { HabitsTab } from "./components/HabitsTab.jsx";
 import { SettingsTab } from "./components/SettingsTab.jsx";
+import { LifeScoreCard } from "./components/LifeScore.jsx";
+import { QuickAddFab, QuickAddSheet } from "./components/QuickAdd.jsx";
+import { computeLifeScore } from "./lib/scoreEngine.js";
+import { computeInsights } from "./lib/insightEngine.js";
 
 export default function FinanceOS() {
   const [data, setData] = useState(() => defaultData());
@@ -21,6 +25,7 @@ export default function FinanceOS() {
   const [confirmAction, setConfirmAction] = useState(null); // "demo" | "empty" | null
   const [showPaycheckSheet, setShowPaycheckSheet] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editingRent, setEditingRent] = useState(false);
   const paydayLongPress = useLongPress(() => setShowPaycheckSheet(true));
   const rentLongPress = useLongPress(() => setEditingRent(true));
@@ -198,34 +203,9 @@ export default function FinanceOS() {
       }, null)
     : null;
 
-  // Cross-domain patterns: does spend differ on drinking days, does identity differ on training days
-  const drinkSpendInsight = (() => {
-    const cutoff = addDays(todayStr(), -60);
-    const relevant = data.habits.filter(h => h.date >= cutoff && h.date <= todayStr());
-    const drinkDays = relevant.filter(h => h.alcoholDrinks > 0).map(h => h.date);
-    const soberDays = relevant.filter(h => !(h.alcoholDrinks > 0)).map(h => h.date);
-    if (drinkDays.length < 3 || soberDays.length < 3) return null;
-    const avgSpend = dates => {
-      const total = data.transactions.filter(t => t.type === "expense" && dates.includes(t.date)).reduce((s, t) => s + t.amount, 0);
-      return total / dates.length;
-    };
-    const drinkAvg = avgSpend(drinkDays);
-    const soberAvg = avgSpend(soberDays);
-    if (Math.abs(drinkAvg - soberAvg) < 1) return null;
-    return { drinkAvg, soberAvg, diff: drinkAvg - soberAvg };
-  })();
-  const trainingIdentityInsight = (() => {
-    const cutoff = addDays(todayStr(), -30);
-    const relevant = data.habits.filter(h => h.date >= cutoff && h.date <= todayStr() && h.identityScore !== undefined);
-    const trainedScores = relevant.filter(h => h.trained).map(h => h.identityScore);
-    const restScores = relevant.filter(h => !h.trained).map(h => h.identityScore);
-    if (trainedScores.length < 3 || restScores.length < 3) return null;
-    const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
-    const trainedAvg = avg(trainedScores);
-    const restAvg = avg(restScores);
-    if (Math.abs(trainedAvg - restAvg) < 0.3) return null;
-    return { trainedAvg, restAvg, diff: trainedAvg - restAvg };
-  })();
+  // Life Score + cross-domain insights come from the deterministic engines
+  const lifeScore = computeLifeScore(data);
+  const insights = computeInsights(data);
 
   const todayLog = data.habits.find(h => h.date === todayStr());
   const checkedInToday = !!(todayLog && (todayLog.identityScore !== undefined || todayLog.wakeTime || todayLog.weight));
@@ -564,6 +544,17 @@ export default function FinanceOS() {
       <div key={tab} className="stagger" style={{ padding: "18px 16px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "dashboard" && (
           <>
+            <div className="fade-up" style={{ marginBottom: 16, padding: "0 2px" }}>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700 }}>
+                {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; })()}, Antonio.
+              </div>
+              <div style={{ fontSize: 11.5, color: SLATE, marginTop: 3 }}>
+                {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · day {period.dayIndex + 1} of {period.totalDays} this pay period
+              </div>
+            </div>
+
+            <LifeScoreCard result={lifeScore} />
+
             <button
               onClick={() => setShowCheckIn(true)}
               style={{
@@ -582,10 +573,10 @@ export default function FinanceOS() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: checkedInToday ? TEXT : VIOLET }}>
-                    {checkedInToday ? "Today's check-in logged" : "Daily check-in"}
+                    {checkedInToday ? "Today's check-in logged" : new Date().getHours() >= 17 ? "Evening check-in" : "Daily check-in"}
                   </div>
                   <div style={{ fontSize: 11, color: SLATE, marginTop: 1 }}>
-                    {checkedInToday ? "Tap to edit" : "Identity, sleep, weight — one screen"}
+                    {checkedInToday ? "Tap to edit" : new Date().getHours() >= 17 ? "How was today?" : "Identity, sleep, weight — one screen"}
                   </div>
                 </div>
               </div>
@@ -763,12 +754,12 @@ export default function FinanceOS() {
               </Section>
             )}
 
-            {(budgetStreak > 0 || longestAbstinence || drinkSpendInsight || trainingIdentityInsight) && (
-              <Section title="Momentum">
+            {(budgetStreak > 0 || longestAbstinence || insights.length > 0) && (
+              <Section title="Momentum" eyebrow={insights.length > 0 ? "patterns found in your last 60 days" : undefined}>
                 {(budgetStreak > 0 || longestAbstinence) && (
                   <div style={{
                     display: "grid", gridTemplateColumns: budgetStreak > 0 && longestAbstinence ? "1fr 1fr" : "1fr", gap: 8,
-                    marginBottom: (drinkSpendInsight || trainingIdentityInsight) ? 14 : 0
+                    marginBottom: insights.length > 0 ? 14 : 0
                   }}>
                     {budgetStreak > 0 && (
                       <StatTile icon={TrendingUp} color={SAGE} value={budgetStreak} label="Budget streak" caption={`pay period${budgetStreak === 1 ? "" : "s"} under budget`} />
@@ -778,16 +769,21 @@ export default function FinanceOS() {
                     )}
                   </div>
                 )}
-                {drinkSpendInsight && (
-                  <div style={{ fontSize: 12.5, color: TEXT, lineHeight: 1.5, marginBottom: trainingIdentityInsight ? 8 : 0 }}>
-                    You spend <b style={{ color: drinkSpendInsight.diff > 0 ? RUST : SAGE }}>{fmt(Math.abs(drinkSpendInsight.diff))} {drinkSpendInsight.diff > 0 ? "more" : "less"}</b> on days you log a drink, on average.
+                {insights.map((ins, i) => (
+                  <div key={ins.id} style={{ display: "flex", alignItems: "flex-start", gap: 9, paddingBottom: i < insights.length - 1 ? 10 : 0, marginBottom: i < insights.length - 1 ? 10 : 0, borderBottom: i < insights.length - 1 ? `1px solid ${INK_SOFT}14` : "none" }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: "50%", marginTop: 5, flexShrink: 0,
+                      background: ins.direction === "positive" ? SAGE : ins.direction === "negative" ? RUST : SLATE
+                    }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: TEXT, lineHeight: 1.4 }}>{ins.headline}</div>
+                      <div style={{ fontSize: 11, color: SLATE, marginTop: 2 }}>
+                        {ins.comparison} · {ins.sample}
+                        <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: VIOLET }}>{ins.confidence}</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {trainingIdentityInsight && (
-                  <div style={{ fontSize: 12.5, color: TEXT, lineHeight: 1.5 }}>
-                    Identity score averages <b style={{ color: VIOLET }}>{trainingIdentityInsight.trainedAvg.toFixed(1)}</b> on training days vs <b style={{ color: VIOLET }}>{trainingIdentityInsight.restAvg.toFixed(1)}</b> on rest days.
-                  </div>
-                )}
+                ))}
               </Section>
             )}
 
@@ -968,6 +964,21 @@ export default function FinanceOS() {
           daysUntilPayday={daysUntilPayday}
         />
       )}
+
+      {showQuickAdd && (
+        <QuickAddSheet
+          data={data}
+          onClose={() => setShowQuickAdd(false)}
+          addExpense={addExpense}
+          addIncome={addIncome}
+          addFoodItem={addFoodItem}
+          incrementAlcohol={incrementAlcohol}
+          toggleHabitBool={toggleHabitBool}
+          upsertHabitLog={upsertHabitLog}
+          openCheckIn={() => { setShowQuickAdd(false); setShowCheckIn(true); }}
+        />
+      )}
+      {!showQuickAdd && tab !== "settings" && <QuickAddFab onClick={() => setShowQuickAdd(true)} />}
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: INK, display: "flex", borderTop: `1px solid ${INK_SOFT}22`, padding: "6px 6px" }}>
