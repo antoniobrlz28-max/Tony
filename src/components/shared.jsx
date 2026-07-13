@@ -83,7 +83,8 @@ export function SmallBtn({ children, onClick, tone = "ink", style }) {
       style={{
         background: bg, color, border: tone === "ghost" ? `1px solid ${INK_SOFT}55` : "none",
         borderRadius: 999, padding: "9px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-        display: "inline-flex", alignItems: "center", gap: 5, ...style
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+        minHeight: 34, lineHeight: 1, whiteSpace: "nowrap", ...style
       }}
     >
       {children}
@@ -100,8 +101,11 @@ export function useLongPress(onLongPress, ms = 450) {
 
 export function IconBtn({ icon: Icon, onClick, color, label }) {
   return (
-    <button onClick={onClick} aria-label={label || "Action"} style={{ background: "none", border: "none", cursor: "pointer", color: color || SLATE, padding: 4, display: "flex" }}>
-      <Icon size={14} />
+    <button onClick={onClick} aria-label={label || "Action"} style={{
+      background: "none", border: "none", cursor: "pointer", color: color || SLATE,
+      padding: 7, margin: -3, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8
+    }}>
+      <Icon size={15} />
     </button>
   );
 }
@@ -127,11 +131,11 @@ export function Field({ label, children }) {
   );
 }
 export const inputStyle = {
-  border: `1px solid ${INK_SOFT}40`, borderRadius: 14, padding: "9px 12px", fontSize: 13.5,
+  border: `1px solid ${INK_SOFT}40`, borderRadius: 12, padding: "10px 12px", fontSize: 14, minHeight: 40,
   background: PAPER_DIM, color: TEXT, fontFamily: "inherit", width: "100%", boxSizing: "border-box"
 };
 export const minimalInputStyle = {
-  border: "none", borderBottom: `1px solid ${INK_SOFT}35`, borderRadius: 0, padding: "8px 2px", fontSize: 13.5,
+  border: "none", borderBottom: `1px solid ${INK_SOFT}35`, borderRadius: 0, padding: "9px 2px", fontSize: 14,
   background: "transparent", color: TEXT, fontFamily: "inherit", width: "100%", boxSizing: "border-box"
 };
 

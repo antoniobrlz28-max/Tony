@@ -1,10 +1,62 @@
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Native widgets (date/time pickers, selects, scrollbars) render dark */
+:root {
+  color-scheme: dark;
 }
 
 html, body, #root {
   margin: 0;
   padding: 0;
+}
+
+body {
+  background: #0B0F15;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Uniform press feedback on every tappable thing */
+button {
+  touch-action: manipulation;
+  transition: opacity 0.12s ease, background 0.15s ease;
+}
+button:active {
+  opacity: 0.75;
+}
+
+/* Focus: accent border instead of the default outline ring */
+input, select, textarea {
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #4D9FFF !important;
+}
+
+/* Numeric fields without the stepper arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #28313D;
+  border-radius: 3px;
+}
+
+::selection {
+  background: rgba(77, 159, 255, 0.35);
 }
 
 @keyframes spin {
@@ -20,6 +72,11 @@ html, body, #root {
   animation: spin 0.8s linear infinite;
 }
 
-body {
-  background: #0B0F15;
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+  button {
+    transition: none;
+  }
 }

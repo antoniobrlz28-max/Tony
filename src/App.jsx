@@ -32,6 +32,12 @@ export default function FinanceOS() {
     setData(defaultData());
     setConfirmAction(null);
   }
+  function restoreData(raw) {
+    if (!raw || !Array.isArray(raw.accounts) || !Array.isArray(raw.transactions) || !Array.isArray(raw.categories)) {
+      throw new Error("That file doesn't look like a Life OS backup.");
+    }
+    setData(migrate(raw));
+  }
 
   useEffect(() => {
     try {
@@ -926,6 +932,7 @@ export default function FinanceOS() {
             setConfirmAction={setConfirmAction}
             loadDemoData={loadDemoData}
             clearData={clearData}
+            onRestore={restoreData}
             onBack={() => setTab("dashboard")}
           />
         )}
