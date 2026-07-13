@@ -233,8 +233,18 @@ export default function FinanceOS() {
   function categorySpend(catId) {
     return periodTx.filter(t => t.type === "expense" && t.categoryId === catId).reduce((s, t) => s + t.amount, 0);
   }
+  // Rent is paid once a month but pay periods are shorter, so the rent row
+  // compares calendar month vs monthly rent — otherwise every period containing
+  // the rent payment would falsely read as massively over budget.
+  const rentSpentThisMonth = (() => {
+    const rentCat = data.categories.find(isRentCategory);
+    if (!rentCat) return 0;
+    return data.transactions
+      .filter(t => t.type === "expense" && t.categoryId === rentCat.id && t.date.startsWith(currentMonth))
+      .reduce((s, t) => s + t.amount, 0);
+  })();
   function categoryBudget(c) {
-    if (isRentCategory(c)) return rentBudgetThisPeriod;
+    if (isRentCategory(c)) return Number(data.fixedRent) || 0;
     return (afterRentIncome * Number(c.percent || 0)) / 100;
   }
 
@@ -551,7 +561,7 @@ export default function FinanceOS() {
         )}
       </div>
 
-      <div style={{ padding: "18px 16px", maxWidth: 640, margin: "0 auto" }}>
+      <div key={tab} className="stagger" style={{ padding: "18px 16px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "dashboard" && (
           <>
             <button
@@ -805,7 +815,7 @@ export default function FinanceOS() {
 
             <Section
               title="Budget split"
-              eyebrow={`Income this period: ${fmt(incomeThisPeriod)} · after rent: ${fmt(afterRentIncome)}`}
+              eyebrow={`${fmt(incomeThisPeriod)} in · ${fmt(afterRentIncome)} after rent`}
               right={<span style={{ fontSize: 11, color: catPercentTotal !== 100 ? RUST : SLATE }}>{catPercentTotal}% of after-rent</span>}
             >
               {editingRent ? (
@@ -850,7 +860,9 @@ export default function FinanceOS() {
               )}
 
               {data.categories.map(c => (
-                <CategoryRow key={c.id} category={c} spent={categorySpend(c.id)} budget={categoryBudget(c)}
+                <CategoryRow key={c.id} category={c}
+                  spent={isRentCategory(c) ? rentSpentThisMonth : categorySpend(c.id)}
+                  budget={categoryBudget(c)}
                   fixed={isRentCategory(c)} derivedPct={rentPctOfIncome}
                   onSave={updates => editCategory(c.id, updates)} onDelete={() => deleteCategory(c.id)} />
               ))}
@@ -979,6 +991,7 @@ export default function FinanceOS() {
 
 function CategoryRow({ category, spent, budget, fixed = false, derivedPct = null, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [name, setName] = useState(category.name);
   const [percent, setPercent] = useState(category.percent);
   const pct = budget > 0 ? (spent / budget) * 100 : 0;
@@ -994,24 +1007,31 @@ function CategoryRow({ category, spent, budget, fixed = false, derivedPct = null
     );
   }
   const barColor = lerpColor(SAGE, RUST, Math.min(1, pct / 100));
-  const pctLabel = fixed
-    ? (derivedPct !== null ? `${derivedPct}% of income · from monthly rent` : "from monthly rent")
-    : `${category.percent}% of after-rent`;
+  const pctPill = fixed ? (derivedPct !== null ? `${derivedPct}% of income` : "monthly") : `${category.percent}%`;
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-        <span style={{ fontWeight: 600 }}>{category.name} <span style={{ color: SLATE, fontWeight: 400, fontSize: 11.5 }}>({pctLabel})</span></span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: pct > 100 ? RUST : SLATE }}>{fmt(spent)} / {fmt(budget)}</span>
-          <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-          <DeleteBtn onDelete={onDelete} />
+    <div onClick={() => setRevealed(r => !r)} style={{ marginBottom: 14, cursor: "pointer", userSelect: "none" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{category.name}</span>
+          <span style={{ fontSize: 9.5, fontWeight: 700, color: SLATE, background: PAPER_DIM, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap", flexShrink: 0 }}>{pctPill}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }} onClick={e => revealed && e.stopPropagation()}>
+          <span style={{ fontSize: 12, color: pct > 100 ? RUST : SLATE, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+            {fmt(spent)} <span style={{ opacity: 0.6 }}>/ {fmt(budget)}</span>
+          </span>
+          {revealed && (
+            <>
+              <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
+              <DeleteBtn onDelete={onDelete} />
+            </>
+          )}
         </div>
       </div>
-      <div style={{ height: 8, background: PAPER_DIM, borderRadius: 4, overflow: "hidden", border: `1px solid ${INK_SOFT}18` }}>
-        <div style={{ height: "100%", width: Math.min(100, pct) + "%", background: barColor, borderRadius: 4, transition: "width 0.3s" }} />
+      <div style={{ height: 7, background: PAPER_DIM, borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: Math.min(100, pct) + "%", background: barColor, borderRadius: 4, transition: "width 0.4s ease" }} />
       </div>
       <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SLATE, marginTop: 4 }}>
-        {pct > 100 ? `${fmt(spent - budget)} over budget` : `${fmt(Math.max(0, budget - spent))} left`}
+        {pct > 100 ? `${fmt(spent - budget)} over` : `${fmt(Math.max(0, budget - spent))} left`}{fixed ? " this month" : ""}
       </div>
     </div>
   );
@@ -1024,9 +1044,10 @@ function AddCategoryForm({ onAdd }) {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} style={{
-        width: 34, height: 34, borderRadius: "50%", border: `1px solid ${INK_SOFT}30`, background: CARD,
-        color: TEXT, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 8
-      }}><Plus size={16} /></button>
+        display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, padding: "7px 14px",
+        borderRadius: 999, border: `1px dashed ${INK_SOFT}55`, background: "transparent",
+        color: SLATE, fontSize: 12, fontWeight: 600, cursor: "pointer"
+      }}><Plus size={13} /> Add category</button>
     );
   }
   return (

@@ -55,8 +55,8 @@ function FastingModal({ date, log, onClose, onSave, blockNew }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(4,7,12,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }} onClick={onClose}>
-      <div style={{ background: CARD, borderRadius: 12, padding: 20, width: "100%", maxWidth: 340, boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }} onClick={e => e.stopPropagation()}>
+    <div className="overlay-in" style={{ position: "fixed", inset: 0, background: "rgba(4,7,12,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }} onClick={onClose}>
+      <div className="sheet-in" style={{ background: CARD, borderRadius: 12, padding: 20, width: "100%", maxWidth: 340, boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <span style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700 }}>{date}</span>
           <IconBtn icon={X} onClick={onClose} label="Close" />

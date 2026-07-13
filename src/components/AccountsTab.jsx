@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Plus, Wallet, Landmark, PiggyBank, Check, X, Edit2 } from "lucide-react";
+import { Plus, Check, X, Edit2 } from "lucide-react";
 import { ACCOUNT_TYPES, ACCENT, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, SAGE } from "../lib/constants.js";
 import { uid, fmt } from "../lib/helpers.js";
-import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle } from "./shared.jsx";
+import { Section, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle } from "./shared.jsx";
 
 export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -14,8 +14,9 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
   }
 
   const totalBalance = data.accounts.reduce((s, a) => s + a.balance, 0);
-  const checkingTotal = data.accounts.filter(a => a.type === "checking").reduce((s, a) => s + a.balance, 0);
-  const savingsTotal = data.accounts.filter(a => a.type === "savings").reduce((s, a) => s + a.balance, 0);
+  const typeTotals = ACCOUNT_TYPES
+    .map(t => ({ ...t, total: data.accounts.filter(a => a.type === t.id).reduce((s, a) => s + a.balance, 0), count: data.accounts.filter(a => a.type === t.id).length }))
+    .filter(t => t.count > 0);
 
   return (
     <Section
@@ -24,10 +25,21 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
       right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add account</SmallBtn>}
     >
       {data.accounts.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={Wallet} color={SAGE} valueColor={SAGE} value={fmt(totalBalance)} label="Total" caption={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`} />
-          <StatTile icon={Landmark} color={SAGE} valueColor={SAGE} value={fmt(checkingTotal)} label="Checking" caption="everyday spending" />
-          <StatTile icon={PiggyBank} color={SAGE} valueColor={SAGE} value={fmt(savingsTotal)} label="Savings" caption="set aside" />
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total balance</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 700, color: SAGE, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{fmt(totalBalance)}</div>
+          {typeTotals.length > 1 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+              {typeTotals.map(t => {
+                const TypeIcon = t.icon;
+                return (
+                  <span key={t.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: PAPER_DIM, borderRadius: 999, padding: "5px 11px", fontSize: 11.5, color: SLATE }}>
+                    <TypeIcon size={11} /> {t.label} <b style={{ color: TEXT, fontVariantNumeric: "tabular-nums" }}>{fmt(t.total)}</b>
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -43,6 +55,7 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
 
 function AccountRow({ account, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [name, setName] = useState(account.name);
   const [balance, setBalance] = useState(account.balance);
   const [type, setType] = useState(account.type);
@@ -63,23 +76,30 @@ function AccountRow({ account, onSave, onDelete }) {
   const typeInfo = ACCOUNT_TYPES.find(t => t.id === account.type) || ACCOUNT_TYPES[0];
   const TypeIcon = typeInfo.icon;
   return (
-    <div style={{
+    <div onClick={() => setRevealed(r => !r)} style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "10px 12px", marginBottom: 8, borderRadius: 8, background: PAPER_DIM
+      padding: "11px 12px", marginBottom: 8, borderRadius: 10, background: PAPER_DIM,
+      cursor: "pointer", userSelect: "none"
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: CARD, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <TypeIcon size={15} color={SLATE} />
         </div>
-        <div>
-          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{account.name}</div>
-          <div style={{ fontSize: 11, color: SLATE }}>{typeInfo.label}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{account.name}</div>
+          {typeInfo.label.toLowerCase() !== account.name.toLowerCase() && (
+            <div style={{ fontSize: 11, color: SLATE }}>{typeInfo.label}</div>
+          )}
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: SAGE }}>{fmt(account.balance)}</span>
-        <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-        <DeleteBtn onDelete={onDelete} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} onClick={e => revealed && e.stopPropagation()}>
+        <span style={{ fontSize: 14.5, fontWeight: 700, color: SAGE, fontVariantNumeric: "tabular-nums" }}>{fmt(account.balance)}</span>
+        {revealed && (
+          <>
+            <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
+            <DeleteBtn onDelete={onDelete} />
+          </>
+        )}
       </div>
     </div>
   );

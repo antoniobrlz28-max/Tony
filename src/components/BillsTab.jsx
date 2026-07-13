@@ -237,6 +237,7 @@ function SubscriptionsView({ data, deleteBill, onBack }) {
 
 function BillRow({ bill, onPay, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [name, setName] = useState(bill.name);
   const [amount, setAmount] = useState(bill.amount);
   const [dueDate, setDueDate] = useState(bill.dueDate);
@@ -260,9 +261,9 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
   }
 
   return (
-    <div style={{
+    <div onClick={() => setRevealed(r => !r)} style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "10px 10px 10px 12px", marginBottom: 8, borderRadius: 8,
+      padding: "10px 10px 10px 12px", marginBottom: 8, borderRadius: 8, cursor: "pointer", userSelect: "none",
       borderLeft: `3px solid ${accent}`, background: daysUntil < 0 ? `${RUST}14` : PAPER_DIM
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -277,19 +278,22 @@ function BillRow({ bill, onPay, onSave, onDelete }) {
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{fmt(bill.amount)}</span>
-        {paidToday ? (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: TEXT, fontVariantNumeric: "tabular-nums" }}>{fmt(bill.amount)}</span>
+        {revealed ? (
+          <>
+            <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
+            <DeleteBtn onDelete={onDelete} />
+          </>
+        ) : paidToday ? (
           <span style={{
             display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 999,
             background: `${SAGE}22`, color: SAGE, border: `1px solid ${SAGE}55`,
             fontSize: 11, fontWeight: 700, whiteSpace: "nowrap"
           }}><Check size={11} /> Paid</span>
         ) : (
-          <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 10px", fontSize: 11 }}><CreditCard size={11} /> Mark paid</SmallBtn>
+          <SmallBtn tone="gold" onClick={onPay} style={{ padding: "5px 12px", fontSize: 11, minHeight: 30 }}><CreditCard size={11} /> Pay</SmallBtn>
         )}
-        <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-        <DeleteBtn onDelete={onDelete} />
       </div>
     </div>
   );
