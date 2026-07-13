@@ -27,7 +27,7 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
       {data.accounts.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total balance</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 700, color: SAGE, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{fmt(totalBalance)}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: SAGE, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{fmt(totalBalance)}</div>
           {typeTotals.length > 1 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
               {typeTotals.map(t => {
@@ -118,7 +118,7 @@ function AddAccountForm({ onAdd, onCancel }) {
             <button key={t.id} onClick={() => setType(t.id)} style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "8px 10px", borderRadius: 10, border: `1px solid ${active ? ACCENT : INK_SOFT + "40"}`,
-              background: active ? "rgba(77,159,255,0.12)" : "transparent", color: active ? ACCENT : TEXT, cursor: "pointer"
+              background: active ? "rgba(99,102,241,0.12)" : "transparent", color: active ? ACCENT : TEXT, cursor: "pointer"
             }}>
               <TypeIcon size={14} /> <span style={{ fontSize: 12.5 }}>{t.label}</span>
             </button>

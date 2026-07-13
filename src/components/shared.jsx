@@ -8,7 +8,7 @@ export function Section({ title, eyebrow, children, right, collapsible = false, 
     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: collapsible && !open ? 0 : 14 }}>
       <div>
         {eyebrow && <div style={{ fontSize: 11, letterSpacing: "0.12em", color: SLATE, textTransform: "uppercase", marginBottom: 2 }}>{eyebrow}</div>}
-        <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>{title}</h2>
+        <h2 style={{ fontSize: 18, color: TEXT, margin: 0 }}>{title}</h2>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {right}
@@ -75,7 +75,7 @@ export function CountdownPill({ days, totalDays }) {
 }
 
 export function SmallBtn({ children, onClick, tone = "ink", style }) {
-  const bg = tone === "ink" ? "#28313D" : tone === "gold" ? ACCENT : tone === "rust" ? RUST : "transparent";
+  const bg = tone === "ink" ? "#1C2333" : tone === "gold" ? ACCENT : tone === "rust" ? RUST : "transparent";
   const color = tone === "ghost" ? TEXT : PAPER;
   return (
     <button
@@ -181,7 +181,7 @@ export function BottomSheet({ title, onClose, children }) {
     <div className="overlay-in" style={{ position: "fixed", inset: 0, background: "rgba(4,7,12,0.65)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }} onClick={onClose}>
       <div className="sheet-in" style={{ background: CARD, borderRadius: "20px 20px 0 0", padding: "18px 16px 24px", width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 -10px 30px rgba(0,0,0,0.3)" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <h3 style={{ fontFamily: "Georgia, serif", fontSize: 17, color: TEXT, margin: 0 }}>{title}</h3>
+          <h3 style={{ fontSize: 17, color: TEXT, margin: 0 }}>{title}</h3>
           <IconBtn icon={X} onClick={onClose} label="Close" />
         </div>
         {children}
@@ -196,7 +196,7 @@ export function StatTile({ icon: Icon, color, value, label, caption, valueColor 
       <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${color}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
         <Icon size={13} color={color} />
       </div>
-      <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: valueColor || TEXT, lineHeight: 1.15, overflowWrap: "break-word" }}>{value}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: valueColor || TEXT, lineHeight: 1.15, overflowWrap: "break-word" }}>{value}</div>
       <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 3 }}>{label}</div>
       <div style={{ fontSize: 9.5, color, marginTop: 2 }}>{caption}</div>
     </div>

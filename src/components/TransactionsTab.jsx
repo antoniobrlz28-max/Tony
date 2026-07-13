@@ -81,14 +81,14 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Amount</div>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3 }}>
-            <span style={{ fontFamily: "Georgia, serif", fontSize: 20, color: SLATE }}>$</span>
+            <span style={{ fontSize: 20, color: SLATE }}>$</span>
             <input
               type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") submit(); }}
               placeholder="0.00"
               style={{
                 border: "none", borderBottom: `2px solid ${INK_SOFT}40`, background: "transparent", color: TEXT,
-                fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 700, textAlign: "center", width: 160, padding: "2px 0"
+                fontSize: 32, fontWeight: 700, textAlign: "center", width: 160, padding: "2px 0"
               }}
             />
           </div>
@@ -100,7 +100,7 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
             {data.accounts.map(a => (
               <button key={a.id} onClick={() => setAccountId(a.id)} style={{
                 padding: "6px 12px", borderRadius: 999, border: `1px solid ${accountId === a.id ? ACCENT : INK_SOFT + "40"}`,
-                background: accountId === a.id ? "rgba(77,159,255,0.12)" : "transparent", color: accountId === a.id ? ACCENT : TEXT,
+                background: accountId === a.id ? "rgba(99,102,241,0.12)" : "transparent", color: accountId === a.id ? ACCENT : TEXT,
                 fontSize: 12.5, cursor: "pointer"
               }}>{a.name}</button>
             ))}
@@ -114,7 +114,7 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
               {data.accounts.map(a => (
                 <button key={a.id} onClick={() => setToAccountId(a.id)} style={{
                   padding: "6px 12px", borderRadius: 999, border: `1px solid ${toAccountId === a.id ? ACCENT : INK_SOFT + "40"}`,
-                  background: toAccountId === a.id ? "rgba(77,159,255,0.12)" : "transparent", color: toAccountId === a.id ? ACCENT : TEXT,
+                  background: toAccountId === a.id ? "rgba(99,102,241,0.12)" : "transparent", color: toAccountId === a.id ? ACCENT : TEXT,
                   fontSize: 12.5, cursor: "pointer"
                 }}>{a.name}</button>
               ))}
@@ -129,7 +129,7 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
               {data.categories.map(c => (
                 <button key={c.id} onClick={() => setCategoryId(c.id)} style={{
                   padding: "6px 12px", borderRadius: 999, border: `1px solid ${categoryId === c.id ? ACCENT : INK_SOFT + "40"}`,
-                  background: categoryId === c.id ? "rgba(77,159,255,0.12)" : "transparent", color: categoryId === c.id ? ACCENT : TEXT,
+                  background: categoryId === c.id ? "rgba(99,102,241,0.12)" : "transparent", color: categoryId === c.id ? ACCENT : TEXT,
                   fontSize: 12.5, cursor: "pointer"
                 }}>{c.name}</button>
               ))}
@@ -164,7 +164,7 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
               {[["all", "All"], ["expense", "Expense"], ["income", "Income"], ["transfer", "Transfer"]].map(([v, label]) => (
                 <button key={v} onClick={() => { setTypeFilter(v); setVisible(PAGE_SIZE); }} style={{
                   padding: "5px 11px", borderRadius: 999, border: `1px solid ${typeFilter === v ? ACCENT : INK_SOFT + "40"}`,
-                  background: typeFilter === v ? "rgba(77,159,255,0.12)" : "transparent",
+                  background: typeFilter === v ? "rgba(99,102,241,0.12)" : "transparent",
                   color: typeFilter === v ? ACCENT : SLATE, fontSize: 11.5, fontWeight: typeFilter === v ? 700 : 400, cursor: "pointer"
                 }}>{label}</button>
               ))}

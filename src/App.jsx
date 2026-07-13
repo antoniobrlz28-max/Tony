@@ -14,6 +14,7 @@ import { DebtTab } from "./components/DebtTab.jsx";
 import { HabitsTab } from "./components/HabitsTab.jsx";
 import { SettingsTab } from "./components/SettingsTab.jsx";
 import { LifeScoreCard } from "./components/LifeScore.jsx";
+import { Orbit } from "./components/Orbit.jsx";
 import { QuickAddFab, QuickAddSheet } from "./components/QuickAdd.jsx";
 import { computeLifeScore } from "./lib/scoreEngine.js";
 import { computeInsights } from "./lib/insightEngine.js";
@@ -493,14 +494,16 @@ export default function FinanceOS() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: INK, fontFamily: "system-ui, sans-serif", color: TEXT, paddingBottom: 70 }}>
+    <div style={{ minHeight: "100vh", background: INK, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif", color: TEXT, paddingBottom: 70 }}>
       {/* Header + paycheck runway */}
       <div style={{ background: INK, color: PAPER, padding: "18px 16px 16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h1 style={{ fontFamily: "Georgia, serif", fontSize: 21, margin: 0, letterSpacing: "0.01em" }}>Life OS</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Orbit size={22} mode={saving ? "spin" : "logo"} />
+            <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0, letterSpacing: "-0.01em" }}>life OS</h1>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: saving ? ACCENT : SLATE }}>
-              {saving && <RefreshCw size={11} className="spinner" />}
+            <span style={{ fontSize: 11, color: saving ? ACCENT : SLATE }}>
               {saving ? "saving…" : "saved"}
             </span>
             <button onClick={() => setTab("settings")} aria-label="Settings" style={{
@@ -516,7 +519,7 @@ export default function FinanceOS() {
             <div style={{ marginTop: 14 }}>
               <button onClick={() => setShowPaycheckSheet(true)} style={{
                 width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                background: "rgba(77,159,255,0.14)", border: `1px solid ${ACCENT}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
+                background: "rgba(99,102,241,0.14)", border: `1px solid ${ACCENT}55`, borderRadius: 14, padding: "12px 14px", cursor: "pointer"
               }}>
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: ACCENT }}>Payday is today — tap to add your paycheck</span>
                 <Plus size={16} color={ACCENT} />
@@ -545,11 +548,15 @@ export default function FinanceOS() {
         {tab === "dashboard" && (
           <>
             <div className="fade-up" style={{ marginBottom: 16, padding: "0 2px" }}>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>
                 {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; })()}, Antonio.
               </div>
-              <div style={{ fontSize: 11.5, color: SLATE, marginTop: 3 }}>
-                {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · day {period.dayIndex + 1} of {period.totalDays} this pay period
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: SLATE, marginTop: 4 }}>
+                {lifeScore?.ready ? (
+                  <>You're operating at <b style={{ color: TEXT }}>{lifeScore.score}%</b> today <Orbit size={13} mode="score" progress={lifeScore.score / 100} /></>
+                ) : (
+                  <>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · day {period.dayIndex + 1} of {period.totalDays} this pay period</>
+                )}
               </div>
             </div>
 
@@ -602,7 +609,7 @@ export default function FinanceOS() {
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                   <div>
-                    <div style={{ fontFamily: "Georgia, serif", fontSize: 34, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{fmt(spentThisPeriod)}</div>
+                    <div style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{fmt(spentThisPeriod)}</div>
                     <div style={{ fontSize: 11.5, color: SLATE, marginTop: 3 }}>of <b style={{ color: SAGE }}>{fmt(incomeThisPeriod)}</b> income this period</div>
                   </div>
                   {vsAvg !== null && (
@@ -654,7 +661,7 @@ export default function FinanceOS() {
                   background: PAPER_DIM, border: "none", borderRadius: 10, padding: "12px 14px", cursor: "pointer"
                 }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(77,159,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(99,102,241,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Wallet size={16} color={ACCENT} />
                 </div>
                 <div>
@@ -687,7 +694,7 @@ export default function FinanceOS() {
                 right={
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 9, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Projected on payday</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "Georgia, serif", color: forecast.end < 0 ? RUST : forecast.end < 100 ? "#E2A13B" : SAGE }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: forecast.end < 0 ? RUST : forecast.end < 100 ? "#E2A13B" : SAGE }}>
                       {fmt(forecast.end)}
                     </div>
                   </div>
@@ -853,7 +860,7 @@ export default function FinanceOS() {
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
                     padding: "9px 0", marginBottom: 14, borderRadius: 8, border: `1px solid ${ACCENT}55`,
-                    background: "rgba(77,159,255,0.10)", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer"
+                    background: "rgba(99,102,241,0.10)", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer"
                   }}
                 >
                   <RefreshCw size={12} /> Rebuild budget from monthly rent

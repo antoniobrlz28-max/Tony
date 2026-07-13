@@ -79,7 +79,7 @@ export function DailyCheckInSheet({ onClose, todayLog, upsertHabitLog, safeToSpe
       {daysUntilPayday > 0 && (
         <div style={{ background: PAPER_DIM, borderRadius: 10, padding: "10px 12px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 11.5, color: SLATE }}>Safe to spend</span>
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: SAGE }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: SAGE }}>
             {fmt(safeToSpendPerDay)}<span style={{ fontSize: 11, fontWeight: 400, color: SLATE }}>/day</span>
           </span>
         </div>
@@ -90,7 +90,7 @@ export function DailyCheckInSheet({ onClose, todayLog, upsertHabitLog, safeToSpe
         <input type="range" min={0} max={10} step={1} value={form.identityScore}
           onChange={e => setForm({ ...form, identityScore: e.target.value })}
           style={{ flex: 1, accentColor: VIOLET }} />
-        <div style={{ width: 26, textAlign: "center", fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: VIOLET }}>{form.identityScore}</div>
+        <div style={{ width: 26, textAlign: "center", fontSize: 18, fontWeight: 700, color: VIOLET }}>{form.identityScore}</div>
       </div>
       <input
         value={form.identityNote} onChange={e => setForm({ ...form, identityNote: e.target.value })}

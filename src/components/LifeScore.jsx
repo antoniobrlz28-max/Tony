@@ -1,36 +1,9 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
-import { ACCENT, SAGE, RUST, VIOLET, SLATE, TEXT, CARD, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
+import { SAGE, RUST, VIOLET, AMBER, CORAL, LIME, MAGENTA, SLATE, TEXT, CARD, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
+import { OrbitScore } from "./Orbit.jsx";
 
-const DOMAIN_COLORS = { wealth: ACCENT, body: SAGE, mind: VIOLET };
-
-function ScoreRing({ score }) {
-  const R = 46, C = 2 * Math.PI * R;
-  const pct = Math.max(0, Math.min(1, score / 100));
-  return (
-    <div style={{ position: "relative", width: 116, height: 116, flexShrink: 0 }}>
-      <svg width={116} height={116}>
-        <defs>
-          <linearGradient id="lifeScoreGrad" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0%" stopColor={ACCENT} />
-            <stop offset="55%" stopColor={VIOLET} />
-            <stop offset="100%" stopColor={SAGE} />
-          </linearGradient>
-        </defs>
-        <circle cx={58} cy={58} r={R} fill="none" stroke={PAPER_DIM} strokeWidth={9} />
-        <circle
-          cx={58} cy={58} r={R} fill="none" stroke="url(#lifeScoreGrad)" strokeWidth={9} strokeLinecap="round"
-          strokeDasharray={C} strokeDashoffset={C * (1 - pct)}
-          transform="rotate(-90 58 58)" style={{ transition: "stroke-dashoffset 0.6s ease" }}
-        />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 34, fontWeight: 700, color: TEXT, lineHeight: 1 }}>{score}</div>
-        <div style={{ fontSize: 8.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 3 }}>Life Score</div>
-      </div>
-    </div>
-  );
-}
+const DOMAIN_COLORS = { health: CORAL, finances: AMBER, mind: VIOLET, energy: LIME, purpose: MAGENTA };
 
 export function LifeScoreCard({ result }) {
   const [open, setOpen] = useState(false);
@@ -57,11 +30,11 @@ export function LifeScoreCard({ result }) {
   return (
     <div className="fade-up" style={{ marginBottom: 20, background: CARD, borderRadius: 22, padding: "18px 16px", border: `1px solid ${INK_SOFT}18` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <ScoreRing score={score} />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <OrbitScore score={score} size={116} />
           {delta !== null && delta !== 0 && (
             <span style={{
-              display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 8,
+              display: "inline-flex", alignItems: "center", gap: 4,
               padding: "3px 9px", borderRadius: 999, fontSize: 10.5, fontWeight: 700,
               color: delta > 0 ? SAGE : RUST, background: delta > 0 ? `${SAGE}1a` : `${RUST}1a`,
               border: `1px solid ${delta > 0 ? SAGE : RUST}40`
@@ -70,11 +43,15 @@ export function LifeScoreCard({ result }) {
               {delta > 0 ? "+" : ""}{delta} this week
             </span>
           )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           {domains.map(d => (
-            <div key={d.key} style={{ marginBottom: 7 }}>
+            <div key={d.key} style={{ marginBottom: 7, opacity: d.score === null ? 0.45 : 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
-                <span style={{ fontWeight: 700, color: TEXT }}>{d.label}</span>
-                <span style={{ color: SLATE, fontVariantNumeric: "tabular-nums" }}>{d.score ?? "—"}</span>
+                <span style={{ fontWeight: 600, color: TEXT }}>{d.label}</span>
+                <span style={{ color: SLATE, fontVariantNumeric: "tabular-nums", fontSize: d.score === null ? 9.5 : 11 }}>
+                  {d.score ?? "learning"}
+                </span>
               </div>
               <div style={{ height: 5, background: PAPER_DIM, borderRadius: 3, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${d.score ?? 0}%`, background: DOMAIN_COLORS[d.key], borderRadius: 3, transition: "width 0.5s ease" }} />

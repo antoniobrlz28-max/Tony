@@ -29,7 +29,7 @@ function CalorieRing({ eaten, target }) {
         />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 700, color: over ? RUST : TEXT, lineHeight: 1 }}>
+        <div style={{ fontSize: 24, fontWeight: 700, color: over ? RUST : TEXT, lineHeight: 1 }}>
           {Math.abs(remaining).toLocaleString()}
         </div>
         <div style={{ fontSize: 10, color: SLATE, marginTop: 3 }}>{over ? "over" : "left"} of {target.toLocaleString()}</div>

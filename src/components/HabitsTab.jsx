@@ -58,7 +58,7 @@ function FastingModal({ date, log, onClose, onSave, blockNew }) {
     <div className="overlay-in" style={{ position: "fixed", inset: 0, background: "rgba(4,7,12,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }} onClick={onClose}>
       <div className="sheet-in" style={{ background: CARD, borderRadius: 12, padding: 20, width: "100%", maxWidth: 340, boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700 }}>{date}</span>
+          <span style={{ fontSize: 16, fontWeight: 700 }}>{date}</span>
           <IconBtn icon={X} onClick={onClose} label="Close" />
         </div>
 
@@ -137,7 +137,7 @@ function FastingModal({ date, log, onClose, onSave, blockNew }) {
               <div style={{ fontSize: 13, color: SLATE, marginBottom: 6 }}>{log.fastingHours}h fast · started {log.fastingStart} · ends {endLabel}</div>
               <FastBar pct={pct} label={`${Math.round(pct)}%`} />
               {isLive ? (
-                <div style={{ marginTop: 10, fontFamily: "Georgia, serif", fontSize: 20, textAlign: "center" }}>
+                <div style={{ marginTop: 10, fontSize: 20, textAlign: "center" }}>
                   {remainingMin > 0 ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m left` : "Fast complete"}
                 </div>
               ) : (
@@ -194,7 +194,7 @@ function AbstinenceRow({ item, onReset, onSave, onDelete }) {
       </div>
       <div style={{ padding: "0 12px 12px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontVariantNumeric: "tabular-nums" }}>{formatDuration(elapsedSec)}</div>
+          <div style={{ fontSize: 16, fontVariantNumeric: "tabular-nums" }}>{formatDuration(elapsedSec)}</div>
           {confirmReset ? (
             <div style={{ display: "flex", gap: 6 }}>
               <SmallBtn tone="rust" onClick={() => { onReset(); setConfirmReset(false); }}>Confirm reset</SmallBtn>
@@ -245,7 +245,7 @@ function AbstinencePage({ data, addAbstinence, resetAbstinence, editAbstinence, 
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
         <ChevronLeft size={16} /> Back to Habits
       </button>
-      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, marginBottom: 4, marginTop: 0 }}>Abstinence</h2>
+      <h2 style={{ fontSize: 20, marginBottom: 4, marginTop: 0 }}>Abstinence</h2>
       <div style={{ fontSize: 12, color: SLATE, marginBottom: 14 }}>Track how long it's been</div>
 
       {data.abstinence.length === 0 && !adding && <Empty text="No trackers yet — add one below." />}
@@ -284,12 +284,12 @@ function IdentityReviewPage({ todayIdentity, todayIdentityNote, identityAvg, ups
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
         <ChevronLeft size={16} /> Back to Habits
       </button>
-      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, marginBottom: 4, marginTop: 0 }}>Identity & review</h2>
+      <h2 style={{ fontSize: 20, marginBottom: 4, marginTop: 0 }}>Identity & review</h2>
       <div style={{ fontSize: 12, color: SLATE, marginBottom: 18 }}>Who you're becoming, and what you're learning</div>
 
       <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 16, padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-          <h3 style={{ fontFamily: "Georgia, serif", fontSize: 16, color: TEXT, margin: 0 }}>Identity</h3>
+          <h3 style={{ fontSize: 16, color: TEXT, margin: 0 }}>Identity</h3>
           <span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>30-day avg: {identityAvg}</span>
         </div>
         <div style={{ fontSize: 12, color: SLATE, marginBottom: 10 }}>Acted like the person I'm becoming, today</div>
@@ -297,7 +297,7 @@ function IdentityReviewPage({ todayIdentity, todayIdentityNote, identityAvg, ups
           <input type="range" min={0} max={10} step={1} value={todayIdentity}
             onChange={e => upsertHabitLog(todayStr(), { identityScore: Number(e.target.value) })}
             style={{ flex: 1, accentColor: VIOLET }} />
-          <div style={{ width: 30, textAlign: "center", fontFamily: "Georgia, serif", fontSize: 19, fontWeight: 700, color: VIOLET }}>{todayIdentity}</div>
+          <div style={{ width: 30, textAlign: "center", fontSize: 19, fontWeight: 700, color: VIOLET }}>{todayIdentity}</div>
         </div>
         <div style={{ fontSize: 11, color: SLATE, marginTop: 12, marginBottom: 4 }}>Why? (optional)</div>
         <textarea
@@ -310,7 +310,7 @@ function IdentityReviewPage({ todayIdentity, todayIdentityNote, identityAvg, ups
 
       <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 16, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h3 style={{ fontFamily: "Georgia, serif", fontSize: 16, color: TEXT, margin: 0 }}>Weekly review</h3>
+          <h3 style={{ fontSize: 16, color: TEXT, margin: 0 }}>Weekly review</h3>
           <span style={{ fontSize: 10, fontWeight: 700, color: VIOLET, background: VIOLET_BG, padding: "3px 9px", borderRadius: 10 }}>Sundays</span>
         </div>
         {!showReviewForm ? (
@@ -522,7 +522,7 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
             <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${TEAL}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
               <Dumbbell size={13} color={TEAL} />
             </div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: TEXT }}>{trainedCount} days</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>{trainedCount} days</div>
             <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 3 }}>Trained</div>
           </div>
           <div style={{
@@ -537,7 +537,7 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
             </div>
             {activeFast ? (
               <div>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 2 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 2 }}>
                   {Math.floor(activeFast.remaining / 60)}h {activeFast.remaining % 60}m left
                 </div>
                 <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>Currently fasting</div>
@@ -548,11 +548,11 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
                 <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>Fasted</div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT }}>{fastedThisWeek}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{fastedThisWeek}</div>
                     <div style={{ fontSize: 9.5, color: SLATE }}>this week</div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: TEXT }}>{fastingCount}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{fastingCount}</div>
                     <div style={{ fontSize: 9.5, color: SLATE }}>this month</div>
                   </div>
                 </div>
@@ -570,11 +570,11 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
             </div>
             <div style={{ display: "flex", gap: 18 }}>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: drinksThisWeek > 0 ? CORAL : TEXT }}>{drinksThisWeek}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: drinksThisWeek > 0 ? CORAL : TEXT }}>{drinksThisWeek}</div>
                 <div style={{ fontSize: 9.5, color: SLATE }}>this week</div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: totalDrinks > 0 ? CORAL : TEXT }}>{totalDrinks}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: totalDrinks > 0 ? CORAL : TEXT }}>{totalDrinks}</div>
                 <div style={{ fontSize: 9.5, color: SLATE }}>this month</div>
               </div>
             </div>
@@ -639,7 +639,7 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
           width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
           background: CARD, border: `1px solid ${INK_SOFT}18`, borderRadius: 22, padding: "18px 16px", cursor: "pointer"
         }}>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>Identity & review</h2>
+          <h2 style={{ fontSize: 18, color: TEXT, margin: 0 }}>Identity & review</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: VIOLET }}>{todayIdentity}/10 today</span>
             <ChevronRight size={16} color={SLATE} />
@@ -652,20 +652,20 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
           <div>
             <div style={{ fontSize: 10, color: SLATE }}>Latest</div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 16 }}>{latestWeight ? latestWeight.weight + " kg" : "—"}</div>
+            <div style={{ fontSize: 16 }}>{latestWeight ? latestWeight.weight + " kg" : "—"}</div>
             <div style={{ fontSize: 9.5, color: SLATE }}>{latestDow}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: SLATE }}>{periodAvgLabel}</div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 16 }}>{periodAvg ? periodAvg + " kg" : "—"}</div>
+            <div style={{ fontSize: 16 }}>{periodAvg ? periodAvg + " kg" : "—"}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: SLATE }}>To goal</div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 15 }}>{toGoalLabel}</div>
+            <div style={{ fontSize: 15 }}>{toGoalLabel}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: SLATE }}>Since last</div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: incrementColor }}>{incrementLabel}</div>
+            <div style={{ fontSize: 16, color: incrementColor }}>{incrementLabel}</div>
           </div>
         </div>
       </Section>
@@ -740,7 +740,7 @@ export function HabitsTab({ data, upsertHabitLog, toggleHabitBool, incrementAlco
         background: CARD, border: `1px solid ${INK_SOFT}18`, borderRadius: 22, padding: "18px 16px",
         cursor: "pointer", marginBottom: 20
       }}>
-        <h2 style={{ fontFamily: "Georgia, serif", fontSize: 18, color: TEXT, margin: 0 }}>Abstinence</h2>
+        <h2 style={{ fontSize: 18, color: TEXT, margin: 0 }}>Abstinence</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {data.abstinence.length > 0 && (
             <span style={{ fontSize: 10.5, fontWeight: 700, color: SLATE }}>{data.abstinence.length} tracker{data.abstinence.length === 1 ? "" : "s"}</span>

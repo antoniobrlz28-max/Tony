@@ -41,7 +41,7 @@ export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarge
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: TEXT, fontWeight: 600, fontSize: 13, marginBottom: 16 }}>
         <ChevronLeft size={16} /> Back to Dashboard
       </button>
-      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, marginBottom: 4, marginTop: 0 }}>Settings</h2>
+      <h2 style={{ fontSize: 20, marginBottom: 4, marginTop: 0 }}>Settings</h2>
       <div style={{ fontSize: 12, color: SLATE, marginBottom: 18 }}>Values that shape how the rest of the app calculates things</div>
 
       <Section title="Pay cycle" eyebrow="drives every period calculation">

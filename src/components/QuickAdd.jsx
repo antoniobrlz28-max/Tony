@@ -15,7 +15,7 @@ export function QuickAddFab({ onClick }) {
       position: "fixed", right: 16, bottom: 76, width: 54, height: 54, borderRadius: "50%",
       background: ACCENT, color: PAPER, border: "none", cursor: "pointer", zIndex: 40,
       display: "flex", alignItems: "center", justifyContent: "center",
-      boxShadow: "0 6px 20px rgba(77,159,255,0.45)"
+      boxShadow: "0 6px 20px rgba(99,102,241,0.45)"
     }}>
       <Plus size={24} />
     </button>
@@ -116,7 +116,7 @@ export function QuickAddSheet({ data, onClose, addExpense, addIncome, addFoodIte
               {data.categories.map(c => (
                 <button key={c.id} onClick={() => setCategoryId(c.id)} style={{
                   padding: "6px 12px", borderRadius: 999, border: `1px solid ${categoryId === c.id ? ACCENT : INK_SOFT + "40"}`,
-                  background: categoryId === c.id ? "rgba(77,159,255,0.12)" : "transparent",
+                  background: categoryId === c.id ? "rgba(99,102,241,0.12)" : "transparent",
                   color: categoryId === c.id ? ACCENT : TEXT, fontSize: 12, cursor: "pointer"
                 }}>{c.name}</button>
               ))}

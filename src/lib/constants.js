@@ -2,22 +2,33 @@ import { Landmark, PiggyBank, Banknote, Home, Zap, Droplet, Wifi, Phone, Repeat,
 
 export const STORAGE_KEY = "antonio-finance-data";
 
-// Near-black, cool-toned dark palette with an electric blue primary accent.
-export const INK = "#0B0F15";        // page background
-export const INK_SOFT = "#6E7A8A";   // hairlines, muted strokes
-export const CARD = "#151A22";       // raised cards
+// LifeOS palette: near-black surfaces, indigo primary, and a seven-color domain
+// spectrum. The full gradient (SPECTRUM) is reserved for the Orbit ring and hero
+// moments — never button fills.
+export const INK = "#050608";        // page background
+export const INK_SOFT = "#5C6678";   // hairlines, muted strokes
+export const CARD = "#0D1119";       // raised cards
 export const TEXT = "#F2F4F8";
-export const PAPER = "#F5F7FA";      // text on colored buttons
-export const PAPER_DIM = "#1D242E";  // inset rows / wells
-export const ACCENT = "#4D9FFF";     // primary accent (buttons, active nav, highlights)
-export const RUST = "#E25C5C";       // negative / owed / leaving
-export const SAGE = "#57C785";       // positive / held / gained
-export const SLATE = "#8B94A3";      // secondary text
+export const PAPER = "#F7F9FC";      // text on colored buttons
+export const PAPER_DIM = "#151A26";  // inset rows / wells
+export const ACCENT = "#6366F1";     // Electric Blue (indigo) — primary
+export const RUST = "#EF4444";       // danger / owed / leaving
+export const SAGE = "#10B981";       // Emerald — positive / held / habits domain
+export const SLATE = "#98A2B3";      // secondary text
 
-// Habit-tab accents (badges filled with the color; _BG is the dark unfilled tint)
-export const TEAL = "#2FA898", TEAL_BG = "#123430";
-export const AMBER = "#E2A13B", AMBER_BG = "#3A2C12";
-export const CORAL = "#E2703B", CORAL_BG = "#3A2112";
+// Domain colors (LifeOS grammar: every badge/chart inherits its domain color)
+export const CYAN = "#06B6D4";       // Focus
+export const AMBER = "#F59E0B", AMBER_BG = "#2B2008";   // Finance domain / calories
+export const CORAL = "#FB7185", CORAL_BG = "#321520";   // Health domain
+export const VIOLET = "#8B5CF6", VIOLET_BG = "#1E1636"; // Mind domain
+export const MAGENTA = "#D946EF";    // Purpose
+export const LIME = "#A3E635";       // Energy
+export const TEAL = "#14B8A6", TEAL_BG = "#0D2A26";     // training accents
+export const SKY = "#06B6D4";        // legacy alias — now cyan
+
+// The Orbit gradient: blue → cyan → emerald → amber → coral → magenta → violet
+export const SPECTRUM = ["#6366F1", "#06B6D4", "#10B981", "#F59E0B", "#FB7185", "#D946EF", "#8B5CF6"];
+
 export const ABSTINENCE_COLORS = ["#A8264F", "#2C3E42", "#1F8A70", "#5B4636", "#C0392B", "#2A3F8F", "#6B4E9C", "#3D6B4F"];
 export const ACCOUNT_TYPES = [
   { id: "checking", label: "Checking", icon: Landmark },
@@ -29,6 +40,3 @@ export const BILL_ICONS = {
   Rent: Home, Electricity: Zap, Water: Droplet, Internet: Wifi, Phone: Phone,
   Subscription: Repeat, Insurance: Shield, Other: MoreHorizontal,
 };
-export const VIOLET = "#8D7CF0";
-export const VIOLET_BG = "#241F3D";
-export const SKY = "#7FB3E8";
