@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
-import { ChevronLeft, Upload, Check, TrendingUp, TrendingDown, FileText } from "lucide-react";
+import { ChevronLeft, Upload, Check, TrendingUp, TrendingDown, FileText, Repeat, Banknote } from "lucide-react";
 import { SAGE, RUST, ACCENT, SKY, SLATE, TEXT, INK_SOFT, PAPER_DIM } from "../lib/constants.js";
-import { fmt } from "../lib/helpers.js";
+import { fmt, todayStr, addDays, daysBetween } from "../lib/helpers.js";
 import { Section, SmallBtn, Empty, StatTile, inputStyle } from "./shared.jsx";
 
 // Minimal CSV parser that handles quoted fields and commas inside quotes
@@ -117,6 +117,7 @@ function extractTransactions(rows, categories, existing) {
     out.push({
       key: `${date}-${amount}-${out.length}`,
       date, note, type, amount,
+      isCash: type === "expense" && /atm cash|cash w.?d|atm w\/?d/i.test(note),
       categoryId: type === "expense" ? pickCategory(note, categories) : null,
       include: !dup,
       dup,
@@ -127,13 +128,56 @@ function extractTransactions(rows, categories, existing) {
   return { transactions: out };
 }
 
-export function ImportCSV({ data, onImport, onBack }) {
+// Recurring-charge detection: group expenses by merchant (bank descriptors
+// stripped of reference numbers and filler words), then flag groups that hit
+// on a ~monthly cadence with a stable amount.
+const DESCRIPTOR_NOISE = new Set(["CHK", "CARD", "PUR", "POS", "PURCHASE", "WEB", "PMT", "ACH", "DEBIT", "PAYMENT", "RECURRING", "TST", "SQ", "PY"]);
+function merchantKey(note) {
+  const words = String(note).toUpperCase().replace(/[^A-Z* ]+/g, " ").split(/\s+/).filter(w => w.length > 1 && !DESCRIPTOR_NOISE.has(w.replace(/\*/g, "")));
+  return words.slice(0, 2).join(" ");
+}
+function detectRecurring(rows, bills, categories) {
+  const groups = {};
+  for (const t of rows) {
+    if (t.type !== "expense" || t.isCash) continue;
+    const k = merchantKey(t.note);
+    if (!k) continue;
+    (groups[k] = groups[k] || []).push(t);
+  }
+  const out = [];
+  for (const [k, list] of Object.entries(groups)) {
+    if (list.length < 3) continue;
+    const dates = list.map(t => t.date).sort();
+    const gaps = [];
+    for (let i = 1; i < dates.length; i++) gaps.push(daysBetween(dates[i - 1], dates[i]));
+    const medGap = gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+    if (medGap < 26 || medGap > 34) continue;
+    const amounts = list.map(t => t.amount).sort((a, b) => a - b);
+    const medAmt = amounts[Math.floor(amounts.length / 2)];
+    if (amounts[amounts.length - 1] - amounts[0] > Math.max(2, medAmt * 0.15)) continue;
+    const name = k.toLowerCase().replace(/\*/g, " ").replace(/\s+/g, " ").trim().replace(/\b\w/g, c => c.toUpperCase()).slice(0, 20).trim();
+    const firstWord = name.split(" ")[0].toLowerCase();
+    if (bills.some(b => b.name.toLowerCase().includes(firstWord) || firstWord.includes(b.name.toLowerCase()))) continue;
+    let dueDate = dates[dates.length - 1];
+    while (dueDate < todayStr()) dueDate = addDays(dueDate, 30);
+    out.push({
+      key: k, name, amount: Math.round(medAmt * 100) / 100, dueDate, frequencyDays: 30,
+      categoryId: pickCategory(list[0].note, categories), hits: list.length,
+    });
+  }
+  return out.sort((a, b) => b.amount - a.amount).slice(0, 5);
+}
+
+export function ImportCSV({ data, onImport, addBill, onBack }) {
   const [parsed, setParsed] = useState(null);
   const [error, setError] = useState(null);
   const [accountId, setAccountId] = useState((data.accounts.find(a => a.type === "checking") || data.accounts[0])?.id || "");
   const [adjustBalance, setAdjustBalance] = useState(false);
   const [done, setDone] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [addedBills, setAddedBills] = useState({});
   const fileRef = useRef(null);
+  const cashAccount = data.accounts.find(a => a.type === "cash");
 
   function handleFile(e) {
     const file = e.target.files?.[0];
@@ -141,8 +185,12 @@ export function ImportCSV({ data, onImport, onBack }) {
     const reader = new FileReader();
     reader.onload = () => {
       const result = extractTransactions(parseCSV(String(reader.result)), data.categories, data.transactions);
-      if (result.error) { setError(result.error); setParsed(null); }
-      else { setParsed(result.transactions); setError(null); }
+      if (result.error) { setError(result.error); setParsed(null); setSuggestions([]); }
+      else {
+        setParsed(result.transactions);
+        setSuggestions(detectRecurring(result.transactions, data.bills, data.categories));
+        setError(null);
+      }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -156,10 +204,21 @@ export function ImportCSV({ data, onImport, onBack }) {
   }
 
   function runImport() {
-    const rows = parsed.filter(t => t.include);
+    // ATM cash pulls become transfers into the Cash account when one exists,
+    // so withdrawn money stays visible instead of counting as already spent.
+    const rows = parsed.filter(t => t.include).map(t =>
+      t.isCash && cashAccount
+        ? { ...t, type: "transfer", toAccountId: cashAccount.id, categoryId: null }
+        : t
+    );
     onImport(rows, accountId, adjustBalance);
     setDone(rows.length);
     setParsed(null);
+  }
+
+  function addSuggestedBill(s) {
+    addBill({ name: s.name, amount: s.amount, dueDate: s.dueDate, frequencyDays: s.frequencyDays, categoryId: s.categoryId });
+    setAddedBills(prev => ({ ...prev, [s.key]: true }));
   }
 
   const included = parsed ? parsed.filter(t => t.include) : [];
@@ -178,6 +237,29 @@ export function ImportCSV({ data, onImport, onBack }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: `${SAGE}14`, border: `1px solid ${SAGE}40`, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
             <Check size={16} color={SAGE} />
             <span style={{ fontSize: 13, color: TEXT }}>{done} transaction{done === 1 ? "" : "s"} imported.</span>
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div style={{ background: PAPER_DIM, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <Repeat size={13} color={SKY} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>Recurring charges detected</span>
+            </div>
+            {suggestions.map(s => (
+              <div key={s.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderBottom: `1px solid ${INK_SOFT}18` }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                  <div style={{ fontSize: 10.5, color: SLATE }}>{fmt(s.amount)} · ~monthly · seen {s.hits}×</div>
+                </div>
+                {addedBills[s.key] ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: SAGE, flexShrink: 0 }}><Check size={12} /> Added</span>
+                ) : (
+                  <SmallBtn tone="ghost" onClick={() => addSuggestedBill(s)} style={{ padding: "4px 10px", fontSize: 11, flexShrink: 0 }}>+ Bill</SmallBtn>
+                )}
+              </div>
+            ))}
+            <div style={{ fontSize: 10, color: SLATE, marginTop: 6 }}>Adding creates it in the Bills tab with a 30-day cycle.</div>
           </div>
         )}
 
@@ -207,6 +289,12 @@ export function ImportCSV({ data, onImport, onBack }) {
             {dupCount > 0 && (
               <div style={{ fontSize: 11.5, color: ACCENT, marginBottom: 10 }}>
                 {dupCount} row{dupCount === 1 ? "" : "s"} look like duplicates of existing transactions and were unchecked.
+              </div>
+            )}
+
+            {!cashAccount && parsed.some(t => t.isCash && t.include) && (
+              <div style={{ fontSize: 11.5, color: SLATE, marginBottom: 10 }}>
+                <Banknote size={11} style={{ verticalAlign: "-1px" }} /> {parsed.filter(t => t.isCash).length} ATM withdrawals found — add a <b style={{ color: TEXT }}>Cash</b> account in the Accounts tab first and they'll import as transfers into it instead of vanishing as spend.
               </div>
             )}
 
@@ -243,7 +331,11 @@ export function ImportCSV({ data, onImport, onBack }) {
                     </div>
                     <div style={{ fontSize: 10.5, color: SLATE }}>{t.date}</div>
                   </div>
-                  {t.type === "expense" && (
+                  {t.isCash && cashAccount ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: SAGE, background: `${SAGE}1a`, border: `1px solid ${SAGE}40`, borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>
+                      <Banknote size={11} /> to Cash
+                    </span>
+                  ) : t.type === "expense" && (
                     <select value={t.categoryId || ""} onChange={e => setRowCategory(t.key, e.target.value)}
                       style={{ ...inputStyle, width: 110, padding: "4px 6px", fontSize: 11 }}>
                       {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

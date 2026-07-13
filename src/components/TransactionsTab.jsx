@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Plus, TrendingUp, TrendingDown, Wallet, Check, X, Edit2, Upload } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Wallet, Check, X, Edit2, Upload, Search } from "lucide-react";
 import { ACCENT, INK, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
 import { fmt, getPeriod } from "../lib/helpers.js";
 import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
 import { ImportCSV } from "./ImportCSV.jsx";
 
-export function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransaction, deleteTransaction, importTransactions }) {
+const PAGE_SIZE = 30;
+
+export function TransactionsTab({ data, addIncome, addExpense, addTransfer, editTransaction, deleteTransaction, importTransactions, addBillFromImport }) {
   const [formType, setFormType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState(data.accounts[0]?.id || "");
@@ -13,6 +15,10 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id || "");
   const [note, setNote] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [catFilter, setCatFilter] = useState("all");
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   function submit() {
     if (formType === "income") addIncome({ amount, accountId, note });
@@ -23,9 +29,20 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
   }
 
   const sorted = data.transactions.slice().sort((a, b) => b.date.localeCompare(a.date));
+  const q = query.trim().toLowerCase();
+  const filtered = sorted.filter(t => {
+    if (typeFilter !== "all" && t.type !== typeFilter) return false;
+    if (catFilter !== "all" && t.categoryId !== catFilter) return false;
+    if (!q) return true;
+    const cat = data.categories.find(c => c.id === t.categoryId)?.name || "";
+    const acct = data.accounts.find(a => a.id === t.accountId)?.name || "";
+    return (t.note || "").toLowerCase().includes(q) || cat.toLowerCase().includes(q)
+      || acct.toLowerCase().includes(q) || String(t.amount).includes(q) || t.date.includes(q);
+  });
+  const isFiltering = q !== "" || typeFilter !== "all" || catFilter !== "all";
 
   if (showImport) {
-    return <ImportCSV data={data} onImport={importTransactions} onBack={() => setShowImport(false)} />;
+    return <ImportCSV data={data} onImport={importTransactions} addBill={addBillFromImport} onBack={() => setShowImport(false)} />;
   }
 
   const period = getPeriod(data.nextPaycheck, data.cycleDays);
@@ -124,14 +141,49 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
         </SmallBtn>
       </Section>
 
-      <Section title="Recent transactions" eyebrow={`${data.transactions.length} total`}
+      <Section title="Recent transactions" eyebrow={isFiltering ? `${filtered.length} of ${data.transactions.length}` : `${data.transactions.length} total`}
         right={<SmallBtn tone="ghost" onClick={() => setShowImport(true)}><Upload size={12} /> Import CSV</SmallBtn>}>
-        {sorted.length === 0 && <Empty text="No transactions yet." />}
-        {sorted.map(tx => (
+        {data.transactions.length > 0 && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Search size={14} color={SLATE} style={{ flexShrink: 0 }} />
+              <input
+                value={query} onChange={e => { setQuery(e.target.value); setVisible(PAGE_SIZE); }}
+                placeholder="Search notes, categories, amounts…"
+                style={minimalInputStyle}
+              />
+              {query && <IconBtn icon={X} onClick={() => { setQuery(""); setVisible(PAGE_SIZE); }} label="Clear search" />}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+              {[["all", "All"], ["expense", "Expense"], ["income", "Income"], ["transfer", "Transfer"]].map(([v, label]) => (
+                <button key={v} onClick={() => { setTypeFilter(v); setVisible(PAGE_SIZE); }} style={{
+                  padding: "5px 11px", borderRadius: 999, border: `1px solid ${typeFilter === v ? ACCENT : INK_SOFT + "40"}`,
+                  background: typeFilter === v ? "rgba(77,159,255,0.12)" : "transparent",
+                  color: typeFilter === v ? ACCENT : SLATE, fontSize: 11.5, fontWeight: typeFilter === v ? 700 : 400, cursor: "pointer"
+                }}>{label}</button>
+              ))}
+              <select
+                value={catFilter} onChange={e => { setCatFilter(e.target.value); setVisible(PAGE_SIZE); }}
+                style={{ ...inputStyle, width: "auto", padding: "4px 8px", fontSize: 11.5, borderRadius: 999, color: catFilter === "all" ? SLATE : TEXT }}
+              >
+                <option value="all">All categories</option>
+                {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+        {data.transactions.length === 0 && <Empty text="No transactions yet." />}
+        {data.transactions.length > 0 && filtered.length === 0 && <Empty text="Nothing matches those filters." />}
+        {filtered.slice(0, visible).map(tx => (
           <TransactionRow key={tx.id} tx={tx} data={data}
             onSave={updates => editTransaction(tx, updates)}
             onDelete={() => deleteTransaction(tx)} />
         ))}
+        {filtered.length > visible && (
+          <SmallBtn tone="ghost" onClick={() => setVisible(v => v + 50)} style={{ marginTop: 8, width: "100%", justifyContent: "center" }}>
+            Show more ({filtered.length - visible} remaining)
+          </SmallBtn>
+        )}
       </Section>
     </>
   );

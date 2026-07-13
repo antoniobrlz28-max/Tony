@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
-import { Cell, BarChart, Bar, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Cell, BarChart, Bar, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
 import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, ACCENT, RUST, SAGE, SLATE, TEAL, VIOLET, VIOLET_BG } from "./lib/constants.js";
 import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
 import { defaultData, generateDemoData, migrate } from "./lib/data.js";
@@ -108,6 +108,44 @@ export default function FinanceOS() {
   const vsAvg = priorPeriodsAvg !== null ? spentThisPeriod - priorPeriodsAvg : null;
 
   const daysUntilPayday = daysBetween(todayStr(), period.next);
+
+  // Runway to payday: today's checking balance, minus the average daily burn
+  // (last 30 days of expenses, excluding bill payments / debt / rent which are
+  // modeled explicitly), minus each upcoming bill on its due date.
+  const forecast = (() => {
+    if (daysUntilPayday <= 0) return null;
+    const checkingBalance = data.accounts.filter(a => a.type === "checking").reduce((s, a) => s + a.balance, 0);
+    const cutoff = addDays(todayStr(), -30);
+    const burnTotal = data.transactions
+      .filter(t => t.type === "expense" && t.date >= cutoff && t.date <= todayStr())
+      .filter(t => {
+        const note = t.note || "";
+        if (note.startsWith("Bill:") || note.startsWith("Debt payment:")) return false;
+        const cat = data.categories.find(c => c.id === t.categoryId);
+        return !(cat && isRentCategory(cat));
+      })
+      .reduce((s, t) => s + t.amount, 0);
+    const dailyBurn = burnTotal / 30;
+    const upcomingBills = data.bills.filter(b => b.dueDate >= todayStr() && b.dueDate < period.next);
+    const points = [];
+    let bal = checkingBalance;
+    let dryDate = null;
+    for (let i = 0; i <= daysUntilPayday; i++) {
+      const date = addDays(todayStr(), i);
+      if (i > 0) {
+        bal -= dailyBurn;
+        bal -= upcomingBills.filter(b => b.dueDate === date).reduce((s, b) => s + b.amount, 0);
+      }
+      if (bal < 0 && !dryDate) dryDate = date;
+      points.push({ label: formatShortDate(date), bal: Math.round(bal) });
+    }
+    return {
+      points, end: Math.round(bal), dailyBurn,
+      billCount: upcomingBills.length,
+      billsTotal: upcomingBills.reduce((s, b) => s + b.amount, 0),
+      dryDate,
+    };
+  })();
 
   // Last 6 pay periods (oldest to newest), for the spending trend chart
   const spendTrend = (() => {
@@ -294,14 +332,23 @@ export default function FinanceOS() {
       const txs = rows.map(r => ({
         id: uid(), type: r.type, amount: r.amount, accountId, date: r.date, note: r.note,
         ...(r.type === "expense" ? { categoryId: r.categoryId } : {}),
+        ...(r.type === "transfer" && r.toAccountId ? { toAccountId: r.toAccountId } : {}),
       }));
       let accounts = d.accounts;
       if (adjustBalance) {
-        const delta = rows.reduce((s, r) => s + (r.type === "income" ? r.amount : -r.amount), 0);
-        accounts = d.accounts.map(a => a.id === accountId ? { ...a, balance: a.balance + delta } : a);
+        const deltas = {};
+        for (const r of rows) {
+          if (r.type === "income") deltas[accountId] = (deltas[accountId] || 0) + r.amount;
+          else deltas[accountId] = (deltas[accountId] || 0) - r.amount;
+          if (r.type === "transfer" && r.toAccountId) deltas[r.toAccountId] = (deltas[r.toAccountId] || 0) + r.amount;
+        }
+        accounts = d.accounts.map(a => deltas[a.id] ? { ...a, balance: a.balance + deltas[a.id] } : a);
       }
       return { ...d, accounts, transactions: [...txs, ...d.transactions] };
     });
+  }
+  function addBillFromImport(bill) {
+    setData(d => ({ ...d, bills: [...d.bills, { id: uid(), lastPaid: null, ...bill }] }));
   }
 
   function editAccount(id, updates) {
@@ -621,6 +668,47 @@ export default function FinanceOS() {
               })()}
             </Section>
 
+            {forecast && (
+              <Section
+                title="Runway to payday"
+                eyebrow={`${daysUntilPayday} day${daysUntilPayday === 1 ? "" : "s"} to go`}
+                right={
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 9, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Projected on payday</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "Georgia, serif", color: forecast.end < 0 ? RUST : forecast.end < 100 ? "#E2A13B" : SAGE }}>
+                      {fmt(forecast.end)}
+                    </div>
+                  </div>
+                }
+              >
+                <div style={{ height: 110 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={forecast.points} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="runwayFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={forecast.end < 0 ? RUST : ACCENT} stopOpacity={0.3} />
+                          <stop offset="100%" stopColor={forecast.end < 0 ? RUST : ACCENT} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" tick={{ fontSize: 9, fill: SLATE }} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 9, fill: SLATE }} />
+                      <Tooltip formatter={v => [fmt(v), "projected"]} />
+                      <ReferenceLine y={0} stroke={RUST} strokeDasharray="4 4" />
+                      <Area type="monotone" dataKey="bal" stroke={forecast.end < 0 ? RUST : ACCENT} strokeWidth={2} fill="url(#runwayFill)" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ fontSize: 11, color: SLATE, marginTop: 6 }}>
+                  Assumes {fmt(forecast.dailyBurn)}/day pace{forecast.billCount > 0 ? ` · ${forecast.billCount} bill${forecast.billCount === 1 ? "" : "s"} (${fmt(forecast.billsTotal)}) before payday` : ""}
+                </div>
+                {forecast.dryDate && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, background: `${RUST}14`, border: `1px solid ${RUST}40`, borderRadius: 8, padding: "8px 10px", fontSize: 12, color: TEXT }}>
+                    At this pace you run out around <b style={{ color: RUST }}>{formatShortDate(forecast.dryDate)}</b> — {daysBetween(forecast.dryDate, period.next)} day{daysBetween(forecast.dryDate, period.next) === 1 ? "" : "s"} before payday.
+                  </div>
+                )}
+              </Section>
+            )}
+
             {data.transactions.length > 0 && (
               <Section
                 title="Latest transactions"
@@ -811,7 +899,7 @@ export default function FinanceOS() {
         {tab === "transactions" && (
           <TransactionsTab data={data} addIncome={addIncome} addExpense={addExpense} addTransfer={addTransfer}
             editTransaction={editTransaction} deleteTransaction={deleteTransaction}
-            importTransactions={importTransactions} />
+            importTransactions={importTransactions} addBillFromImport={addBillFromImport} />
         )}
 
         {tab === "bills" && (

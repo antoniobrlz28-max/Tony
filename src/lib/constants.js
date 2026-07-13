@@ -1,4 +1,4 @@
-import { Landmark, PiggyBank, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal } from "lucide-react";
+import { Landmark, PiggyBank, Banknote, Home, Zap, Droplet, Wifi, Phone, Repeat, Shield, MoreHorizontal } from "lucide-react";
 
 export const STORAGE_KEY = "antonio-finance-data";
 
@@ -22,6 +22,7 @@ export const ABSTINENCE_COLORS = ["#A8264F", "#2C3E42", "#1F8A70", "#5B4636", "#
 export const ACCOUNT_TYPES = [
   { id: "checking", label: "Checking", icon: Landmark },
   { id: "savings", label: "Savings", icon: PiggyBank },
+  { id: "cash", label: "Cash", icon: Banknote },
 ];
 export const BILL_TEMPLATES = ["Rent", "Electricity", "Water", "Internet", "Phone", "Subscription", "Insurance"];
 export const BILL_ICONS = {
