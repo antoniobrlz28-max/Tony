@@ -122,7 +122,11 @@ function AppShell() {
       <SaveErrorBanner />
       <div className="topbar">
         <div className="monogram" style={{ padding: 0, overflow: "hidden" }}>
-          <img src={jovaninaLogo} alt="Jovanina's" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img
+            src={jovaninaLogo}
+            alt="Jovanina's"
+            style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.18)" }}
+          />
         </div>
         <div className="brand" style={{ flex: 1 }}>
           <div className="name">Jovanina's</div>
