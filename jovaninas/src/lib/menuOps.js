@@ -1,5 +1,5 @@
 import { uid, nowIso } from "./id.js";
-import { extractComponents } from "./components.js";
+import { extractDishComponents } from "./components.js";
 import { compareMenuVersions } from "./diff.js";
 import { generateCardsForDish } from "./cards.js";
 
@@ -72,7 +72,7 @@ export function commitMenu(draft, extraction, meta) {
       price: item.price,
       section: item.section,
       effectiveDate: meta.effectiveDate,
-      components: item.components || extractComponents(item.description, draft.dictionary),
+      components: item.components || extractDishComponents(item.name, item.description, draft.dictionary),
       confidence: confidence ?? item.confidence ?? 0.7,
       source: source || "extracted",
       confirmed: false,

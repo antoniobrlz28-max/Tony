@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image as ImageIcon, Trash2, Plus, Check } from "lucide-react";
+import { Camera, Trash2, Plus, Check, Image as ImageIcon } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { MENU_TYPES } from "../lib/storage.js";
 import { parseMenuText } from "../lib/parseMenu.js";
@@ -23,6 +23,7 @@ export default function Scan({ go }) {
   const [rawText, setRawText] = useState("");
   const [photos, setPhotos] = useState([]);
   const [extraction, setExtraction] = useState(null);
+  const [activeSection, setActiveSection] = useState(0);
 
   async function handlePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -32,10 +33,9 @@ export default function Scan({ go }) {
 
   function runExtraction() {
     const result = parseMenuText(rawText);
-    if (result.sections.length === 0) {
-      result.sections.push({ name: "Menu", items: [] });
-    }
+    if (result.sections.length === 0) result.sections.push({ name: "Menu", items: [] });
     setExtraction(result);
+    setActiveSection(0);
   }
 
   function updateItem(sIdx, iIdx, field, value) {
@@ -70,20 +70,13 @@ export default function Scan({ go }) {
     });
   }
 
-  function removeSection(sIdx) {
-    setExtraction((prev) => {
-      const next = structuredClone(prev);
-      next.sections.splice(sIdx, 1);
-      return next;
-    });
-  }
-
   function addSection() {
     setExtraction((prev) => {
       const next = structuredClone(prev || { sections: [], warnings: [] });
       next.sections.push({ name: "New Section", items: [] });
       return next;
     });
+    setActiveSection((extraction?.sections.length) || 0);
   }
 
   function saveMenu() {
@@ -98,117 +91,183 @@ export default function Scan({ go }) {
       return;
     }
     const menuId = uid("menu");
-    let result;
     update((draft) => {
-      result = commitMenu(draft, cleanExtraction, {
-        menuId,
-        menuType,
-        mealPeriod,
-        effectiveDate,
-        photos,
-        rawText,
-      });
+      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText });
     });
-    go("changes", { menuId });
+    go("menus", { subTab: "changes", menuId });
   }
 
   return (
     <div>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <p className="section-title">1. Capture</p>
-        <div className="grid cols-3">
-          <label className="field">
-            Menu type
-            <select value={menuType} onChange={(e) => setMenuType(e.target.value)}>
-              {MENU_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Meal period (optional)
-            <input type="text" value={mealPeriod} onChange={(e) => setMealPeriod(e.target.value)} placeholder="e.g. Dinner service" />
-          </label>
-          <label className="field">
-            Effective date
-            <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
-          </label>
-        </div>
-
-        <label className="field">
-          Photo(s) — original image is always preserved, but this build does not run automated OCR. Paste or type
-          the menu text below to extract it.
-          <input type="file" accept="image/*,.pdf" multiple onChange={handlePhotos} />
-        </label>
-        {photos.length > 0 && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-            {photos.map((p, i) => (
-              <div key={i} style={{ position: "relative" }}>
-                <img src={p} alt={`page ${i + 1}`} style={{ width: 70, height: 70, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} />
-                <button
-                  className="btn danger"
-                  style={{ position: "absolute", top: -6, right: -6, padding: "2px 5px" }}
-                  onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
-                >
-                  <Trash2 size={10} />
-                </button>
+      {!extraction && (
+        <>
+          <div
+            style={{
+              position: "relative",
+              aspectRatio: "3/4",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--border)",
+              background: "linear-gradient(160deg, #1c1a15, #100f0d)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 14,
+              overflow: "hidden",
+            }}
+          >
+            {photos.length > 0 ? (
+              <img src={photos[photos.length - 1]} alt="menu" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <div style={{ textAlign: "center", color: "var(--ink-soft)" }}>
+                <Camera size={28} />
+                <p className="small" style={{ marginTop: 8 }}>Take a photo or upload a menu page</p>
               </div>
-            ))}
-          </div>
-        )}
-
-        <label className="field">
-          Menu text (paste or type)
-          <textarea
-            rows={10}
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-            placeholder={"PASTA\nElk Bolognese — elk, pork, tomato, juniper, mafaldine, parmesan $29\n\nENTREES\nPork Milanese — fennel, apple mostarda, arugula, parmesan $36"}
-          />
-        </label>
-        <button className="btn" onClick={runExtraction} disabled={!rawText.trim()}>
-          Extract menu structure
-        </button>
-      </div>
-
-      {extraction && (
-        <div className="card">
-          <p className="section-title">2. Review extraction</p>
-          {extraction.warnings?.length > 0 && (
-            <div className="pill gold" style={{ marginBottom: 10 }}>
-              {extraction.warnings.length} line(s) could not be parsed automatically — check below
-            </div>
-          )}
-          {extraction.sections.map((section, sIdx) => (
-            <div key={sIdx} style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                <input
-                  type="text"
-                  value={section.name}
-                  onChange={(e) => renameSection(sIdx, e.target.value)}
-                  style={{ fontWeight: 700, maxWidth: 260 }}
+            )}
+            {["top", "bottom"].map((v) =>
+              ["left", "right"].map((h) => (
+                <div
+                  key={v + h}
+                  style={{
+                    position: "absolute",
+                    [v]: 14,
+                    [h]: 14,
+                    width: 20,
+                    height: 20,
+                    borderTop: v === "top" ? "2px solid var(--brass)" : "none",
+                    borderBottom: v === "bottom" ? "2px solid var(--brass)" : "none",
+                    borderLeft: h === "left" ? "2px solid var(--brass)" : "none",
+                    borderRight: h === "right" ? "2px solid var(--brass)" : "none",
+                  }}
                 />
-                <button className="btn ghost" onClick={() => removeSection(sIdx)}>Remove section</button>
-              </div>
-              {section.items.map((item, iIdx) => (
-                <div key={iIdx} className="grid cols-3" style={{ marginBottom: 6, alignItems: "start" }}>
-                  <input type="text" placeholder="Dish name" value={item.name} onChange={(e) => updateItem(sIdx, iIdx, "name", e.target.value)} />
-                  <input type="text" placeholder="Description / components" value={item.description} onChange={(e) => updateItem(sIdx, iIdx, "description", e.target.value)} />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <input type="number" placeholder="Price" value={item.price ?? ""} onChange={(e) => updateItem(sIdx, iIdx, "price", e.target.value)} />
-                    <button className="btn ghost" onClick={() => removeItem(sIdx, iIdx)}><Trash2 size={13} /></button>
-                  </div>
+              ))
+            )}
+            <label className="btn" style={{ position: "absolute", bottom: 14, cursor: "pointer" }}>
+              <ImageIcon size={13} style={{ marginRight: 4 }} />
+              Add photo
+              <input type="file" accept="image/*,.pdf" multiple onChange={handlePhotos} style={{ display: "none" }} />
+            </label>
+          </div>
+
+          {photos.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              {photos.map((p, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  <img src={p} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />
+                  <button
+                    className="btn danger"
+                    style={{ position: "absolute", top: -6, right: -6, padding: "2px 5px", borderRadius: 6 }}
+                    onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    <Trash2 size={10} />
+                  </button>
                 </div>
               ))}
-              <button className="btn ghost" onClick={() => addItem(sIdx)}><Plus size={12} /> Add dish</button>
             </div>
-          ))}
-          <button className="btn ghost" onClick={addSection} style={{ marginBottom: 14 }}><Plus size={12} /> Add section</button>
-          <hr className="sep" />
-          <button className="btn" onClick={saveMenu}><Check size={13} /> Confirm &amp; save menu version</button>
+          )}
+
+          <div className="card" style={{ marginBottom: 14 }}>
+            <p className="section-title">Menu details</p>
+            <div className="grid cols-2">
+              <label className="field">
+                Menu type
+                <select value={menuType} onChange={(e) => setMenuType(e.target.value)}>
+                  {MENU_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                Effective date
+                <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
+              </label>
+            </div>
+            <label className="field">
+              Meal period (optional)
+              <input type="text" value={mealPeriod} onChange={(e) => setMealPeriod(e.target.value)} placeholder="e.g. Dinner service" />
+            </label>
+            <label className="field">
+              Menu text — this build has no automated OCR, so paste or type the text you want structured.
+              <textarea
+                rows={9}
+                value={rawText}
+                onChange={(e) => setRawText(e.target.value)}
+                placeholder={"PASTA\nElk Bolognese — elk, pork, tomato, juniper, mafaldine $29\n\nENTREES\nPork Milanese — fennel, apple mostarda, arugula, parmesan $36"}
+              />
+            </label>
+            <button className="btn" onClick={runExtraction} disabled={!rawText.trim()} style={{ width: "100%" }}>
+              Extract menu structure
+            </button>
+          </div>
+        </>
+      )}
+
+      {extraction && (
+        <div>
+          <p className="section-title">Extraction preview · Step 2 of 2</p>
+          {extraction.warnings?.length > 0 && (
+            <div className="pill brass" style={{ marginBottom: 10 }}>
+              {extraction.warnings.length} line(s) need a manual look
+            </div>
+          )}
+          <div className="segmented" style={{ marginBottom: 12, overflowX: "auto" }}>
+            {extraction.sections.map((s, i) => (
+              <button key={i} className={activeSection === i ? "active" : ""} onClick={() => setActiveSection(i)}>
+                {s.name || `Section ${i + 1}`}
+              </button>
+            ))}
+          </div>
+
+          {extraction.sections[activeSection] && (
+            <div className="card" style={{ marginBottom: 12 }}>
+              <input
+                type="text"
+                value={extraction.sections[activeSection].name}
+                onChange={(e) => renameSection(activeSection, e.target.value)}
+                style={{ fontWeight: 700, marginBottom: 10 }}
+              />
+              {extraction.sections[activeSection].items.map((item, iIdx) => (
+                <div key={iIdx} className="dish-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <Check size={15} color="#6fbf8f" />
+                    <input
+                      type="text"
+                      placeholder="Dish name"
+                      value={item.name}
+                      onChange={(e) => updateItem(activeSection, iIdx, "name", e.target.value)}
+                    />
+                    <button className="btn ghost" onClick={() => removeItem(activeSection, iIdx)}><Trash2 size={13} /></button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Description / components"
+                    value={item.description}
+                    onChange={(e) => updateItem(activeSection, iIdx, "description", e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Price"
+                    value={item.price ?? ""}
+                    onChange={(e) => updateItem(activeSection, iIdx, "price", e.target.value)}
+                    style={{ maxWidth: 120 }}
+                  />
+                </div>
+              ))}
+              <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => addItem(activeSection)}>
+                <Plus size={12} /> Add item
+              </button>
+            </div>
+          )}
+
+          <button className="btn ghost" onClick={addSection} style={{ marginBottom: 14 }}>
+            <Plus size={12} /> Add section
+          </button>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn ghost" onClick={() => setExtraction(null)}>Back</button>
+            <button className="btn" style={{ flex: 1 }} onClick={saveMenu}>
+              <Check size={13} /> Confirm &amp; save
+            </button>
+          </div>
           <p className="tiny muted" style={{ marginTop: 8 }}>
-            Saving will compare this menu against the most recent confirmed "{menuType}" menu, detect changes, and
-            generate a change briefing.
+            Saving compares this menu against the most recent confirmed "{menuType}" menu and generates a change briefing.
           </p>
         </div>
       )}

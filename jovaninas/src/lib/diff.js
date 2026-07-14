@@ -1,4 +1,4 @@
-import { extractComponents, allergensForComponents, detectTechniques } from "./components.js";
+import { extractDishComponents, allergensForComponents, detectTechniques } from "./components.js";
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
@@ -42,7 +42,7 @@ const ALLERGEN_KEYS = ["gluten", "dairy", "tree nuts", "peanut", "shellfish", "f
 function indexPreviousItems(prevItems) {
   return prevItems.map((item) => ({
     ...item,
-    components: item.components || extractComponents(item.description),
+    components: item.components || extractDishComponents(item.name, item.description),
   }));
 }
 
@@ -105,7 +105,7 @@ export function compareMenuVersions(prevItems, newItems, dictionary = {}) {
 
   const newWithComponents = newItems.map((item) => ({
     ...item,
-    components: extractComponents(item.description, dictionary),
+    components: extractDishComponents(item.name, item.description, dictionary),
   }));
 
   for (const newItem of newWithComponents) {

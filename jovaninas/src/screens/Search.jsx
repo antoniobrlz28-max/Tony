@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { allergensForComponents } from "../lib/components.js";
 import { latestDishVersion } from "../lib/menuOps.js";
@@ -63,13 +64,8 @@ function runSearch(query, data) {
     return { kind: "changes", changes };
   }
 
-  // fallback: keyword search across dishes, dictionary terms, notes
-  const dishes = activeDishVersions(data).filter((dv) =>
-    `${dv.displayName} ${dv.description}`.toLowerCase().includes(q)
-  );
-  const terms = Object.values(data.dictionary).filter(
-    (e) => e.term.includes(q) || e.definition?.toLowerCase().includes(q)
-  );
+  const dishes = activeDishVersions(data).filter((dv) => `${dv.displayName} ${dv.description}`.toLowerCase().includes(q));
+  const terms = Object.values(data.dictionary).filter((e) => e.term.includes(q) || e.definition?.toLowerCase().includes(q));
   const notes = data.notes.filter((n) => n.content.toLowerCase().includes(q));
   return { kind: "mixed", dishes, terms, notes };
 }
@@ -77,10 +73,17 @@ function runSearch(query, data) {
 export default function Search({ go, params }) {
   const { data } = useData();
   const [q, setQ] = useState(params?.q || "");
+  const [chip, setChip] = useState("All");
   const result = useMemo(() => runSearch(q, data), [q, data]);
+  const backTab = params?.fromTab || "home";
+
+  const goDish = (dishId) => go("dish", { dishId, fromTab: backTab });
 
   return (
     <div>
+      <a className="link small" onClick={() => go(backTab)} style={{ marginBottom: 10, display: "inline-flex" }}>
+        <ArrowLeft size={13} /> Back
+      </a>
       <div className="card" style={{ marginBottom: 12 }}>
         <input
           type="text"
@@ -90,6 +93,14 @@ export default function Search({ go, params }) {
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
+
+      {result.kind === "mixed" && (
+        <div className="chip-row">
+          {["All", "Dishes", "Ingredients", "Notes"].map((c) => (
+            <button key={c} className={`btn ghost ${chip === c ? "active" : ""}`} onClick={() => setChip(c)}>{c}</button>
+          ))}
+        </div>
+      )}
 
       {result.kind === "empty" && <p className="muted">Try a question above.</p>}
 
@@ -116,16 +127,14 @@ export default function Search({ go, params }) {
       )}
 
       {result.kind === "dish-history" && (
-        <button className="btn" onClick={() => go("dish", { dishId: result.dishId, fromTab: "search" })}>
-          View dish history
-        </button>
+        <button className="btn" onClick={() => goDish(result.dishId)}>View dish history</button>
       )}
 
       {result.kind === "dishes" && (
         <div className="card">
           <p className="section-title">{result.label || "Matching dishes"} ({result.dishes.length})</p>
           {result.dishes.map((dv) => (
-            <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("dish", { dishId: dv.dishId, fromTab: "search" })}>
+            <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => goDish(dv.dishId)}>
               <div>
                 <div className="dish-name" style={{ fontSize: 13.5 }}>{dv.displayName}</div>
                 <div className="dish-desc">{dv.description}</div>
@@ -137,11 +146,11 @@ export default function Search({ go, params }) {
 
       {result.kind === "mixed" && (
         <>
-          {result.dishes.length > 0 && (
+          {(chip === "All" || chip === "Dishes") && result.dishes.length > 0 && (
             <div className="card" style={{ marginBottom: 12 }}>
               <p className="section-title">Dishes</p>
               {result.dishes.map((dv) => (
-                <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("dish", { dishId: dv.dishId, fromTab: "search" })}>
+                <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => goDish(dv.dishId)}>
                   <div>
                     <div className="dish-name" style={{ fontSize: 13.5 }}>{dv.displayName}</div>
                     <div className="dish-desc">{dv.description}</div>
@@ -150,7 +159,7 @@ export default function Search({ go, params }) {
               ))}
             </div>
           )}
-          {result.terms.length > 0 && (
+          {(chip === "All" || chip === "Ingredients") && result.terms.length > 0 && (
             <div className="card" style={{ marginBottom: 12 }}>
               <p className="section-title">Library terms</p>
               {result.terms.map((t) => (
@@ -163,12 +172,10 @@ export default function Search({ go, params }) {
               ))}
             </div>
           )}
-          {result.notes.length > 0 && (
+          {(chip === "All" || chip === "Notes") && result.notes.length > 0 && (
             <div className="card">
               <p className="section-title">Notes</p>
-              {result.notes.map((n) => (
-                <div key={n.id} className="small" style={{ padding: "4px 0" }}>{n.content}</div>
-              ))}
+              {result.notes.map((n) => <div key={n.id} className="small" style={{ padding: "4px 0" }}>{n.content}</div>)}
             </div>
           )}
           {result.dishes.length + result.terms.length + result.notes.length === 0 && q && (

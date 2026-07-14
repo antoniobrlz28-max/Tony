@@ -29,12 +29,28 @@ project inside this repo — it does not touch the existing `Tony` file
 - **Descriptions**: literal / one-line / sensory / guest-friendly / elevated
   descriptions generated deterministically from parsed data only — nothing
   is invented.
-- **Change briefings, menu history, dish pages** (quick/service/study/notes/
-  history layers), a searchable **culinary library**, natural-language-ish
-  **search**, and spaced-repetition **flashcards**.
+- **Dish pages** with Overview / Components / Pairings / History tabs,
+  generated flavor-profile tags, and Learn / Notes / Share actions.
+- **Pairing suggestions**: flavor-logic-driven wine/cocktail/amaro style
+  recommendations (e.g. "high-acid white — cuts fried richness"), matched
+  against beverage entries in the Library when present, otherwise shown as a
+  generic style so nothing restaurant-specific is invented.
+- **My Menus** (Current Menu / Changes / History sub-tabs), a searchable
+  **culinary library** (with pronunciation guides), natural-language-ish
+  **search**, and a **Learn** tab with three modes: SRS **flashcards**, a
+  multiple-choice **pre-shift quiz** (distractors generated from real dish/
+  ingredient data), and **pronunciation practice** using the browser's
+  built-in text-to-speech.
+- **More**: cross-dish notes feed, local data export/import/reset, and a
+  profile name used in the Home greeting.
+
+Visual design follows the reference mockups: charcoal/brass/cream palette,
+Playfair Display + Satoshi type, a phone-width shell with a bottom nav
+(Home / Scan / My Menus / Learn / Library / More).
 
 See `src/lib/` for the underlying logic (parsing, diffing, component
-extraction, spaced repetition) — all pure functions, independent of React.
+extraction, flavor tagging, pairing logic, MCQ generation, spaced
+repetition) — all pure functions, independent of React.
 
 ## Known limitations (by design, for this MVP)
 
@@ -56,11 +72,15 @@ npm run dev
 
 > This sandbox's network policy blocks `registry.npmjs.org`, so `npm
 > install` could not be run/verified in this session. The code was
-> validated with `tsc --noEmit` (syntax) and a standalone Node smoke test
-> (`src/lib/*` logic — parsing, diffing, dish-identity matching, spaced
-> repetition) exercising the exact "elk bolognese" change-detection example
-> from the product spec end-to-end. Run `npm install && npm run dev`
-> locally to try the UI.
+> validated with `tsc --noEmit` (syntax, zero errors across all 25 source
+> files) and standalone Node smoke tests exercising `src/lib/*` directly —
+> the full parse → diff → commit pipeline (including the "elk bolognese"
+> change-detection example from the product spec), the split-into-new-dish
+> flow, SRS scheduling, flavor-tag generation, pairing suggestions, and MCQ
+> quiz generation with unique/valid answer options. Run `npm install && npm
+> run dev` locally to try the UI — fonts (Playfair Display via Google Fonts,
+> Satoshi via Fontshare) load from CDNs at runtime and weren't reachable
+> from this sandbox either, so double-check they render as expected.
 
 From the empty Home screen you can click **Load sample data** to seed two
 versions of a demo Dinner menu and see the full change-detection flow

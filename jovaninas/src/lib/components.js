@@ -123,10 +123,32 @@ function detectAllergens(normalized) {
   return found;
 }
 
+// Named preparation styles that imply techniques not literally spelled out
+// on the menu (traditional-preparation knowledge, not invention — e.g.
+// cotoletta alla Milanese is, by definition, breaded and fried).
+const STYLE_TECHNIQUE_MAP = {
+  milanese: ["breaded", "fried"],
+  parmigiana: ["breaded", "fried"],
+  piccata: ["seared"],
+  scaloppine: ["seared"],
+  saltimbocca: ["seared"],
+  carbonara: ["seared"],
+  puttanesca: ["stewed"],
+  diavola: ["grilled"],
+  scampi: ["seared"],
+  fritto: ["fried"],
+  tempura: ["fried"],
+  confit: ["confit"],
+};
+
 export function detectTechniques(text) {
   if (!text) return [];
   const lower = text.toLowerCase();
-  return TECHNIQUE_KEYWORDS.filter((t) => lower.includes(t));
+  const direct = TECHNIQUE_KEYWORDS.filter((t) => lower.includes(t));
+  const styleImplied = Object.entries(STYLE_TECHNIQUE_MAP)
+    .filter(([style]) => lower.includes(style))
+    .flatMap(([, techniques]) => techniques);
+  return Array.from(new Set([...direct, ...styleImplied]));
 }
 
 // Extract a component list (with role + allergen guesses) from a raw
@@ -148,6 +170,38 @@ export function extractComponents(description, dictionary = {}) {
       source: dictHit ? "dictionary" : "inferred",
     };
   });
+}
+
+// The main protein is often only named in the dish title (e.g. "Pork
+// Milanese" with a description of just the accompaniments). This looks for
+// a known protein keyword in the name and folds it in as a component if the
+// description didn't already surface one.
+function extractMainProteinFromName(name, existingComponents) {
+  if (!name) return null;
+  const normalizedName = normalizeTerm(name);
+  const alreadyHasProtein = existingComponents.some((c) => c.role === "protein");
+  if (alreadyHasProtein) return null;
+  const match = ROLE_KEYWORDS.protein.find((kw) => normalizedName.includes(kw));
+  if (!match) return null;
+  if (existingComponents.some((c) => c.normalized.includes(match))) return null;
+  return {
+    raw: match,
+    normalized: match,
+    role: "protein",
+    allergens: detectAllergens(match),
+    confidence: 0.6,
+    source: "inferred-from-name",
+  };
+}
+
+// Preferred entry point for turning a parsed menu line into a component
+// list — combines the description breakdown with a name-derived protein
+// fallback so dishes like "Pork Milanese, fennel, apple mostarda" (protein
+// only in the title) still surface their main protein.
+export function extractDishComponents(name, description, dictionary = {}) {
+  const fromDescription = extractComponents(description, dictionary);
+  const nameProtein = extractMainProteinFromName(name, fromDescription);
+  return nameProtein ? [nameProtein, ...fromDescription] : fromDescription;
 }
 
 export function allergensForComponents(components) {
