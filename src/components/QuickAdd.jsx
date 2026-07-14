@@ -12,10 +12,10 @@ function autoMeal() {
 export function QuickAddFab({ onClick }) {
   return (
     <button onClick={onClick} aria-label="Quick add" style={{
-      position: "fixed", right: 16, bottom: 76, width: 54, height: 54, borderRadius: "50%",
+      position: "fixed", right: 16, bottom: "calc(84px + env(safe-area-inset-bottom))", width: 54, height: 54, borderRadius: 18,
       background: ACCENT, color: PAPER, border: "none", cursor: "pointer", zIndex: 40,
       display: "flex", alignItems: "center", justifyContent: "center",
-      boxShadow: "0 6px 20px rgba(49,134,255,0.45)"
+      boxShadow: "0 8px 24px rgba(49,134,255,0.5)"
     }}>
       <Plus size={24} />
     </button>

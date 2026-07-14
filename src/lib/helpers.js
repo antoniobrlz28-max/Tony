@@ -26,10 +26,6 @@ export function urgencyColor(daysLeft, totalDays) {
   const t = totalDays > 0 ? Math.min(1, Math.max(0, 1 - daysLeft / totalDays)) : 1;
   return lerpColor(SAGE, RUST, t);
 }
-export function progressColor(pct) {
-  const t = Math.min(1, Math.max(0, pct / 100));
-  return lerpColor(RUST, SAGE, t);
-}
 export function payoffProjection(debt) {
   const payments = (debt.payments || []).slice().sort((a, b) => a.date.localeCompare(b.date));
   if (payments.length < 2) return null;

@@ -539,7 +539,7 @@ export default function FinanceOS() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: INK, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif", color: TEXT, paddingBottom: 70 }}>
+    <div style={{ minHeight: "100vh", background: INK, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif", color: TEXT, paddingBottom: 84 }}>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
       {/* Header + paycheck runway */}
       <div style={{ background: INK, color: PAPER, padding: "18px 16px 16px" }}>
@@ -548,17 +548,12 @@ export default function FinanceOS() {
             <Orbit size={22} mode={saving ? "spin" : "logo"} />
             <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0, letterSpacing: "-0.01em" }}>life OS</h1>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ fontSize: 11, color: saving ? ACCENT : SLATE }}>
-              {saving ? "saving…" : "saved"}
-            </span>
-            <button onClick={() => setTab("settings")} aria-label="Settings" style={{
-              background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex",
-              color: tab === "settings" ? ACCENT : "#8A97A3"
-            }}>
-              <SettingsIcon size={18} />
-            </button>
-          </div>
+          <button onClick={() => setTab("settings")} aria-label="Settings" style={{
+            background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex",
+            color: tab === "settings" ? ACCENT : SLATE
+          }}>
+            <SettingsIcon size={19} />
+          </button>
         </div>
         {tab !== "habits" ? (
           daysUntilPayday === 0 && (
@@ -574,7 +569,7 @@ export default function FinanceOS() {
           )
         ) : (
           <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#A7B0BE", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: SLATE, marginBottom: 6 }}>
               <span>THIS MONTH</span>
               <span>{habitDaysLogged} of {habitDaysElapsed} days logged</span>
             </div>
@@ -870,7 +865,7 @@ export default function FinanceOS() {
               </Section>
             )}
 
-            <Section title="Accounts" eyebrow="quick view">
+            <Section title="Accounts">
               {data.accounts.map(a => (
                 <Row key={a.id} left={a.name} right={fmt(a.balance)} pill />
               ))}
@@ -1058,23 +1053,27 @@ export default function FinanceOS() {
         </div>
       )}
 
-      {/* Bottom nav */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: INK, display: "flex", borderTop: `1px solid ${INK_SOFT}22`, padding: "6px 6px" }}>
+      {/* Bottom nav — frosted, safe-area aware */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, display: "flex",
+        background: "rgba(5,8,17,0.72)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+        borderTop: `1px solid ${INK_SOFT}22`, padding: "8px 6px calc(8px + env(safe-area-inset-bottom))"
+      }}>
         {NAV.map(n => {
           const Icon = n.icon;
           const active = tab === n.id;
           return (
             <button key={n.id} onClick={() => setTab(n.id)} style={{
-              flex: 1, background: "none", border: "none", padding: "5px 2px", cursor: "pointer",
-              color: active ? "white" : "#9AA5AE", display: "flex", flexDirection: "column", alignItems: "center", gap: 3
+              flex: 1, background: "none", border: "none", padding: "4px 2px", cursor: "pointer",
+              color: active ? "#fff" : SLATE, display: "flex", flexDirection: "column", alignItems: "center", gap: 4
             }}>
               <div style={{
-                width: 34, height: 26, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center",
-                background: active ? ACCENT : "transparent", transition: "background 0.2s"
+                width: 40, height: 28, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                background: active ? ACCENT : "transparent", transition: "background 0.2s ease"
               }}>
-                <Icon size={16} strokeWidth={active ? 2.4 : 1.8} />
+                <Icon size={17} strokeWidth={active ? 2.4 : 1.8} />
               </div>
-              <span style={{ fontSize: 9, color: active ? ACCENT : "#9AA5AE", fontWeight: active ? 700 : 400 }}>{n.label}</span>
+              <span style={{ fontSize: 9, color: active ? ACCENT : SLATE, fontWeight: active ? 700 : 500, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
         })}

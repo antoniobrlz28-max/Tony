@@ -192,13 +192,13 @@ export function BottomSheet({ title, onClose, children }) {
 
 export function StatTile({ icon: Icon, color, value, label, caption, valueColor }) {
   return (
-    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}22`, borderRadius: 14, padding: "12px 10px", minWidth: 0 }}>
-      <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${color}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-        <Icon size={13} color={color} />
+    <div style={{ background: CARD, border: `1px solid ${INK_SOFT}1f`, borderRadius: 16, padding: "13px 12px", minWidth: 0 }}>
+      <div style={{ width: 26, height: 26, borderRadius: 8, background: `${color}1f`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 9 }}>
+        <Icon size={14} color={color} />
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: valueColor || TEXT, lineHeight: 1.15, overflowWrap: "break-word" }}>{value}</div>
-      <div style={{ fontSize: 9.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 3 }}>{label}</div>
-      <div style={{ fontSize: 9.5, color, marginTop: 2 }}>{caption}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: valueColor || TEXT, lineHeight: 1.1, letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums", overflowWrap: "break-word" }}>{value}</div>
+      <div style={{ fontSize: 10, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>{label}</div>
+      <div style={{ fontSize: 10, color: SLATE, marginTop: 2 }}>{caption}</div>
     </div>
   );
 }

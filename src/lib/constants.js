@@ -18,7 +18,6 @@ export const SAGE = "#18D79B";       // Green — positive / held / habits domai
 export const SLATE = "#96A2B5";      // secondary text
 
 // Domain colors (LifeOS grammar: every badge/chart inherits its domain color)
-export const CYAN = "#08D9D0";       // Focus
 export const AMBER = "#FFC83D", AMBER_BG = "#2B2308";   // Finance domain / calories
 export const CORAL = "#FF7165", CORAL_BG = "#331A16";   // Health domain
 export const VIOLET = "#895CFF", VIOLET_BG = "#1B1638"; // Mind domain

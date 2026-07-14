@@ -21,7 +21,6 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
   return (
     <Section
       title="Accounts"
-      eyebrow="Where your money lives"
       right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add account</SmallBtn>}
     >
       {data.accounts.length > 0 && (

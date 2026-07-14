@@ -21,7 +21,6 @@ export function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }
   return (
     <Section
       title="Goals"
-      eyebrow="What you're saving toward"
       right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add goal</SmallBtn>}
     >
       {data.goals.length > 0 && (

@@ -22,7 +22,6 @@ export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
   return (
     <Section
       title="Debt"
-      eyebrow="What's left to pay off"
       right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add debt</SmallBtn>}
     >
       {data.debts.length > 0 && (

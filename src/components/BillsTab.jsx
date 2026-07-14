@@ -98,7 +98,6 @@ export function BillsTab({ data, setData, payBill, editBill, deleteBill }) {
   return (
     <Section
       title="Bills"
-      eyebrow="Stay on top of what's due"
       right={
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ display: "flex", border: `1px solid ${INK_SOFT}40`, borderRadius: 9, overflow: "hidden" }}>
