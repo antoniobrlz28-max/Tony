@@ -19,7 +19,9 @@ function runSearch(query, data) {
   const whatIs = q.match(/^what is ([\w' -]+)\??$/) || q.match(/^teach me (about )?([\w' -]+)$/);
   if (whatIs) {
     const term = (whatIs[1] || whatIs[2]).trim().replace(/^a |^an /, "");
-    const hit = Object.values(data.dictionary).find((e) => e.term === term || term.includes(e.term));
+    const hit = Object.values(data.dictionary).find(
+      (e) => e.term === term || term.includes(e.term) || e.synonyms?.some((s) => s.toLowerCase() === term)
+    );
     if (hit) return { kind: "term", hit };
   }
 
@@ -66,7 +68,9 @@ function runSearch(query, data) {
   }
 
   const dishes = activeDishVersions(data).filter((dv) => `${dv.displayName} ${dv.description}`.toLowerCase().includes(q));
-  const terms = Object.values(data.dictionary).filter((e) => e.term.includes(q) || e.definition?.toLowerCase().includes(q));
+  const terms = Object.values(data.dictionary).filter(
+    (e) => e.term.includes(q) || e.definition?.toLowerCase().includes(q) || e.synonyms?.some((s) => s.toLowerCase().includes(q))
+  );
   const notes = data.notes.filter((n) => n.content.toLowerCase().includes(q));
   return { kind: "mixed", dishes, terms, notes };
 }

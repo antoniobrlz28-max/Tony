@@ -238,6 +238,25 @@ them later is one line in `MODES`.
   the current menu** (behind a filter icon) instead of a fixed always-shown
   list — no "sesame" filter cluttering a menu with no sesame in it.
 - Natural-language-ish search across dishes/ingredients/notes.
+- **116 terms imported from Jovanina's own Volume 2 Master Menu
+  Encyclopedia** (a restaurant-authored PDF built specifically as an app
+  data source), tagged `confidence: "restaurant-confirmed"` rather than
+  "researched" since they come directly from the restaurant, not general
+  knowledge — 107 new glossary terms plus pronunciation/confidence
+  upgrades to 9 terms that already existed in the seed dictionary. The
+  source PDF had no extractable text layer in the normal sense (subset
+  TrueType fonts with per-font `/ToUnicode` CMaps, and a page layout that
+  prints each field's value visually *above* its own label, a CSS
+  flex-column-reversal artifact from however the PDF was generated) — both
+  were decoded directly (a small dependency-free Python PDF parser, since
+  no `pdftotext`/`pypdf` could be installed in this sandbox) rather than
+  guessed at.
+- **Guest-language search synonyms**: a handful of terms resolve under the
+  phrase a guest would actually use, not just the culinary term — "rocket"
+  finds arugula, "pork jowl" finds guanciale, "naked ravioli" finds gnudi,
+  "yellowtail" finds hamachi — per the encyclopedia's own stated
+  cross-linking rules (`entry.synonyms` in `lib/dictionary.js`, checked
+  alongside `term`/`definition` in Search.jsx).
 - Cross-dish notes feed, local data export/import/reset, a profile name,
   and a **Roadmap** tab listing what's deliberately deferred (see below).
 
