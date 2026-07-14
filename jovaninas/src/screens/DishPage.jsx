@@ -3,10 +3,11 @@ import { ArrowLeft, GraduationCap, StickyNote, Share2, Wine, Camera, Trash2 } fr
 import { useData } from "../lib/context.jsx";
 import { dishHistory, addNote } from "../lib/menuOps.js";
 import { allergensForComponents, detectTechniques } from "../lib/components.js";
-import { allDescriptions, likelyGuestQuestions, audienceDescription } from "../lib/descriptions.js";
+import { allDescriptions, likelyGuestQuestions, audienceDescription, pictureDescription } from "../lib/descriptions.js";
 import { flavorProfile } from "../lib/flavorProfile.js";
 import { suggestPairings } from "../lib/pairing.js";
 import { getDishPhotos, addDishPhoto, removeDishPhoto } from "../lib/photos.js";
+import IngredientTerms from "../components/IngredientTerms.jsx";
 
 const TABS = ["Overview", "Components", "Pairings", "Guest Q&A", "Photos", "Training", "History"];
 const AUDIENCES = ["Professional", "Guest", "Kid", "Foodie"];
@@ -102,10 +103,13 @@ export default function DishPage({ go, params }) {
       </div>
 
       <h3 style={{ fontSize: 22, margin: "0 0 2px" }}>{latest.displayName}</h3>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <span className="muted small">{latest.section} · {dish.status}</span>
         {latest.price != null && <span className="price">${latest.price}</span>}
       </div>
+      <p className="small" style={{ marginBottom: 6 }}>{pictureDescription(latest)}</p>
+      <IngredientTerms components={latest.components} dictionary={data.dictionary} />
+      <div style={{ marginBottom: 12 }} />
 
       <div className="segmented" style={{ marginBottom: 14 }}>
         {TABS.map((t) => <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>)}

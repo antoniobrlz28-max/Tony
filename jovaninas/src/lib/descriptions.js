@@ -98,6 +98,30 @@ export function audienceDescription(dish, audience, dictionary = {}, flavorTags 
   }
 }
 
+function capWords(text, max) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= max) return words.join(" ");
+  return `${words.slice(0, max).join(" ")}…`;
+}
+
+// A short, guest-facing "picture" of the dish, hard-capped at 20 words —
+// built only from the dish's own name/components/technique, never invented.
+export function pictureDescription(dish, maxWords = 20) {
+  const parts = (dish.components || []).map((c) => c.normalized);
+  const techniques = detectTechniques(`${dish.displayName} ${dish.description || ""}`);
+  let text;
+  if (parts.length) {
+    const techPhrase = techniques.length ? `${techniques.slice(0, 2).join(" and ")} ` : "";
+    text = `${techPhrase}${dish.displayName.toLowerCase()} with ${parts.join(", ")}.`;
+  } else if (dish.description) {
+    text = dish.description;
+  } else {
+    text = dish.displayName;
+  }
+  text = text.replace(/^./, (c) => c.toUpperCase());
+  return capWords(text, maxWords);
+}
+
 export function allDescriptions(dish, dictionary = {}) {
   return {
     literal: literalDescription(dish),

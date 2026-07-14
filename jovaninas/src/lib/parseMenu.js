@@ -1,23 +1,77 @@
-// Heuristic text -> structured menu parser. Designed for pasted/typed menu
-// text (no OCR available in this environment). Keeps the raw line alongside
-// the parsed fields so nothing is silently discarded.
+// Heuristic text -> structured menu parser. Designed for both pasted/typed
+// menu text and PDF-extracted text (no OCR available in this environment).
+// Keeps the raw line alongside the parsed fields so nothing is silently
+// discarded.
+//
+// Real restaurant PDF menus (verified against Jovanina's actual menus)
+// commonly lay a dish out across two lines: the dish name on its own line
+// in ALL CAPS, then a second line with the ingredient list and price
+// ("HOUSEMADE FOCACCIA" / "Whipped Ricotta + Lavender Honey    14").
+// Category headers ("STARTERS", "SWEET", "WOOD FIRED PIZZA"...) look
+// structurally identical to a dish-name line (short, no price), so they're
+// told apart with a known-category-keyword list rather than guessing from
+// capitalization alone.
 
 const PRICE_RE = /\$?\s*(\d{1,3}(?:\.\d{2})?)\s*$/;
 const DASH_SPLIT_RE = /\s+[—–-]\s+/;
-// Matches a menu print/archive number line, e.g. "No. 248", "No.248",
-// "Menu No. 248", "#248" — restaurants often print one somewhere on the
-// page for their own filing, and it should never be read as a dish.
+// A "+6" / "+4" glued directly to a number (no space) is a surcharge/add-on
+// note ("Gluten Free Crust +6"), not a dish price — real prices in these
+// menus are right-aligned with a large gap before the digits.
+const SURCHARGE_RE = /\+\d{1,3}\s*$/;
+// "No. 248", "No.248", "Menu No. 248", "#248" — a print/archive number,
+// never a dish.
 const MENU_NUMBER_RE = /^(?:menu\s+)?no\.?\s*#?\s*(\d{1,6})\s*\.?$|^#\s*(\d{1,6})$/i;
 
-function looksLikeSectionHeader(line) {
+// Exact (not substring) category titles — many real dish names contain
+// category-ish words ("La Scala Salad", "Oak Ember Roasted Rainbow
+// Carrots", "Roasted Butternut Squash Ravioli"), so a loose "contains
+// roasted/salad/pasta" match would misfire and turn those dishes into
+// phantom sections. Matching the whole (normalized) line against a known
+// set of category titles avoids that.
+const KNOWN_SECTION_TITLES = new Set([
+  "starters", "antipasti", "antipasto", "appetizers", "appetizer",
+  "raw bar", "raw and chilled", "raw roasted and grilled", "oysters",
+  "salads", "soups",
+  "wood fired pizza", "pizza", "pizzas",
+  "handmade fresh pasta", "fresh pasta", "handmade pasta", "pasta",
+  "main plates", "mains", "main", "entrees", "entree",
+  "sweet", "sweets", "dessert", "desserts",
+  "sides", "side dishes",
+  "drinks", "cocktails", "wine", "wines", "wine list", "beer", "beers",
+  "amaro", "amari", "digestivo", "digestivi",
+  "brunch", "lunch", "dinner", "specials", "happy hour",
+  "small plates", "large plates", "snacks", "shareables", "bar menu",
+]);
+
+function normalizeHeaderText(line) {
+  return line
+    .toLowerCase()
+    .replace(/\*+$/, "")
+    .replace(/[.,]/g, "")
+    .replace(/&/g, "and")
+    .replace(/:$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSectionHeaderLine(line) {
   const trimmed = line.trim();
-  if (!trimmed) return false;
-  if (PRICE_RE.test(trimmed) && /\d/.test(trimmed)) return false;
-  const words = trimmed.split(/\s+/);
-  if (words.length > 5) return false;
-  const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
-  const isTitleShort = words.length <= 4 && !trimmed.includes(",");
-  return isAllCaps || (isTitleShort && trimmed.length < 40 && !DASH_SPLIT_RE.test(trimmed));
+  if (!trimmed || PRICE_RE.test(trimmed)) return false;
+  if (trimmed.split(/\s+/).length > 6) return false;
+  return KNOWN_SECTION_TITLES.has(normalizeHeaderText(trimmed));
+}
+
+// True when a no-price line reads like an ingredient/description fragment
+// rather than a title fragment: starts lowercase, uses "+"/"," separators,
+// or is simply long.
+function looksLikeIngredientText(line) {
+  return /^[a-z]/.test(line) || line.includes(",") || line.includes("+") || line.split(/\s+/).length > 6;
+}
+
+function looksLikeTitleFragment(line) {
+  if (!line || PRICE_RE.test(line) || SURCHARGE_RE.test(line)) return false;
+  if (looksLikeIngredientText(line)) return false;
+  return line.split(/\s+/).length <= 6;
 }
 
 function extractPrice(line) {
@@ -57,67 +111,114 @@ export function parseMenuText(rawText) {
 
   const sections = [];
   let current = null;
-  let title = null;
   let warnings = [];
   let menuNumber = null;
-  // Tracks the most recently added item so a following no-price line (very
-  // common in PDF menus, where the description wraps to its own line under
-  // the name+price line) can be folded in as more description instead of
-  // becoming a bogus standalone dish.
   let lastItem = null;
 
-  lines.forEach((line, idx) => {
-    if (idx === 0 && looksLikeSectionHeader(line) === false && !PRICE_RE.test(line)) {
-      // could be a menu title line, e.g. "JOVANINA'S — DINNER"; keep as
-      // title candidate only if no section has started and it's short.
-    }
-    const numberMatch = line.match(MENU_NUMBER_RE);
-    if (numberMatch) {
-      menuNumber = numberMatch[1] || numberMatch[2];
-      return;
-    }
+  // A dish name spotted on its own line, waiting for its description/price
+  // (possibly spanning further title-fragment lines, e.g. a name that
+  // itself wraps across two lines).
+  let pendingName = null;
+  let pendingDescription = "";
 
-    if (looksLikeSectionHeader(line)) {
-      current = { name: line.replace(/:$/, ""), items: [] };
-      sections.push(current);
-      lastItem = null;
-      return;
-    }
-    const { price, rest } = extractPrice(line);
-    if (!rest) {
-      warnings.push(`Could not parse line: "${line}"`);
-      return;
-    }
-
-    // A no-price line is treated as a wrapped description of the previous
-    // dish only when it reads like an ingredient list (starts lowercase, or
-    // contains a comma) — a genuine Title Case no-price dish name (e.g. a
-    // market-price item) still becomes its own item.
-    const looksLikeContinuation = /^[a-z]/.test(rest) || rest.includes(",");
-    if (price === null && lastItem && looksLikeContinuation) {
-      lastItem.description = lastItem.description ? `${lastItem.description}, ${rest}` : rest;
-      lastItem.rawLine += `\n${line}`;
-      return;
-    }
-
-    const { name, description } = splitNameDescription(rest);
+  function finalizeItem(name, description, price, rawLine) {
     if (!current) {
       current = { name: "Menu", items: [] };
       sections.push(current);
     }
-    if (!name) {
-      warnings.push(`Could not parse line: "${line}"`);
-      return;
-    }
     lastItem = {
-      rawLine: line,
-      name,
-      description,
+      rawLine,
+      name: name.replace(/\*+$/, "").trim(),
+      description: description.trim(),
       price,
-      confidence: price === null ? 0.6 : 0.85,
+      confidence: price === null ? 0.6 : 0.9,
     };
     current.items.push(lastItem);
-  });
+  }
 
-  return { title, sections, warnings, menuNumber };
+  for (const line of lines) {
+    const numberMatch = line.match(MENU_NUMBER_RE);
+    if (numberMatch) {
+      menuNumber = numberMatch[1] || numberMatch[2];
+      continue;
+    }
+
+    if (SURCHARGE_RE.test(line) && !PRICE_RE.test(line.replace(SURCHARGE_RE, ""))) {
+      // an add-on/surcharge note like "Gluten Free Crust +6" — not a dish
+      warnings.push(`Skipped add-on note (not a dish): "${line}"`);
+      continue;
+    }
+
+    if (pendingName !== null) {
+      const { price, rest } = extractPrice(line);
+      if (!rest) continue;
+      if (price !== null || looksLikeIngredientText(rest)) {
+        pendingDescription = pendingDescription ? `${pendingDescription}, ${rest}` : rest;
+        if (price !== null) {
+          finalizeItem(pendingName, pendingDescription, price, `${pendingName}\n${line}`);
+          pendingName = null;
+          pendingDescription = "";
+        }
+        continue;
+      }
+      if (looksLikeTitleFragment(rest) && !isSectionHeaderLine(rest)) {
+        // the dish name itself wraps across another line
+        pendingName = `${pendingName} ${rest}`;
+        continue;
+      }
+      // fell through: whatever we were building didn't resolve cleanly —
+      // flush it as-is (better to surface an imperfect item than lose it)
+      finalizeItem(pendingName, pendingDescription, null, pendingName);
+      pendingName = null;
+      pendingDescription = "";
+      // then re-process this line fresh below by falling through
+    }
+
+    if (isSectionHeaderLine(line)) {
+      current = { name: line.replace(/:$/, ""), items: [] };
+      sections.push(current);
+      lastItem = null;
+      continue;
+    }
+
+    if (looksLikeTitleFragment(line)) {
+      pendingName = line;
+      pendingDescription = "";
+      continue;
+    }
+
+    const { price, rest } = extractPrice(line);
+    if (!rest) {
+      warnings.push(`Could not parse line: "${line}"`);
+      continue;
+    }
+
+    // A no-price line that reads like an ingredient list continues the
+    // previous dish's description (common when a long description wraps).
+    // An "add ..." line ("add a Digestivo from the Cart  9", "add
+    // Fernet-Branca  5") is a priced upsell note on the previous dish, not
+    // a new standalone dish, even though it does have its own price.
+    const isUpsellNote = /^add\s/i.test(rest);
+    if (lastItem && (isUpsellNote || (price === null && looksLikeIngredientText(rest)))) {
+      const noted = isUpsellNote && price !== null ? `${rest} ($${price})` : rest;
+      lastItem.description = lastItem.description ? `${lastItem.description}, ${noted}` : noted;
+      lastItem.rawLine += `\n${line}`;
+      continue;
+    }
+
+    const { name, description } = splitNameDescription(rest);
+    if (!name) {
+      warnings.push(`Could not parse line: "${line}"`);
+      continue;
+    }
+    finalizeItem(name, description, price, line);
+  }
+
+  // Anything still pending at the end (e.g. a title-only last line) is
+  // surfaced rather than silently dropped.
+  if (pendingName !== null) {
+    finalizeItem(pendingName, pendingDescription, null, pendingName);
+  }
+
+  return { title: null, sections, warnings, menuNumber };
 }

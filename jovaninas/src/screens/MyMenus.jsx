@@ -4,7 +4,23 @@ import { useData } from "../lib/context.jsx";
 import { MENU_TYPES } from "../lib/storage.js";
 import { allergensForComponents } from "../lib/components.js";
 import { confirmChange, markChangeAsNewDish, markChangeIgnored } from "../lib/menuOps.js";
+import { pictureDescription } from "../lib/descriptions.js";
 import Highlight from "../components/Highlight.jsx";
+import IngredientTerms from "../components/IngredientTerms.jsx";
+
+// Renders a "Previous:"/"Current:" audit line with its trailing "($X.XX)"
+// price colored green, without changing the stored oldValue/newValue
+// strings themselves.
+function ValueLine({ label, value }) {
+  const m = value.match(/^(.*)(\s\(\$[\d.,]+\))$/);
+  if (!m) return <div className="small muted">{label} {value}</div>;
+  return (
+    <div className="small muted">
+      {label} {m[1]}
+      <span className="price">{m[2]}</span>
+    </div>
+  );
+}
 
 const SUB_TABS = ["Current Menu", "Changes", "History"];
 const ALL_ALLERGENS = ["gluten", "dairy", "tree nuts", "peanut", "shellfish", "fish", "egg", "soy", "sesame"];
@@ -115,7 +131,8 @@ function CurrentMenuTab({ go, data }) {
                       {change?.changeType === "Added item" && <span className="pill green">New</span>}
                       {change && change.changeType !== "Added item" && <span className="pill brass">Changed</span>}
                     </div>
-                    <div className="dish-desc"><Highlight text={dv.description} query={q} /></div>
+                    <div className="dish-desc">{pictureDescription(dv)}</div>
+                    <IngredientTerms components={dv.components} dictionary={data.dictionary} />
                     {allergens.length > 0 && (
                       <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
                         {allergens.map((a) => <span key={a} className="pill wine">{a}</span>)}
@@ -151,8 +168,8 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
           </span>
         )}
       </div>
-      {change.oldValue && <div className="small muted">Previous: {change.oldValue}</div>}
-      {change.newValue && <div className="small muted">Current: {change.newValue}</div>}
+      {change.oldValue && <ValueLine label="Previous:" value={change.oldValue} />}
+      {change.newValue && <ValueLine label="Current:" value={change.newValue} />}
       <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
         {change.explanation.map((line, i) => <li key={i} className="small"><HighlightedLine line={line} /></li>)}
       </ul>

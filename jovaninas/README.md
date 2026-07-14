@@ -41,14 +41,24 @@ that's wired up; only the storage layer underneath would change.
   file client-side (Mozilla's pdf.js, loaded at runtime from a CDN — no
   OCR/vision API, no upload to a server). Works for anything exported with
   real text (Word, Canva, Google Docs...); a flat scan of a printed page
-  has no text layer to read, so those fall back to photo/paste. The
-  extractor also fixes a real two-line-per-dish layout that's common in
-  PDF menus (name+price on one line, description wrapping to the next) by
-  folding the wrapped line back into that dish's description instead of
-  inventing a bogus extra dish, and recognizes a "No. 248"-style print/
-  archive number (common in the corner of a printed menu) as menu metadata
-  rather than a dish — it's kept as `menu.menuNumber` and shown next to the
-  version/date in Current Menu and History rather than silently discarded.
+  has no text layer to read, so those fall back to photo/paste. The parser
+  is built around Jovanina's actual two-line-per-dish layout (the dish
+  name on its own line, then the ingredient list + price on the next —
+  "HOUSEMADE FOCACCIA" / "Whipped Ricotta + Lavender Honey  14"): the
+  **item name is always the dish title line**, never the ingredient
+  description, and a category header ("Starters", "Handmade Fresh
+  Pasta"...) is only recognized by an exact match against a known list of
+  section titles — not by capitalization or a loose keyword match — since
+  real dish names ("La Scala Salad", "Oak Ember Roasted Rainbow Carrots")
+  routinely contain the same words a naive keyword match would key off of.
+  Ingredient lists are split on this menu's actual separator ("+", as well
+  as commas/"&"/"with"/"and") into individual components. It also
+  recognizes a "No. 248"-style print/archive number (common in the corner
+  of a printed menu) as menu metadata rather than a dish — kept as
+  `menu.menuNumber` and shown next to the version/date in Current Menu and
+  History rather than silently discarded — and treats a glued-digit
+  surcharge note like "Gluten Free Crust +6" as an add-on, not a dish
+  price.
 - The original PDF (or photo) is kept on the menu record and viewable from
   Current Menu and History ("Original PDF" / "View original PDF"), so you
   can always confirm exactly what was uploaded.
@@ -75,6 +85,15 @@ that's wired up; only the storage layer underneath would change.
   Training / History tabs. Components link to their own ingredient wiki
   page (origin, pronunciation, current vs. past dishes it's appeared in,
   chef notes, guest questions logged from the floor).
+- **Ingredient terms are clickable everywhere they appear** (Current Menu,
+  a dish's own page) — tapping one opens a quick popup with its
+  definition, allergens, and pronunciation without leaving the screen
+  you're on; the fuller wiki page (with notes and full history) is still
+  one more tap away via Library/Search.
+- Every dish also gets a **20-words-or-less "picture" description**
+  (name + technique + real components only, hard word-capped, nothing
+  invented) alongside its raw name/ingredients/price, so you get a quick
+  sense of the dish without reading the full menu line.
 - "Explain like I'm a..." — Professional / Guest / Kid / Foodie phrasings
   generated from the same parsed data, not separately invented facts.
 - Flavor-profile tags and flavor-logic **pairing suggestions**
@@ -104,11 +123,18 @@ appetizer/dessert out).
   anything actionable.
 - All dollar amounts render in the brand's green (`--forest`) throughout
   the app, including the specific before/after prices highlighted inside a
-  price-change explanation.
+  price-change explanation and the price embedded in a change card's
+  Previous/Current audit lines.
 
 **Library, Search, More**
 - Culinary dictionary with pronunciation guides and category filters; every
   term has its own wiki page.
+- **The Library grows on its own.** Every ingredient parsed out of an
+  uploaded menu is permanently added as a dictionary entry the moment the
+  menu is confirmed (tagged "inferred" until someone fills in the real
+  write-up) — nothing you upload is ever parsed and then forgotten; it
+  becomes part of the restaurant's permanent knowledge base right away. An
+  existing researched/chef-confirmed entry is never overwritten by this.
 - Natural-language-ish search across dishes/ingredients/notes.
 - Cross-dish notes feed, local data export/import/reset, a profile name,
   and a **Roadmap** tab listing what's deliberately deferred (see below).

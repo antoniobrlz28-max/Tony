@@ -103,7 +103,7 @@ export function normalizeTerm(raw) {
 export function splitDescription(description) {
   if (!description) return [];
   return description
-    .split(/,|\/|•|\bwith\b|\band\b/i)
+    .split(/,|\/|•|\+|&|\bwith\b|\band\b/i)
     .map((s) => s.trim())
     .filter(Boolean);
 }

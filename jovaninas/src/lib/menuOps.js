@@ -2,6 +2,7 @@ import { uid, nowIso } from "./id.js";
 import { extractDishComponents } from "./components.js";
 import { compareMenuVersions } from "./diff.js";
 import { generateCardsForDish } from "./cards.js";
+import { registerDiscoveredTerm } from "./dictionary.js";
 
 export function findLatestMenuOfType(data, menuType, excludeId = null) {
   const candidates = data.menus
@@ -63,6 +64,8 @@ export function commitMenu(draft, extraction, meta) {
 
   const createDishVersion = ({ dishId, item, source, confidence }) => {
     const dvId = uid("dv");
+    const components = item.components || extractDishComponents(item.name, item.description, draft.dictionary);
+    for (const c of components) registerDiscoveredTerm(draft.dictionary, c);
     draft.dishVersions[dvId] = {
       id: dvId,
       dishId,
@@ -72,7 +75,7 @@ export function commitMenu(draft, extraction, meta) {
       price: item.price,
       section: item.section,
       effectiveDate: meta.effectiveDate,
-      components: item.components || extractDishComponents(item.name, item.description, draft.dictionary),
+      components,
       confidence: confidence ?? item.confidence ?? 0.7,
       source: source || "extracted",
       confirmed: false,

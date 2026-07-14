@@ -519,3 +519,42 @@ export function buildInitialDictionary() {
   }
   return dict;
 }
+
+const ROLE_TO_CATEGORY = {
+  protein: "protein",
+  sauce: "sauce",
+  cheese: "cheese",
+  starch: "starch",
+  vegetable: "vegetable",
+  herb: "herb",
+  spice: "spice",
+  garnish: "garnish",
+  acid: "acid",
+  fat: "fat",
+  fermented: "fermented",
+  unclassified: "ingredient",
+};
+
+// Grows the Library with every menu upload: any parsed component that
+// isn't already a known term gets a minimal placeholder entry, clearly
+// marked "inferred" (not researched/chef-confirmed) so nobody mistakes an
+// auto-detected stub for a written definition. Never overwrites an
+// existing entry — staff/researched/chef-confirmed data always wins.
+export function registerDiscoveredTerm(dictionary, component) {
+  const key = component?.normalized;
+  if (!key || dictionary[key]) return;
+  dictionary[key] = {
+    term: component.raw ? component.raw.trim() : key,
+    language: "en",
+    category: ROLE_TO_CATEGORY[component.role] || "ingredient",
+    definition: "Spotted on the menu — no write-up yet. Add details from the dish's Components tab or here in the Library.",
+    origin: "",
+    traditional: "",
+    flavor: [],
+    misconceptions: "",
+    guestFriendly: "",
+    pronunciation: "",
+    allergens: component.allergens || [],
+    confidence: "inferred",
+  };
+}
