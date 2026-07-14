@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Plus, PiggyBank, Target, Check, X, Edit2 } from "lucide-react";
-import { SAGE, ACCENT, SKY, CARD, INK_SOFT, SLATE, PAPER_DIM } from "../lib/constants.js";
+import { Plus, Check, X, Edit2 } from "lucide-react";
+import { SAGE, ACCENT, CARD, INK_SOFT, SLATE, PAPER_DIM } from "../lib/constants.js";
 import { uid, fmt } from "../lib/helpers.js";
-import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
+import { Section, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
 export function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -23,13 +23,26 @@ export function GoalsTab({ data, setData, contributeGoal, editGoal, deleteGoal }
       title="Goals"
       right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add goal</SmallBtn>}
     >
-      {data.goals.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={PiggyBank} color={SAGE} valueColor={SAGE} value={fmt(totalSaved)} label="Saved" caption="so far" />
-          <StatTile icon={Target} color={ACCENT} value={fmt(totalRemaining)} label="Remaining" caption="to go" />
-          <StatTile icon={Check} color={SKY} value={data.goals.length} label="Goals" caption={`${completed} completed`} />
-        </div>
-      )}
+      {data.goals.length > 0 && (() => {
+        const pct = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
+        return (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+              <div>
+                <span style={{ fontSize: 26, fontWeight: 700, color: SAGE, fontVariantNumeric: "tabular-nums" }}>{fmt(totalSaved)}</span>
+                <span style={{ fontSize: 13, color: SLATE }}> / {fmt(totalTarget)}</span>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: pct >= 100 ? SAGE : ACCENT }}>{pct}%</span>
+            </div>
+            <div style={{ height: 10, background: PAPER_DIM, borderRadius: 5, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${Math.min(100, pct)}%`, background: SAGE, borderRadius: 5, transition: "width 0.5s ease" }} />
+            </div>
+            <div style={{ fontSize: 11, color: SLATE, marginTop: 7 }}>
+              {fmt(totalRemaining)} to go · {completed} of {data.goals.length} complete
+            </div>
+          </div>
+        );
+      })()}
 
       {addOpen && <AddGoalForm onAdd={addGoal} onCancel={() => setAddOpen(false)} />}
 

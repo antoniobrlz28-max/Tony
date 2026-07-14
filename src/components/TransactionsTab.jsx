@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Plus, TrendingUp, TrendingDown, Wallet, ArrowLeftRight, Check, X, Edit2, Upload, Search } from "lucide-react";
-import { ACCENT, INK, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
+import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, Check, X, Edit2, Upload, Search } from "lucide-react";
+import { ACCENT, INK, CARD, PAPER_DIM, TEXT, SLATE, SAGE, RUST, INK_SOFT } from "../lib/constants.js";
 import { fmt, getPeriod, todayStr, addDays, formatShortDate } from "../lib/helpers.js";
-import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
+import { Section, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
 import { ImportCSV } from "./ImportCSV.jsx";
 
 const PAGE_SIZE = 30;
@@ -59,13 +59,30 @@ export function TransactionsTab({ data, addIncome, addExpense, addTransfer, edit
 
   return (
     <>
-      {data.transactions.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={TrendingUp} color={SAGE} valueColor={SAGE} value={fmt(periodIncome)} label="Income" caption="this period" />
-          <StatTile icon={TrendingDown} color={RUST} valueColor={RUST} value={fmt(periodExpense)} label="Expense" caption="this period" />
-          <StatTile icon={Wallet} color={periodNet >= 0 ? SAGE : RUST} valueColor={periodNet >= 0 ? SAGE : RUST} value={fmt(periodNet)} label="Net" caption="this period" />
-        </div>
-      )}
+      {data.transactions.length > 0 && (() => {
+        const max = Math.max(periodIncome, periodExpense, 1);
+        return (
+          <div style={{ background: CARD, border: `1px solid ${INK_SOFT}1f`, borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+              <span style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Cash flow this period</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: periodNet >= 0 ? SAGE : RUST, fontVariantNumeric: "tabular-nums" }}>
+                {periodNet >= 0 ? "+" : "−"}{fmt(Math.abs(periodNet))}
+              </span>
+            </div>
+            {[["Income", periodIncome, SAGE], ["Expense", periodExpense, RUST]].map(([label, val, color]) => (
+              <div key={label} style={{ marginBottom: label === "Income" ? 9 : 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 4 }}>
+                  <span style={{ color: SLATE }}>{label}</span>
+                  <span style={{ fontWeight: 700, color, fontVariantNumeric: "tabular-nums" }}>{fmt(val)}</span>
+                </div>
+                <div style={{ height: 6, background: PAPER_DIM, borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(val / max) * 100}%`, background: color, borderRadius: 3, transition: "width 0.5s ease" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <Section title="Log a transaction">
         <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>

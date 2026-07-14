@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Plus, TrendingDown, Check, CreditCard, Lightbulb, Edit2, X } from "lucide-react";
-import { RUST, SAGE, SKY, ACCENT, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
+import { Plus, Check, Lightbulb, Edit2, X } from "lucide-react";
+import { RUST, SAGE, ACCENT, PAPER_DIM, TEXT, CARD, INK_SOFT, SLATE } from "../lib/constants.js";
 import { uid, fmt, formatShortDate, payoffProjection } from "../lib/helpers.js";
-import { Section, StatTile, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
+import { Section, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, inputStyle } from "./shared.jsx";
 
 export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -24,13 +24,24 @@ export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
       title="Debt"
       right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add debt</SmallBtn>}
     >
-      {data.debts.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          <StatTile icon={TrendingDown} color={RUST} valueColor={RUST} value={fmt(totalRemaining)} label="Remaining" caption="left to pay" />
-          <StatTile icon={Check} color={SAGE} valueColor={SAGE} value={fmt(totalPaid)} label="Paid off" caption="so far" />
-          <StatTile icon={CreditCard} color={SKY} value={data.debts.length} label="Debts" caption="tracked" />
-        </div>
-      )}
+      {data.debts.length > 0 && (() => {
+        const grand = totalPaid + totalRemaining;
+        const paidPct = grand > 0 ? (totalPaid / grand) * 100 : 0;
+        return (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Still owed</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: RUST, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>{fmt(totalRemaining)}</div>
+            <div style={{ display: "flex", height: 10, background: PAPER_DIM, borderRadius: 5, overflow: "hidden", marginTop: 10 }}>
+              <div style={{ width: `${paidPct}%`, background: SAGE, transition: "width 0.5s ease" }} />
+              <div style={{ flex: 1, background: RUST }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: SLATE, marginTop: 7 }}>
+              <span><b style={{ color: SAGE }}>{fmt(totalPaid)}</b> paid off</span>
+              <span>{data.debts.length} debt{data.debts.length === 1 ? "" : "s"}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {highestRateDebt && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: PAPER_DIM, borderRadius: 10, padding: "10px 12px", marginBottom: 16 }}>
