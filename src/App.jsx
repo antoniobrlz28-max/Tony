@@ -281,6 +281,10 @@ export default function FinanceOS() {
   function deleteBill(id) {
     setData(d => ({ ...d, bills: d.bills.filter(b => b.id !== id) }));
   }
+  // Cancel/restore a subscription without disturbing its amount or schedule.
+  function setBillCancelled(id, cancelled) {
+    setData(d => ({ ...d, bills: d.bills.map(b => b.id === id ? { ...b, cancelled, cancelledAt: cancelled ? todayStr() : null } : b) }));
+  }
   function editGoal(id, updates) {
     setData(d => ({ ...d, goals: d.goals.map(g => g.id === id ? { ...g, ...updates, target: Number(updates.target), saved: Number(updates.saved) } : g) }));
   }
@@ -687,7 +691,7 @@ export default function FinanceOS() {
 
             <Section title="Upcoming bills">
               {data.bills.length === 0 && <Empty text="No bills yet — add one in the Bills tab." />}
-              {data.bills.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4).map(b => (
+              {data.bills.filter(b => !b.cancelled).slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4).map(b => (
                 <Row key={b.id} left={b.name} mid={
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <CountdownPill days={daysBetween(todayStr(), b.dueDate)} totalDays={b.frequencyDays} />
@@ -737,7 +741,7 @@ export default function FinanceOS() {
         )}
 
         {tab === "bills" && (
-          <BillsTab data={data} setData={setData} payBill={payBill} editBill={editBill} deleteBill={deleteBill} />
+          <BillsTab data={data} setData={setData} payBill={payBill} editBill={editBill} deleteBill={deleteBill} setBillCancelled={setBillCancelled} />
         )}
 
         {tab === "goals" && (

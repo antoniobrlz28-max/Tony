@@ -190,6 +190,21 @@ export function BottomSheet({ title, onClose, children }) {
   );
 }
 
+// iOS-style segmented control shared by the Accounts and Bills tabs.
+export function Segmented({ views, value, onChange, style }) {
+  return (
+    <div style={{ display: "flex", background: PAPER_DIM, borderRadius: 12, padding: 3, marginBottom: 16, ...style }}>
+      {views.map(v => (
+        <button key={v.id} onClick={() => onChange(v.id)} style={{
+          flex: 1, padding: "7px 0", borderRadius: 9, border: "none", cursor: "pointer",
+          background: value === v.id ? CARD : "transparent", color: value === v.id ? TEXT : SLATE,
+          fontSize: 12, fontWeight: 700, transition: "background 0.2s ease"
+        }}>{v.label}</button>
+      ))}
+    </div>
+  );
+}
+
 export function StatTile({ icon: Icon, color, value, label, caption, valueColor }) {
   return (
     <div style={{ background: CARD, border: `1px solid ${INK_SOFT}1f`, borderRadius: 16, padding: "13px 12px", minWidth: 0 }}>

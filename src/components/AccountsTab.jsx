@@ -1,11 +1,20 @@
 import { useState } from "react";
-import { Plus, Check, X, Edit2 } from "lucide-react";
-import { ACCOUNT_TYPES, ACCENT, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT, SAGE } from "../lib/constants.js";
+import { Plus, Check, X, Edit2, TrendingUp, TrendingDown, Wallet, ChevronRight } from "lucide-react";
+import { Area, AreaChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { ACCOUNT_TYPES, ACCENT, RUST, SAGE, CARD, INK_SOFT, SLATE, PAPER_DIM, TEXT } from "../lib/constants.js";
 import { uid, fmt } from "../lib/helpers.js";
-import { Section, Empty, SmallBtn, IconBtn, DeleteBtn, inputStyle } from "./shared.jsx";
+import { netWorthNow, netWorthSeries } from "../lib/netWorth.js";
+import { Section, Empty, SmallBtn, IconBtn, DeleteBtn, ProgressBar, Segmented, inputStyle } from "./shared.jsx";
+
+const VIEWS = [
+  { id: "summary", label: "Summary" },
+  { id: "assets", label: "Assets" },
+  { id: "debts", label: "Debts" },
+];
 
 export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
   const [addOpen, setAddOpen] = useState(false);
+  const [view, setView] = useState("summary");
 
   function addAccount(name, type) {
     if (!name) return;
@@ -13,42 +22,116 @@ export function AccountsTab({ data, setData, editAccount, deleteAccount }) {
     setAddOpen(false);
   }
 
-  const totalBalance = data.accounts.reduce((s, a) => s + a.balance, 0);
-  const typeTotals = ACCOUNT_TYPES
-    .map(t => ({ ...t, total: data.accounts.filter(a => a.type === t.id).reduce((s, a) => s + a.balance, 0), count: data.accounts.filter(a => a.type === t.id).length }))
-    .filter(t => t.count > 0);
+  const { assets, liabilities, net } = netWorthNow(data);
+  const series = netWorthSeries(data, 6);
+  const prev = series.length > 1 ? series[series.length - 2].net : null;
+  const delta = prev !== null ? net - prev : null;
+  const hasTrend = series.length > 1 && series.some(p => p.net !== series[0].net);
 
   return (
     <Section
-      title="Accounts"
-      right={<SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add account</SmallBtn>}
+      title="Net worth"
+      right={view === "assets" && <SmallBtn tone="gold" onClick={() => setAddOpen(o => !o)}><Plus size={12} /> Add</SmallBtn>}
     >
-      {data.accounts.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total balance</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: SAGE, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{fmt(totalBalance)}</div>
-          {typeTotals.length > 1 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-              {typeTotals.map(t => {
-                const TypeIcon = t.icon;
-                return (
-                  <span key={t.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: PAPER_DIM, borderRadius: 999, padding: "5px 11px", fontSize: 11.5, color: SLATE }}>
-                    <TypeIcon size={11} /> {t.label} <b style={{ color: TEXT, fontVariantNumeric: "tabular-nums" }}>{fmt(t.total)}</b>
-                  </span>
-                );
-              })}
-            </div>
+      {/* Hero */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.1, color: net >= 0 ? TEXT : RUST, fontVariantNumeric: "tabular-nums" }}>{fmt(net)}</span>
+          {delta !== null && delta !== 0 && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 3, padding: "3px 9px", borderRadius: 999,
+              fontSize: 11.5, fontWeight: 700, color: delta > 0 ? SAGE : RUST,
+              background: delta > 0 ? `${SAGE}1a` : `${RUST}1a`, border: `1px solid ${delta > 0 ? SAGE : RUST}40`
+            }}>
+              {delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{fmt(Math.abs(delta))}
+            </span>
           )}
+        </div>
+        <div style={{ fontSize: 11.5, color: SLATE, marginTop: 3 }}>
+          <b style={{ color: SAGE }}>{fmt(assets)}</b> assets − <b style={{ color: RUST }}>{fmt(liabilities)}</b> owed
+          {delta !== null && delta !== 0 && <> · {delta > 0 ? "up" : "down"} this month</>}
+        </div>
+      </div>
+
+      {hasTrend && (
+        <div style={{ height: 116, marginBottom: 14 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={series} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="nwFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={ACCENT} stopOpacity={0.32} />
+                  <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="label" tick={{ fontSize: 9, fill: SLATE }} />
+              <YAxis tick={{ fontSize: 9, fill: SLATE }} width={38} />
+              <Tooltip formatter={v => [fmt(v), "net worth"]} />
+              <Area type="monotone" dataKey="net" stroke={ACCENT} strokeWidth={2} fill="url(#nwFill)" />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
 
-      {addOpen && <AddAccountForm onAdd={addAccount} onCancel={() => setAddOpen(false)} />}
+      <Segmented views={VIEWS} value={view} onChange={setView} />
 
-      {data.accounts.length === 0 && !addOpen && <Empty text="No accounts yet — add one above." />}
-      {data.accounts.map(a => (
-        <AccountRow key={a.id} account={a} onSave={updates => editAccount(a.id, updates)} onDelete={() => deleteAccount(a.id)} />
-      ))}
+      {view === "summary" && (
+        <>
+          <SummaryRow icon={Wallet} color={SAGE} label="Assets" caption={`${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"}`} value={fmt(assets)} onClick={() => setView("assets")} />
+          <SummaryRow icon={TrendingDown} color={RUST} label="Debts" caption={`${data.debts.length} debt${data.debts.length === 1 ? "" : "s"}`} value={fmt(liabilities)} valueColor={RUST} onClick={() => setView("debts")} />
+        </>
+      )}
+
+      {view === "assets" && (
+        <>
+          {addOpen && <AddAccountForm onAdd={addAccount} onCancel={() => setAddOpen(false)} />}
+          {data.accounts.length === 0 && !addOpen && <Empty text="No accounts yet — add one above." />}
+          {data.accounts.map(a => (
+            <AccountRow key={a.id} account={a} onSave={updates => editAccount(a.id, updates)} onDelete={() => deleteAccount(a.id)} />
+          ))}
+        </>
+      )}
+
+      {view === "debts" && (
+        <>
+          {data.debts.length === 0 && <Empty text="No debts tracked — add them in the Debt tab." />}
+          {data.debts.map(x => {
+            const remaining = Math.max(0, x.total - x.paid);
+            const pct = x.total > 0 ? (x.paid / x.total) * 100 : 0;
+            return (
+              <div key={x.id} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 10, background: PAPER_DIM }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 600 }}>{x.name} <span style={{ color: SLATE, fontWeight: 400 }}>({x.rate}% APR)</span></span>
+                  <span style={{ fontWeight: 700, color: RUST, fontVariantNumeric: "tabular-nums" }}>{fmt(remaining)}</span>
+                </div>
+                <ProgressBar pct={pct} tone="sage" />
+              </div>
+            );
+          })}
+          {data.debts.length > 0 && (
+            <div style={{ fontSize: 10.5, color: SLATE, marginTop: 4 }}>Make payments and see payoff projections in the Debt tab.</div>
+          )}
+        </>
+      )}
     </Section>
+  );
+}
+
+function SummaryRow({ icon: Icon, color, label, caption, value, valueColor, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+      background: PAPER_DIM, border: "none", borderRadius: 12, padding: "13px 14px", marginBottom: 8, cursor: "pointer"
+    }}>
+      <div style={{ width: 34, height: 34, borderRadius: "50%", background: `${color}1f`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Icon size={16} color={color} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: TEXT }}>{label}</div>
+        <div style={{ fontSize: 11, color: SLATE, marginTop: 1 }}>{caption}</div>
+      </div>
+      <span style={{ fontSize: 15, fontWeight: 700, color: valueColor || TEXT, fontVariantNumeric: "tabular-nums" }}>{value}</span>
+      <ChevronRight size={16} color={SLATE} />
+    </button>
   );
 }
 
@@ -92,7 +175,7 @@ function AccountRow({ account, onSave, onDelete }) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} onClick={e => revealed && e.stopPropagation()}>
-        <span style={{ fontSize: 14.5, fontWeight: 700, color: SAGE, fontVariantNumeric: "tabular-nums" }}>{fmt(account.balance)}</span>
+        <span style={{ fontSize: 14.5, fontWeight: 700, color: account.balance < 0 ? RUST : SAGE, fontVariantNumeric: "tabular-nums" }}>{fmt(account.balance)}</span>
         {revealed && (
           <>
             <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />

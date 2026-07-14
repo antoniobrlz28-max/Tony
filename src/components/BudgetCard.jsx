@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Check, X, Edit2, Wand2 } from "lucide-react";
-import { ACCENT, RUST, SAGE, SLATE, TEXT, PAPER_DIM, CARD, INK_SOFT } from "../lib/constants.js";
+import { ACCENT, RUST, SAGE, SLATE, TEXT, PAPER_DIM, INK_SOFT } from "../lib/constants.js";
 import { fmt, shiftMonth, lerpColor } from "../lib/helpers.js";
 import { computeBudget, monthLabel, currentMonth, suggestBudgets } from "../lib/budgetEngine.js";
 import { Section, SmallBtn, IconBtn, DeleteBtn, Empty, inputStyle } from "./shared.jsx";
