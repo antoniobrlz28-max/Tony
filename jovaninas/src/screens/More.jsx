@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
-import { Download, Upload, Trash2, Users } from "lucide-react";
+import { Download, Upload, Trash2, Users, Compass } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { saveData, resetData, emptyData } from "../lib/storage.js";
 
-const SUB_TABS = ["Notes", "Settings", "Profile", "Team"];
+const SUB_TABS = ["Notes", "Settings", "Profile", "Team", "Roadmap"];
 
 function NotesTab({ data }) {
   const [filter, setFilter] = useState("All");
@@ -24,10 +24,11 @@ function NotesTab({ data }) {
         {sorted.length === 0 && <p className="muted small">No notes yet. Add one from any dish page.</p>}
         {sorted.map((n) => {
           const dish = n.entityType === "dish" ? data.dishes[n.entityId] : null;
+          const label = dish?.canonicalName || (n.entityType === "term" ? n.entityId : n.entityType);
           return (
             <div key={n.id} className="dish-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="dish-name" style={{ fontSize: 13 }}>{dish?.canonicalName || n.entityType}</span>
+                <span className="dish-name" style={{ fontSize: 13, textTransform: n.entityType === "term" ? "capitalize" : "none" }}>{label}</span>
                 <span className={`pill ${n.confidence === "restaurant-confirmed" ? "green" : "neutral"}`}>{n.confidence}</span>
               </div>
               <div className="small">{n.content}</div>
@@ -119,11 +120,71 @@ function ProfileTab({ data, update }) {
 
 function TeamTab() {
   return (
-    <div className="card empty-state">
-      <Users size={22} color="var(--brass)" />
-      <p style={{ marginTop: 8 }}>Shared team workspaces, staff accounts, and role-based access are a planned
-      second-stage feature.</p>
-      <p className="tiny muted">This build is single-user and stores everything locally in one browser.</p>
+    <div>
+      <div className="card empty-state" style={{ marginBottom: 12 }}>
+        <div className="seal" style={{ margin: "0 auto 10px" }}>JJ</div>
+        <p className="letterpress" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontStyle: "italic", margin: 0 }}>
+          "Not to win, but to delight."
+        </p>
+        <p className="tiny muted" style={{ marginTop: 6 }}>Jovanina's Broken Italian</p>
+      </div>
+      <div className="card empty-state">
+        <Users size={22} color="var(--gold)" />
+        <p style={{ marginTop: 8 }}>Shared team workspaces, staff accounts, and role-based access are a planned
+        second-stage feature.</p>
+        <p className="tiny muted">This build is single-user and stores everything locally in one browser.</p>
+      </div>
+    </div>
+  );
+}
+
+const ROADMAP_ITEMS = [
+  {
+    title: "Ask Chef",
+    detail: "Open natural-language Q&A grounded in restaurant knowledge. Needs a live LLM API key — the local search on the Search tab is pattern-matched, not a real conversational assistant.",
+  },
+  {
+    title: "Search by picture",
+    detail: "Point a camera at a garnish or plate and identify it. Needs a vision API.",
+  },
+  {
+    title: "Live, shared staff notes & service analytics",
+    detail: "Notes, 86 lists, and knowledge scores shared across the whole team in real time. Needs real accounts and a backend — everything here currently lives in one browser's local storage.",
+  },
+  {
+    title: "Chef voice notes",
+    detail: "Walk-around voice memos automatically transcribed and attached to dishes. Needs speech-to-text infrastructure; you can already type the same note by hand under a dish's Notes.",
+  },
+  {
+    title: "Service replay / most-asked-questions tracking",
+    detail: "Aggregate what guests actually asked about across shifts and staff. Needs multi-user data collection.",
+  },
+  {
+    title: "Knowledge Score + AI Coach",
+    detail: "Category-level mastery scoring with pattern detection on missed quiz questions (e.g. \"you keep confusing mostarda / mosto / mortadella\"). Deferred for this build in favor of the wiki, shift brief, and objection/recommendation tools.",
+  },
+];
+
+function RoadmapTab() {
+  return (
+    <div>
+      <div className="chip-row" style={{ marginBottom: 8 }}>
+        <span className="pill brass" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Compass size={11} /> Second stage
+        </span>
+      </div>
+      <div className="card">
+        <p className="small muted" style={{ marginBottom: 12 }}>
+          These are real parts of the bigger vision, deliberately left out of this build rather than faked — each
+          needs infrastructure (a live LLM/vision API, real accounts, a backend) this local-storage app doesn't have.
+        </p>
+        {ROADMAP_ITEMS.map((item) => (
+          <div key={item.title} className="dish-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+            <div className="dish-name" style={{ fontSize: 13.5 }}>{item.title}</div>
+            <div className="dish-desc">{item.detail}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -141,6 +202,7 @@ export default function More() {
       {tab === "Settings" && <SettingsTab data={data} setData={setData} />}
       {tab === "Profile" && <ProfileTab data={data} update={update} />}
       {tab === "Team" && <TeamTab />}
+      {tab === "Roadmap" && <RoadmapTab />}
     </div>
   );
 }

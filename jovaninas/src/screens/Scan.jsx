@@ -107,7 +107,7 @@ export default function Scan({ go }) {
               aspectRatio: "3/4",
               borderRadius: "var(--radius)",
               border: "1px solid var(--border)",
-              background: "linear-gradient(160deg, #1c1a15, #100f0d)",
+              background: "repeating-linear-gradient(135deg, var(--paper-raised), var(--paper-raised) 10px, var(--paper) 10px, var(--paper) 20px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -226,7 +226,7 @@ export default function Scan({ go }) {
               {extraction.sections[activeSection].items.map((item, iIdx) => (
                 <div key={iIdx} className="dish-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <Check size={15} color="#6fbf8f" />
+                    <Check size={15} color="var(--forest)" />
                     <input
                       type="text"
                       placeholder="Dish name"

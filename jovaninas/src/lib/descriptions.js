@@ -49,6 +49,55 @@ export function elevatedDescription(dish) {
     .replace(/^./, (c) => c.toUpperCase());
 }
 
+const PLAIN_ROLE_WORDS = {
+  protein: "meat",
+  cheese: "cheese",
+  vegetable: "veggie",
+  starch: "pasta or starch",
+  sauce: "sauce",
+  herb: "herbs",
+  spice: "spice",
+  garnish: "topping",
+  acid: "a tangy touch",
+  fat: "butter",
+  fermented: "a savory kick",
+};
+
+export function kidDescription(dish, flavorTags = []) {
+  const protein = (dish.components || []).find((c) => c.role === "protein");
+  const subject = protein ? PLAIN_ROLE_WORDS.protein : dish.displayName.toLowerCase();
+  const descriptors = [];
+  if (flavorTags.includes("Crisp")) descriptors.push("crispy");
+  if (flavorTags.includes("Slightly Sweet")) descriptors.push("a little sweet");
+  if (flavorTags.includes("Spicy")) descriptors.push("a little spicy");
+  if (flavorTags.includes("Rich")) descriptors.push("rich and filling");
+  if (flavorTags.includes("Bitter")) descriptors.push("a bit grown-up tasting");
+  const descPhrase = descriptors.length ? descriptors.slice(0, 2).join(" and ") + " " : "";
+  return `It's ${descPhrase}${subject}${protein ? `, with ${protein.normalized}` : ""}.`.replace(/\s+/g, " ");
+}
+
+export function foodieDescription(dish, dictionary = {}) {
+  const parts = (dish.components || []).slice(0, 5).map((c) => c.normalized);
+  const techniques = detectTechniques(`${dish.displayName} ${dish.description || ""}`);
+  const originHit = (dish.components || []).map((c) => dictionary[c.normalized]).find((e) => e?.origin);
+  const bits = [];
+  if (techniques.length) bits.push(techniques.slice(0, 2).join(" and "));
+  if (originHit) bits.push(`nodding to ${originHit.origin}`);
+  const tail = bits.length ? ` — ${bits.join(", ")}` : "";
+  return `${dish.displayName}${parts.length ? `: ${parts.join(", ")}` : ""}${tail}.`;
+}
+
+// audience: 'professional' | 'guest' | 'kid' | 'foodie'
+export function audienceDescription(dish, audience, dictionary = {}, flavorTags = []) {
+  switch (audience) {
+    case "guest": return guestFriendlyDescription(dish, dictionary);
+    case "kid": return kidDescription(dish, flavorTags);
+    case "foodie": return foodieDescription(dish, dictionary);
+    case "professional":
+    default: return elevatedDescription(dish);
+  }
+}
+
 export function allDescriptions(dish, dictionary = {}) {
   return {
     literal: literalDescription(dish),

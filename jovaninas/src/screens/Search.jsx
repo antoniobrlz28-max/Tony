@@ -105,7 +105,7 @@ export default function Search({ go, params }) {
       {result.kind === "empty" && <p className="muted">Try a question above.</p>}
 
       {result.kind === "term" && (
-        <div className="card">
+        <div className="card" style={{ cursor: "pointer" }} onClick={() => go("term", { term: result.hit.term, fromTab: backTab })}>
           <h3 style={{ textTransform: "capitalize" }}>{result.hit.term}</h3>
           <p className="small">{result.hit.definition}</p>
           <p className="small" style={{ fontStyle: "italic" }}>{result.hit.guestFriendly}</p>
@@ -163,7 +163,7 @@ export default function Search({ go, params }) {
             <div className="card" style={{ marginBottom: 12 }}>
               <p className="section-title">Library terms</p>
               {result.terms.map((t) => (
-                <div key={t.term} className="dish-row">
+                <div key={t.term} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("term", { term: t.term, fromTab: backTab })}>
                   <div>
                     <div className="dish-name" style={{ fontSize: 13.5, textTransform: "capitalize" }}>{t.term}</div>
                     <div className="dish-desc">{t.definition}</div>

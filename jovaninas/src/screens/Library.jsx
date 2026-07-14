@@ -15,7 +15,7 @@ function speak(text) {
   window.speechSynthesis.speak(utter);
 }
 
-export default function Library() {
+export default function Library({ go }) {
   const { data, update } = useData();
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("All");
@@ -94,11 +94,11 @@ export default function Library() {
 
       <div className="grid cols-2">
         {entries.map((e) => (
-          <div key={e.term} className="card">
+          <div key={e.term} className="card" style={{ cursor: "pointer" }} onClick={() => go("term", { term: e.term, fromTab: "library" })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <h3 style={{ textTransform: "capitalize" }}>{e.term}</h3>
               {e.pronunciation && (
-                <button className="icon-btn" style={{ padding: "4px 7px" }} onClick={() => speak(e.term)}><Volume2 size={12} /></button>
+                <button className="icon-btn" style={{ padding: "4px 7px" }} onClick={(ev) => { ev.stopPropagation(); speak(e.term); }}><Volume2 size={12} /></button>
               )}
             </div>
             <span className={`pill ${e.confidence === "restaurant-confirmed" ? "green" : e.confidence === "inferred" ? "brass" : "neutral"}`}>

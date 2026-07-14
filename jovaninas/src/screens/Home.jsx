@@ -1,8 +1,13 @@
-import { useMemo, useState } from "react";
-import { Search as SearchIcon, Sparkles, ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search as SearchIcon, Sparkles, ArrowRight, Ban, CalendarClock } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { isDue } from "../lib/srs.js";
 import { seedSampleData } from "../lib/seed.js";
+import { nowIso } from "../lib/id.js";
+import {
+  getShiftLog, setShiftLog, get86List, toggle86, featuredBeverages,
+  changesSince, estimateReviewMinutes,
+} from "../lib/shiftBrief.js";
 
 function greeting() {
   const h = new Date().getHours();
@@ -14,6 +19,17 @@ function greeting() {
 export default function Home({ go }) {
   const { data, update } = useData();
   const [q, setQ] = useState("");
+  const [sinceIso] = useState(() => data.settings?.lastVisit || null);
+  const [specialEvent, setSpecialEvent] = useState(() => getShiftLog(data).specialEvent || "");
+
+  useEffect(() => {
+    update((draft) => {
+      draft.settings = draft.settings || {};
+      draft.settings.lastVisit = nowIso();
+    });
+    // run once on mount — records this visit as the new checkpoint for "since"
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const displayName = data.settings?.displayName || "there";
 
@@ -35,18 +51,39 @@ export default function Home({ go }) {
     return { added, changed, removed, priceChanges };
   }, [recentChanges]);
 
+  const sinceChanges = useMemo(() => changesSince(data, sinceIso), [data, sinceIso]);
+  const chefUpdatesToday = data.notes.filter((n) => n.noteType === "chef note" && n.createdAt.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
+
   const needsReview = data.changes.filter((c) => c.reviewStatus === "needs_review");
   const dueCards = Object.values(data.cards).filter(isDue);
+  const reviewMinutes = estimateReviewMinutes(sinceChanges.length, dueCards.length);
+
+  const shiftLog = getShiftLog(data);
+  const eightySixIds = get86List(data);
+  const eightySixDishes = eightySixIds.map((id) => data.dishes[id]).filter(Boolean);
+  const featured = featuredBeverages(data);
 
   const accuracySamples = Object.values(data.cards).filter((c) => c.accuracyRate != null);
   const mastery = accuracySamples.length
     ? Math.round(accuracySamples.reduce((s, c) => s + c.accuracyRate, 0) / accuracySamples.length)
     : 0;
 
+  const allActiveDishes = Object.values(data.dishes).filter((d) => d.status === "active");
+
+  function saveCovers(v) {
+    update((draft) => setShiftLog(draft, undefined, { covers: v === "" ? null : Number(v) }));
+  }
+  function saveEvent() {
+    update((draft) => setShiftLog(draft, undefined, { specialEvent }));
+  }
+  function toggleDish86(dishId) {
+    update((draft) => toggle86(draft, dishId));
+  }
+
   if (data.menus.length === 0) {
     return (
       <div className="card empty-state">
-        <Sparkles size={22} color="var(--brass)" />
+        <Sparkles size={22} color="var(--gold)" />
         <p>No menus yet. Start by scanning or pasting your first menu.</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <button className="btn" onClick={() => go("scan")}>Scan a menu</button>
@@ -59,58 +96,96 @@ export default function Home({ go }) {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 21, margin: "0 0 2px" }}>
-          {greeting()}, {displayName} 👋
+        <p className="tiny muted" style={{ fontFamily: "var(--font-stamp)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Shift Brief</p>
+        <h3 className="letterpress" style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 2px" }}>
+          {greeting()}, {displayName}.
         </h3>
-        <p className="muted small" style={{ margin: 0 }}>Here's what's happening today.</p>
       </div>
 
-      <div className="card" style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
-        <div className="hero-image" style={{ width: 56, height: 56, flexShrink: 0, aspectRatio: "auto" }}>
-          <Sparkles size={18} />
+      {sinceIso && sinceChanges.length > 0 && (
+        <div className="card" style={{ marginBottom: 12, borderColor: "var(--gold)" }}>
+          <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <CalendarClock size={12} /> Since your last shift
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
+            {sinceChanges.slice(0, 6).map((c) => (
+              <li key={c.id} className="small">✓ {data.dishes[c.dishId]?.canonicalName} — {c.explanation[0]}</li>
+            ))}
+          </ul>
+          {sinceChanges.length > 6 && <p className="tiny muted" style={{ marginTop: 6 }}>+{sinceChanges.length - 6} more</p>}
+          <p className="tiny muted" style={{ marginTop: 8 }}>Estimated review time: {reviewMinutes} minute{reviewMinutes === 1 ? "" : "s"}.</p>
+          <a className="link small" onClick={() => go("menus", { subTab: "changes", menuId: mostRecentMenu.id })}>Review now <ArrowRight size={12} /></a>
         </div>
-        <div style={{ flex: 1 }}>
-          <div className="section-title" style={{ marginBottom: 2 }}>Current menu</div>
-          <div className="dish-name">{mostRecentMenu.menuType}</div>
-          <div className="tiny muted">Effective {mostRecentMenu.effectiveDate}</div>
-        </div>
-        <button className="btn secondary" onClick={() => go("menus")}>View menu</button>
-      </div>
+      )}
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <p className="section-title">Changes since last version</p>
-        <div className="grid cols-4" style={{ textAlign: "center" }}>
+        <div className="grid cols-3">
+          <label className="field">
+            Tonight's covers
+            <input type="number" value={shiftLog.covers ?? ""} placeholder="—" onChange={(e) => saveCovers(e.target.value)} />
+          </label>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#6fbf8f" }}>{stats.added}</div>
-            <div className="tiny muted">Added</div>
+            <div className="section-title" style={{ marginBottom: 2 }}>Chef updates</div>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)" }}>{chefUpdatesToday}</div>
           </div>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--brass)" }}>{stats.changed}</div>
-            <div className="tiny muted">Changed</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#e88a92" }}>{stats.removed}</div>
-            <div className="tiny muted">Removed</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{stats.priceChanges}</div>
-            <div className="tiny muted">Price changes</div>
+            <div className="section-title" style={{ marginBottom: 2 }}>Wine features</div>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)" }}>{featured.length}</div>
           </div>
         </div>
         <hr className="sep" />
-        <a className="link small" onClick={() => go("menus", { subTab: "changes", menuId: mostRecentMenu.id })}>
-          Review changes <ArrowRight size={12} />
-        </a>
+        <div className="grid cols-4" style={{ textAlign: "center" }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--forest)" }}>{stats.added}</div>
+            <div className="tiny muted">New items</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gold)" }}>{stats.changed}</div>
+            <div className="tiny muted">Changed</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--red)" }}>{stats.removed}</div>
+            <div className="tiny muted">Removed</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{stats.priceChanges}</div>
+            <div className="tiny muted">Price</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <Ban size={12} /> 86'd items tonight
+        </p>
+        {eightySixDishes.length === 0 && <p className="muted small">Nothing 86'd. Tap a dish below to mark it out.</p>}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: eightySixDishes.length ? 10 : 0 }}>
+          {eightySixDishes.map((d) => (
+            <button key={d.id} className="stamp" onClick={() => toggleDish86(d.id)} title="Tap to bring back">
+              {d.canonicalName}
+            </button>
+          ))}
+        </div>
+        <select value="" onChange={(e) => e.target.value && toggleDish86(e.target.value)}>
+          <option value="">86 a dish...</option>
+          {allActiveDishes.filter((d) => !eightySixIds.includes(d.id)).map((d) => (
+            <option key={d.id} value={d.id}>{d.canonicalName}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <p className="section-title">Special event</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input type="text" value={specialEvent} onChange={(e) => setSpecialEvent(e.target.value)} placeholder="e.g. Private dining at 7:00" onBlur={saveEvent} />
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 12, display: "flex", gap: 14, alignItems: "center" }}>
         <div style={{ flex: 1 }}>
-          <p className="section-title">Today's prep for shift</p>
-          <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
-            <li className="small">✓ {stats.added} new item{stats.added === 1 ? "" : "s"} to learn</li>
-            <li className="small">✓ {needsReview.length || stats.changed} change{(needsReview.length || stats.changed) === 1 ? "" : "s"} to review</li>
-            <li className="small">✓ {dueCards.length} question{dueCards.length === 1 ? "" : "s"} due</li>
-          </ul>
+          <p className="section-title">Your review</p>
+          <p className="small">{dueCards.length} card{dueCards.length === 1 ? "" : "s"} due · est. {reviewMinutes} min</p>
+          <a className="link small" onClick={() => go("learn")}>Start review <ArrowRight size={12} /></a>
         </div>
         <div style={{ textAlign: "center" }}>
           <div className="ring" style={{ "--pct": mastery }}>
@@ -121,7 +196,7 @@ export default function Home({ go }) {
       </div>
 
       {needsReview.length > 0 && (
-        <div className="card" style={{ marginBottom: 12, borderColor: "var(--brass)" }}>
+        <div className="card" style={{ marginBottom: 12, borderColor: "var(--gold)" }}>
           <p className="section-title">Unconfirmed information</p>
           <p className="small">
             {needsReview.length} detected change{needsReview.length === 1 ? "" : "s"} need confirmation before they're finalized.

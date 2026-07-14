@@ -1,29 +1,46 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, GraduationCap, StickyNote, Share2, Wine } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowLeft, GraduationCap, StickyNote, Share2, Wine, Camera, Trash2 } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { dishHistory, addNote } from "../lib/menuOps.js";
 import { allergensForComponents, detectTechniques } from "../lib/components.js";
-import { allDescriptions, likelyGuestQuestions } from "../lib/descriptions.js";
+import { allDescriptions, likelyGuestQuestions, audienceDescription } from "../lib/descriptions.js";
 import { flavorProfile } from "../lib/flavorProfile.js";
 import { suggestPairings } from "../lib/pairing.js";
+import { getDishPhotos, addDishPhoto, removeDishPhoto } from "../lib/photos.js";
 
-const TABS = ["Overview", "Components", "Pairings", "History"];
+const TABS = ["Overview", "Components", "Pairings", "Guest Q&A", "Photos", "Training", "History"];
+const AUDIENCES = ["Professional", "Guest", "Kid", "Foodie"];
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function DishPage({ go, params }) {
   const { data, update } = useData();
   const [tab, setTab] = useState("Overview");
+  const [audience, setAudience] = useState("Guest");
   const [notesOpen, setNotesOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteType, setNoteType] = useState("staff observation");
   const [chefConfirmed, setChefConfirmed] = useState(false);
+  const [guestQText, setGuestQText] = useState("");
+  const [photoCaption, setPhotoCaption] = useState("");
+  const fileRef = useRef(null);
 
   const dish = data.dishes[params.dishId];
   const history = useMemo(() => dishHistory(data, params.dishId), [data, params.dishId]);
   const latest = history[history.length - 1];
 
   const notes = data.notes.filter((n) => n.entityType === "dish" && n.entityId === params.dishId);
+  const guestQuestionNotes = notes.filter((n) => n.noteType === "guest question");
   const relatedChanges = data.changes.filter((c) => c.dishId === params.dishId);
   const cards = Object.values(data.cards).filter((c) => history.some((h) => h.id === c.dishVersionId));
+  const photos = getDishPhotos(data, params.dishId);
 
   if (!dish || !latest) {
     return (
@@ -40,6 +57,7 @@ export default function DishPage({ go, params }) {
   const questions = likelyGuestQuestions(latest, data.dictionary);
   const flavors = flavorProfile(latest, data.dictionary);
   const pairings = suggestPairings(latest, flavors, data.dictionary);
+  const audienceText = audienceDescription(latest, audience.toLowerCase(), data.dictionary, flavors);
 
   function saveNote() {
     if (!noteText.trim()) return;
@@ -47,6 +65,23 @@ export default function DishPage({ go, params }) {
       addNote(draft, { entityType: "dish", entityId: params.dishId, noteType, content: noteText, source: chefConfirmed ? "chef" : "user" });
     });
     setNoteText("");
+  }
+
+  function saveGuestQuestion() {
+    if (!guestQText.trim()) return;
+    update((draft) => {
+      addNote(draft, { entityType: "dish", entityId: params.dishId, noteType: "guest question", content: guestQText, source: "user" });
+    });
+    setGuestQText("");
+  }
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await readFileAsDataUrl(file);
+    update((draft) => addDishPhoto(draft, params.dishId, { url, caption: photoCaption }));
+    setPhotoCaption("");
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   return (
@@ -59,7 +94,11 @@ export default function DishPage({ go, params }) {
       </div>
 
       <div className="hero-image" style={{ marginBottom: 12 }}>
-        <span className="tiny muted">No photo attached to this dish yet</span>
+        {photos[0] ? (
+          <img src={photos[0].url} alt={latest.displayName} />
+        ) : (
+          <span className="tiny muted">No photo attached to this dish yet</span>
+        )}
       </div>
 
       <h3 style={{ fontSize: 22, margin: "0 0 2px" }}>{latest.displayName}</h3>
@@ -74,8 +113,13 @@ export default function DishPage({ go, params }) {
 
       {tab === "Overview" && (
         <div className="card">
-          <p className="section-title">One line</p>
-          <p className="small">{desc.oneLine}</p>
+          <p className="section-title">Explain like I'm a...</p>
+          <div className="chip-row">
+            {AUDIENCES.map((a) => (
+              <button key={a} className={`btn ghost ${audience === a ? "active" : ""}`} onClick={() => setAudience(a)}>{a}</button>
+            ))}
+          </div>
+          <p className="small">{audienceText}</p>
 
           {flavors.length > 0 && (
             <>
@@ -153,7 +197,12 @@ export default function DishPage({ go, params }) {
           {(latest.components || []).map((c, i) => {
             const hit = data.dictionary[c.normalized];
             return (
-              <div key={i} className="dish-row">
+              <div
+                key={i}
+                className="dish-row"
+                style={{ cursor: hit ? "pointer" : "default" }}
+                onClick={() => hit && go("term", { term: hit.term, fromTab: params.fromTab || "menus" })}
+              >
                 <div>
                   <div className="dish-name" style={{ fontSize: 13.5 }}>{c.normalized} <span className="pill neutral">{c.role}</span></div>
                   {hit && <div className="dish-desc">{hit.definition}</div>}
@@ -166,11 +215,6 @@ export default function DishPage({ go, params }) {
           <hr className="sep" />
           <p className="section-title">Technique</p>
           <p className="small">{techniques.length ? techniques.join(", ") : "Not specified in the menu description."}</p>
-          <hr className="sep" />
-          <p className="section-title">Guests may ask</p>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {questions.length ? questions.map((q, i) => <li key={i} className="small">{q}</li>) : <li className="small muted">None flagged yet.</li>}
-          </ul>
           <hr className="sep" />
           <p className="section-title">Service descriptions</p>
           <p className="small"><strong>30-second:</strong> {desc.sensory}</p>
@@ -189,7 +233,11 @@ export default function DishPage({ go, params }) {
               <div className="dish-desc">{p.reason}</div>
               {p.matches.length > 0 ? (
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-                  {p.matches.map((m) => <span key={m.term} className="pill brass" style={{ textTransform: "capitalize" }}>{m.term}</span>)}
+                  {p.matches.map((m) => (
+                    <span key={m.term} className="pill brass" style={{ textTransform: "capitalize", cursor: "pointer" }} onClick={() => go("term", { term: m.term, fromTab: params.fromTab || "menus" })}>
+                      {m.term}
+                    </span>
+                  ))}
                 </div>
               ) : (
                 <div className="tiny muted" style={{ marginTop: 4 }}>
@@ -201,6 +249,69 @@ export default function DishPage({ go, params }) {
           <p className="tiny muted" style={{ marginTop: 8 }}>
             Style-based suggestions from flavor logic. Confirm against the current beverage menu before recommending to guests.
           </p>
+        </div>
+      )}
+
+      {tab === "Guest Q&A" && (
+        <div className="card">
+          <p className="section-title">Likely questions</p>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {questions.length ? questions.map((q, i) => <li key={i} className="small">{q}</li>) : <li className="small muted">None flagged yet.</li>}
+          </ul>
+          <hr className="sep" />
+          <p className="section-title">Logged from the floor</p>
+          {guestQuestionNotes.length === 0 && <p className="muted small">No guest questions logged yet.</p>}
+          {[...guestQuestionNotes].reverse().map((n) => (
+            <div key={n.id} className="dish-row">
+              <div className="small">{n.content}</div>
+              <span className="tiny muted">{new Date(n.createdAt).toLocaleDateString()}</span>
+            </div>
+          ))}
+          <textarea rows={2} style={{ marginTop: 8 }} value={guestQText} onChange={(e) => setGuestQText(e.target.value)} placeholder='e.g. "A guest asked if the mostarda contains nuts."' />
+          <button className="btn" style={{ marginTop: 8 }} onClick={saveGuestQuestion}>Log question</button>
+        </div>
+      )}
+
+      {tab === "Photos" && (
+        <div className="card">
+          <p className="section-title">Plating photo timeline</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <input type="text" placeholder="Caption (optional)" value={photoCaption} onChange={(e) => setPhotoCaption(e.target.value)} />
+            <button className="icon-btn" onClick={() => fileRef.current?.click()}><Camera size={13} /> Add</button>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} />
+          </div>
+          {photos.length === 0 && <p className="muted small">No photos yet.</p>}
+          {photos.map((p) => (
+            <div key={p.id} className="dish-row">
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <img src={p.url} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} />
+                <div>
+                  <div className="small">{p.caption || "Untitled"}</div>
+                  <div className="tiny muted">{p.date}</div>
+                </div>
+              </div>
+              <button className="btn ghost" onClick={() => update((draft) => removeDishPhoto(draft, params.dishId, p.id))}><Trash2 size={12} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "Training" && (
+        <div className="card">
+          <p className="section-title">Training material</p>
+          <p className="small">{cards.length} flashcard{cards.length === 1 ? "" : "s"} generated for this dish across all its versions.</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <button className="btn" onClick={() => go("learn", { dishId: dish.id, mode: "Flashcards" })}>Study flashcards</button>
+            <button className="btn secondary" onClick={() => go("learn", { dishId: dish.id, mode: "Pre-Shift Quiz" })}>Take a quiz</button>
+          </div>
+          <hr className="sep" />
+          <p className="section-title">Selling phrases &amp; FAQ on record</p>
+          {notes.filter((n) => n.noteType === "selling phrase" || n.noteType === "faq").length === 0 && (
+            <p className="muted small">None logged yet — add one from the Notes panel on Overview.</p>
+          )}
+          {notes.filter((n) => n.noteType === "selling phrase" || n.noteType === "faq").map((n) => (
+            <p key={n.id} className="small">"{n.content}"</p>
+          ))}
         </div>
       )}
 
@@ -222,12 +333,6 @@ export default function DishPage({ go, params }) {
           {relatedChanges.map((c) => (
             <div key={c.id} className="small" style={{ padding: "4px 0" }}>{c.changeType}: {c.explanation.join(" ")}</div>
           ))}
-          {cards.length > 0 && (
-            <>
-              <hr className="sep" />
-              <a className="link small" onClick={() => go("learn", { dishId: dish.id })}>Quiz me on this dish ({cards.length} cards)</a>
-            </>
-          )}
         </div>
       )}
     </div>

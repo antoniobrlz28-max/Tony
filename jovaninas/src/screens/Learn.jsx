@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
-import { Volume2, Mic } from "lucide-react";
+import { Volume2, Mic, MessageCircleWarning, Compass } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { isDue, reviewCard } from "../lib/srs.js";
 import { generateMCQPool } from "../lib/mcq.js";
+import { generateObjectionScenarios } from "../lib/objections.js";
+import { recommendDishes } from "../lib/recommend.js";
 
-const MODES = ["Flashcards", "Pre-Shift Quiz", "Pronunciation"];
+const MODES = ["Flashcards", "Pre-Shift Quiz", "Pronunciation", "Objections", "Recommend"];
 
 function FlashcardsMode({ data, update, dishId }) {
   const [revealed, setRevealed] = useState(false);
@@ -184,9 +186,131 @@ function PronunciationMode({ data, update }) {
   );
 }
 
+function ObjectionsMode({ data }) {
+  const scenarios = useMemo(() => generateObjectionScenarios(data), [data]);
+  const [idx, setIdx] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const scenario = scenarios[idx % Math.max(scenarios.length, 1)];
+
+  if (scenarios.length === 0) {
+    return <div className="card empty-state"><p>Not enough menu data yet — add active dishes to generate objection scenarios.</p></div>;
+  }
+
+  function next() {
+    setRevealed(false);
+    setIdx((i) => i + 1);
+  }
+
+  return (
+    <div>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <p className="small">Scenario {(idx % scenarios.length) + 1} of {scenarios.length} · {scenario.category}</p>
+      </div>
+      <div className="card">
+        <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <MessageCircleWarning size={12} /> Guest says
+        </p>
+        <p style={{ fontSize: 16, fontFamily: "var(--font-display)", fontStyle: "italic" }}>"{scenario.guestLine}"</p>
+        {revealed ? (
+          <>
+            <hr className="sep" />
+            <p className="section-title">Suggested response</p>
+            <p className="small">{scenario.response}</p>
+            <button className="btn" style={{ marginTop: 12 }} onClick={next}>Next scenario</button>
+          </>
+        ) : (
+          <button className="btn" style={{ marginTop: 12 }} onClick={() => setRevealed(true)}>How would you respond?</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecommendMode({ data }) {
+  const [protein, setProtein] = useState("");
+  const [avoidSpicy, setAvoidSpicy] = useState(false);
+  const [richness, setRichness] = useState("");
+  const [exclude, setExclude] = useState("");
+  const [result, setResult] = useState(null);
+
+  function run() {
+    setResult(
+      recommendDishes(data, {
+        protein: protein.trim() || null,
+        avoidSpicy,
+        richness: richness || null,
+        excludeIngredients: exclude.split(",").map((s) => s.trim()).filter(Boolean),
+      })
+    );
+  }
+
+  return (
+    <div>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <Compass size={12} /> Guest preferences
+        </p>
+        <div className="grid cols-2">
+          <label className="field">
+            Protein guest likes
+            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. pork, octopus, vegetarian" />
+          </label>
+          <label className="field">
+            Richness
+            <select value={richness} onChange={(e) => setRichness(e.target.value)}>
+              <option value="">No preference</option>
+              <option value="rich">Rich</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </div>
+        <label className="field">
+          Ingredients to avoid (comma separated)
+          <input type="text" value={exclude} onChange={(e) => setExclude(e.target.value)} placeholder="e.g. mushroom, shellfish" />
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 10 }}>
+          <input type="checkbox" checked={avoidSpicy} onChange={(e) => setAvoidSpicy(e.target.checked)} />
+          Guest wants to avoid spice
+        </label>
+        <button className="btn" onClick={run}>Get recommendation</button>
+      </div>
+
+      {result && (
+        <div className="card">
+          <p className="section-title">Top recommendations</p>
+          {result.recommendations.length === 0 && <p className="muted small">No active dishes match — try loosening the preferences.</p>}
+          {result.recommendations.map((r) => (
+            <div key={r.dishVersion.id} className="dish-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="dish-name" style={{ fontSize: 14 }}>{r.dishVersion.displayName}</span>
+                <span className={`pill ${r.confidence === "High" ? "green" : r.confidence === "Medium" ? "brass" : "neutral"}`}>{r.confidence} confidence</span>
+              </div>
+              <div className="dish-desc">{r.dishVersion.description}</div>
+              {r.reasons.length > 0 && <div className="tiny muted" style={{ marginTop: 4 }}>{r.reasons.join(" · ")}</div>}
+            </div>
+          ))}
+          {result.suggestedWine.length > 0 && (
+            <>
+              <hr className="sep" />
+              <p className="section-title">Suggested wine</p>
+              <p className="small">{result.suggestedWine[0].label} — {result.suggestedWine[0].reason}</p>
+            </>
+          )}
+          {result.upsellAppetizer && (
+            <p className="small" style={{ marginTop: 6 }}>Upsell appetizer: <strong>{result.upsellAppetizer.displayName}</strong></p>
+          )}
+          {result.suggestedDessert && (
+            <p className="small">Suggested dessert: <strong>{result.suggestedDessert.displayName}</strong></p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Learn({ params }) {
   const { data, update } = useData();
-  const [mode, setMode] = useState("Flashcards");
+  const [mode, setMode] = useState(params?.mode && MODES.includes(params.mode) ? params.mode : "Flashcards");
 
   return (
     <div>
@@ -196,6 +320,8 @@ export default function Learn({ params }) {
       {mode === "Flashcards" && <FlashcardsMode data={data} update={update} dishId={params?.dishId} />}
       {mode === "Pre-Shift Quiz" && <QuizMode data={data} dishId={params?.dishId} />}
       {mode === "Pronunciation" && <PronunciationMode data={data} update={update} />}
+      {mode === "Objections" && <ObjectionsMode data={data} />}
+      {mode === "Recommend" && <RecommendMode data={data} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Jovanina's Menu Intelligence Engine
 
-An MVP implementation of the core loop:
+A restaurant knowledge system, not a menu scanner. The core loop:
 
 > Scan → compare → confirm → understand → practice → remember.
 
@@ -8,60 +8,78 @@ Client-side only (React + `localStorage`, no backend). Built as a separate
 project inside this repo — it does not touch the existing `Tony` file
 (the personal finance tracker) at the repo root.
 
-## What's implemented (MVP scope)
+Visual design is a vintage passport / field-guide aesthetic: cream paper,
+navy ink, red and brass accents, Playfair Display + Libre Baskerville type,
+a phone-width shell with a bottom nav (Brief / Scan / My Menus / Learn /
+Library / More).
 
-- **Capture**: paste/type menu text, attach photo(s) for the archive (photos
-  are stored as-is; there is no OCR/vision API wired up in this build, so
-  text extraction is manual paste/type + on-screen correction rather than
-  automated image reading — see "Known limitations" below).
-- **Structured extraction**: heuristic parser turns pasted text into
-  sections → dishes → description/price, editable before saving.
-- **Version comparison**: exact / fuzzy-name / ingredient-overlap matching
-  against the last confirmed menu of the same type, producing plain-language
-  change explanations, confidence scores, and culinary/service/training
-  importance ratings.
-- **Human confirmation layer**: uncertain matches (renames, evolved dishes)
-  are flagged `needs_review` with "same dish new version / not the same
-  dish" actions rather than silently auto-resolved.
-- **Dish intelligence**: components are extracted from each description and
-  tagged with a role (protein, sauce, starch, cheese, herb, etc.) and
-  allergen guesses, cross-referenced against a seeded culinary dictionary.
-- **Descriptions**: literal / one-line / sensory / guest-friendly / elevated
-  descriptions generated deterministically from parsed data only — nothing
-  is invented.
-- **Dish pages** with Overview / Components / Pairings / History tabs,
-  generated flavor-profile tags, and Learn / Notes / Share actions.
-- **Pairing suggestions**: flavor-logic-driven wine/cocktail/amaro style
-  recommendations (e.g. "high-acid white — cuts fried richness"), matched
-  against beverage entries in the Library when present, otherwise shown as a
-  generic style so nothing restaurant-specific is invented.
-- **My Menus** (Current Menu / Changes / History sub-tabs), a searchable
-  **culinary library** (with pronunciation guides), natural-language-ish
-  **search**, and a **Learn** tab with three modes: SRS **flashcards**, a
-  multiple-choice **pre-shift quiz** (distractors generated from real dish/
-  ingredient data), and **pronunciation practice** using the browser's
-  built-in text-to-speech.
-- **More**: cross-dish notes feed, local data export/import/reset, and a
-  profile name used in the Home greeting.
+## What's implemented
 
-Visual design follows the reference mockups: charcoal/brass/cream palette,
-Playfair Display + Satoshi type, a phone-width shell with a bottom nav
-(Home / Scan / My Menus / Learn / Library / More).
+**Capture → compare → confirm**
+- Paste/type menu text (no OCR in this build — see Known limitations),
+  attach photos for the archive, heuristic extraction into sections/dishes,
+  editable before saving.
+- Version comparison (exact / fuzzy-name / ingredient-overlap matching)
+  against the last confirmed menu of the same type — plain-language change
+  explanations, confidence scores, culinary/service/training-priority
+  ratings.
+- Uncertain matches (renames, evolved dishes) are flagged `needs_review`
+  with "same dish / not the same dish" actions rather than auto-resolved.
+
+**Shift Brief** (the opening screen)
+- Tonight's covers, chef updates, new/changed/removed/price-change counts,
+  86'd items (toggle any dish out for the night), a special-event line, and
+  your flashcard review queue with an estimated review time.
+- **"Since your last shift"**: remembers when you last opened the app and
+  surfaces only what changed since then, so nobody has to ask a coworker
+  what's different.
+
+**Dish & ingredient wiki**
+- Dish pages: Overview / Components / Pairings / Guest Q&A / Photos /
+  Training / History tabs. Components link to their own ingredient wiki
+  page (origin, pronunciation, current vs. past dishes it's appeared in,
+  chef notes, guest questions logged from the floor).
+- "Explain like I'm a..." — Professional / Guest / Kid / Foodie phrasings
+  generated from the same parsed data, not separately invented facts.
+- Flavor-profile tags and flavor-logic **pairing suggestions**
+  (wine/cocktail/amaro), matched against Library beverage entries when
+  present, otherwise a generic style so nothing restaurant-specific is
+  fabricated.
+- Photo timeline per dish (upload + caption + date).
+
+**Learn** — five modes: SRS **flashcards**, a multiple-choice **pre-shift
+quiz** (distractors generated from real dish/ingredient data),
+**pronunciation** practice (browser text-to-speech), an **objection
+trainer** (guest pushback scenarios with responses grounded in the dish's
+actual technique/flavor data), and a **guest recommendation engine**
+(preferences in → ranked dishes, wine pairing, upsell appetizer/dessert
+out).
+
+**Library, Search, More**
+- Culinary dictionary with pronunciation guides and category filters; every
+  term has its own wiki page.
+- Natural-language-ish search across dishes/ingredients/notes.
+- Cross-dish notes feed, local data export/import/reset, a profile name,
+  and a **Roadmap** tab listing what's deliberately deferred (see below).
 
 See `src/lib/` for the underlying logic (parsing, diffing, component
-extraction, flavor tagging, pairing logic, MCQ generation, spaced
-repetition) — all pure functions, independent of React.
+extraction, flavor tagging, pairing logic, MCQ/objection/recommendation
+generation, spaced repetition) — all pure functions, independent of React.
 
-## Known limitations (by design, for this MVP)
+## Known limitations (by design)
 
-- No OCR/vision API is configured, so photos are archived but not
-  auto-transcribed. Paste or type the menu text instead.
-- Descriptions and culinary explanations are generated from **rules and a
-  seed dictionary**, not a live LLM — per the product's own rule ("never
-  invent ingredients, techniques, or facts"), this keeps everything
-  traceable to actual parsed input.
-- Single-user, single-restaurant, local-storage only — no accounts, no
-  server, no multi-device sync.
+- **No OCR/vision API.** Photos are archived but not auto-transcribed —
+  paste or type the menu text instead.
+- **No live LLM.** Descriptions, pairings, objections, and recommendations
+  are generated from rules + a seed dictionary, not a model call — per the
+  product's own rule, generated text must stay traceable to actual parsed
+  input, never invented.
+- **Single-user, local-storage only.** No accounts, no backend, no
+  multi-device or multi-staff sync. "Ask Chef" (open conversational Q&A),
+  search-by-photo, live shared staff notes/analytics, chef voice notes, and
+  a knowledge-score/AI-coach layer are real parts of the bigger vision but
+  are intentionally left out rather than faked — they need a backend and/or
+  a live LLM/vision API. See the **Roadmap** tab under More in the app.
 
 ## Running it
 
@@ -72,16 +90,17 @@ npm run dev
 
 > This sandbox's network policy blocks `registry.npmjs.org`, so `npm
 > install` could not be run/verified in this session. The code was
-> validated with `tsc --noEmit` (syntax, zero errors across all 25 source
-> files) and standalone Node smoke tests exercising `src/lib/*` directly —
-> the full parse → diff → commit pipeline (including the "elk bolognese"
-> change-detection example from the product spec), the split-into-new-dish
-> flow, SRS scheduling, flavor-tag generation, pairing suggestions, and MCQ
-> quiz generation with unique/valid answer options. Run `npm install && npm
-> run dev` locally to try the UI — fonts (Playfair Display via Google Fonts,
-> Satoshi via Fontshare) load from CDNs at runtime and weren't reachable
-> from this sandbox either, so double-check they render as expected.
+> validated with `tsc --noEmit` (syntax, zero errors) and standalone Node
+> smoke tests exercising `src/lib/*` directly — the full parse → diff →
+> commit pipeline (including the "elk bolognese" change-detection example
+> from the product spec), the split-into-new-dish flow, SRS scheduling,
+> flavor-tag generation, pairing suggestions, MCQ quiz generation, objection
+> scenarios, guest recommendations, and the dish/ingredient wiki
+> cross-referencing. Run `npm install && npm run dev` locally to try the
+> UI — fonts (Playfair Display + Libre Baskerville + Courier Prime via
+> Google Fonts) load from a CDN at runtime and weren't reachable from this
+> sandbox either, so double-check they render as expected.
 
-From the empty Home screen you can click **Load sample data** to seed two
+From the empty Brief screen you can click **Load sample data** to seed two
 versions of a demo Dinner menu and see the full change-detection flow
 without typing anything in.

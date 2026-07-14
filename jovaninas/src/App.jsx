@@ -13,13 +13,14 @@ import Home from "./screens/Home.jsx";
 import Scan from "./screens/Scan.jsx";
 import MyMenus from "./screens/MyMenus.jsx";
 import DishPage from "./screens/DishPage.jsx";
+import TermPage from "./screens/TermPage.jsx";
 import Library from "./screens/Library.jsx";
 import Learn from "./screens/Learn.jsx";
 import Search from "./screens/Search.jsx";
 import More from "./screens/More.jsx";
 
 const TABS = [
-  { id: "home", label: "Home", icon: HomeIcon },
+  { id: "home", label: "Brief", icon: HomeIcon },
   { id: "scan", label: "Scan", icon: ScanLine },
   { id: "menus", label: "My Menus", icon: BookMarked },
   { id: "learn", label: "Learn", icon: GraduationCap },
@@ -32,7 +33,7 @@ export default function App() {
 
   const go = (screen, params = {}) => setRoute({ screen, params });
 
-  const activeTab = route.screen === "dish" || route.screen === "search"
+  const activeTab = route.screen === "dish" || route.screen === "search" || route.screen === "term"
     ? route.params.fromTab || "home"
     : route.screen;
 
@@ -58,6 +59,7 @@ export default function App() {
           {route.screen === "more" && <More go={go} />}
           {route.screen === "search" && <Search go={go} params={route.params} />}
           {route.screen === "dish" && <DishPage go={go} params={route.params} />}
+          {route.screen === "term" && <TermPage go={go} params={route.params} />}
         </main>
         <nav className="bottom-nav">
           {TABS.map((t) => {
