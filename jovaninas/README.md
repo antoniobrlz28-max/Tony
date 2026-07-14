@@ -8,11 +8,14 @@ Client-side only (React + `localStorage`, no backend). Built as a separate
 project inside this repo — it does not touch the existing `Tony` file
 (the personal finance tracker) at the repo root.
 
-Visual design matches Jovanina's real brand: cream paper, navy ink
-(#1e2a44), red and brass accents, Playfair Display + Libre Baskerville
-type, an original stylized mark inspired by the storefront/menu portrait
-logo, and a phone-width shell with a bottom nav (Brief / Scan / My Menus /
-Learn / Library / More).
+Visual design is a clean, modern light UI matched directly to Jovanina's
+reference mockups: white/near-white surfaces, soft shadows instead of
+borders, underline tabs, solid rounded badges, navy ink (#1e2a44) with red
+(#c0392b) as the primary-action accent, Playfair Display + Libre
+Baskerville type, an original stylized mark inspired by the storefront/menu
+portrait logo, and a phone-width shell with a bottom nav (Brief / Scan / My
+Menus / Learn / Library / More) whose active tab gets a colored highlight
+behind the icon.
 
 ## Master / read-only access
 
@@ -34,9 +37,18 @@ that's wired up; only the storage layer underneath would change.
 ## What's implemented
 
 **Capture → compare → confirm**
-- Paste/type menu text (no OCR in this build — see Known limitations),
-  attach photos for the archive, heuristic extraction into sections/dishes,
-  editable before saving.
+- **Upload a PDF menu** and its embedded text is read straight out of the
+  file client-side (Mozilla's pdf.js, loaded at runtime from a CDN — no
+  OCR/vision API, no upload to a server). Works for anything exported with
+  real text (Word, Canva, Google Docs...); a flat scan of a printed page
+  has no text layer to read, so those fall back to photo/paste. The
+  extractor also fixes a real two-line-per-dish layout that's common in
+  PDF menus (name+price on one line, description wrapping to the next) by
+  folding the wrapped line back into that dish's description instead of
+  inventing a bogus extra dish.
+- Photo capture for the archive, or paste/type text directly, both feeding
+  the same heuristic extraction into sections/dishes, editable before
+  saving.
 - Version comparison (exact / fuzzy-name / ingredient-overlap matching)
   against the last confirmed menu of the same type — plain-language change
   explanations, confidence scores, culinary/service/training-priority
@@ -89,8 +101,9 @@ generation, spaced repetition) — all pure functions, independent of React.
 
 ## Known limitations (by design)
 
-- **No OCR/vision API.** Photos are archived but not auto-transcribed —
-  paste or type the menu text instead.
+- **No OCR/vision API.** PDF text extraction only works when the PDF has a
+  real text layer; a scanned/flat-image PDF or a photo isn't auto-transcribed
+  — paste or type the menu text instead in that case.
 - **No live LLM.** Descriptions, pairings, objections, and recommendations
   are generated from rules + a seed dictionary, not a model call — per the
   product's own rule, generated text must stay traceable to actual parsed
@@ -117,11 +130,15 @@ npm run dev
 > commit pipeline (including the "elk bolognese" change-detection example
 > from the product spec), the split-into-new-dish flow, SRS scheduling,
 > flavor-tag generation, pairing suggestions, MCQ quiz generation, objection
-> scenarios, guest recommendations, and the dish/ingredient wiki
-> cross-referencing. Run `npm install && npm run dev` locally to try the
-> UI — fonts (Playfair Display + Libre Baskerville + Courier Prime via
-> Google Fonts) load from a CDN at runtime and weren't reachable from this
-> sandbox either, so double-check they render as expected.
+> scenarios, guest recommendations, the dish/ingredient wiki
+> cross-referencing, and the PDF line-reconstruction logic (grouping text
+> items into lines by position, tested directly — the actual pdf.js CDN
+> fetch could not be exercised end-to-end here since it only runs in a real
+> browser). Run `npm install && npm run dev` locally to try the UI — fonts
+> (Playfair Display + Libre Baskerville via Google Fonts) and pdf.js (via
+> jsDelivr) load from CDNs at runtime and weren't reachable from this
+> sandbox either, so double-check both render/work as expected, especially
+> a real PDF upload end to end.
 
 From the empty Brief screen you can click **Load sample data** to seed two
 versions of a demo Dinner menu and see the full change-detection flow

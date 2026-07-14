@@ -155,7 +155,7 @@ function TeamTab() {
     <div>
       <div className="card empty-state" style={{ marginBottom: 12 }}>
         <div className="seal" style={{ margin: "0 auto 10px" }}><JovaninaMark size={34} /></div>
-        <p className="letterpress" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontStyle: "italic", margin: 0 }}>
+        <p style={{ fontFamily: "var(--font-display)", fontSize: 18, fontStyle: "italic", margin: 0 }}>
           "Not to win, but to delight."
         </p>
         <p className="tiny muted" style={{ marginTop: 6 }}>Jovanina's Broken Italian</p>

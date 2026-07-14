@@ -134,7 +134,7 @@ function AppShell() {
               className={activeTab === t.id ? "active" : ""}
               onClick={() => go(t.id)}
             >
-              <Icon size={19} />
+              <span className="nav-icon"><Icon size={18} /></span>
               {t.label}
             </button>
           );

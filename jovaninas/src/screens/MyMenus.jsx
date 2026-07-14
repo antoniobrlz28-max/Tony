@@ -146,7 +146,7 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
         <span className="tiny muted">Confidence {Math.round(change.confidence * 100)}% · Training: {change.trainingPriority}</span>
         {change.reviewStatus === "needs_review" && onConfirm && (
           <>
-            <button className="btn" onClick={() => onConfirm(change.id)}>Same dish</button>
+            <button className="btn accent" onClick={() => onConfirm(change.id)}>Same dish</button>
             <button className="btn secondary" onClick={() => onSplit(change.id)}>New dish</button>
             <button className="btn ghost" onClick={() => onIgnore(change.id, "ocr_error")}>OCR error</button>
             <button className="btn ghost" onClick={() => onIgnore(change.id, "ignored")}>Ignore</button>

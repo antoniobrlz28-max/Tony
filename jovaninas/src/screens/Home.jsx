@@ -99,7 +99,7 @@ export default function Home({ go }) {
     <div>
       <div style={{ marginBottom: 16 }}>
         <p className="tiny muted" style={{ fontFamily: "var(--font-stamp)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Shift Brief</p>
-        <h3 className="letterpress" style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 2px" }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 2px" }}>
           {greeting()}, {displayName}.
         </h3>
       </div>

@@ -55,6 +55,11 @@ export function parseMenuText(rawText) {
   let current = null;
   let title = null;
   let warnings = [];
+  // Tracks the most recently added item so a following no-price line (very
+  // common in PDF menus, where the description wraps to its own line under
+  // the name+price line) can be folded in as more description instead of
+  // becoming a bogus standalone dish.
+  let lastItem = null;
 
   lines.forEach((line, idx) => {
     if (idx === 0 && looksLikeSectionHeader(line) === false && !PRICE_RE.test(line)) {
@@ -64,6 +69,7 @@ export function parseMenuText(rawText) {
     if (looksLikeSectionHeader(line)) {
       current = { name: line.replace(/:$/, ""), items: [] };
       sections.push(current);
+      lastItem = null;
       return;
     }
     const { price, rest } = extractPrice(line);
@@ -71,6 +77,18 @@ export function parseMenuText(rawText) {
       warnings.push(`Could not parse line: "${line}"`);
       return;
     }
+
+    // A no-price line is treated as a wrapped description of the previous
+    // dish only when it reads like an ingredient list (starts lowercase, or
+    // contains a comma) — a genuine Title Case no-price dish name (e.g. a
+    // market-price item) still becomes its own item.
+    const looksLikeContinuation = /^[a-z]/.test(rest) || rest.includes(",");
+    if (price === null && lastItem && looksLikeContinuation) {
+      lastItem.description = lastItem.description ? `${lastItem.description}, ${rest}` : rest;
+      lastItem.rawLine += `\n${line}`;
+      return;
+    }
+
     const { name, description } = splitNameDescription(rest);
     if (!current) {
       current = { name: "Menu", items: [] };
@@ -80,13 +98,14 @@ export function parseMenuText(rawText) {
       warnings.push(`Could not parse line: "${line}"`);
       return;
     }
-    current.items.push({
+    lastItem = {
       rawLine: line,
       name,
       description,
       price,
       confidence: price === null ? 0.6 : 0.85,
-    });
+    };
+    current.items.push(lastItem);
   });
 
   return { title, sections, warnings };
