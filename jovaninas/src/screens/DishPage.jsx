@@ -215,7 +215,7 @@ export default function DishPage({ go, params }) {
                 <div>
                   <div className="dish-name" style={{ fontSize: 13.5 }}>{c.normalized} <span className="pill neutral">{c.role}</span></div>
                   {hit && <div className="dish-desc">{hit.definition}</div>}
-                  {!hit && <div className="tiny muted">No dictionary entry yet — add one in Library.</div>}
+                  {!hit && <div className="tiny muted">No dictionary entry yet — add one in Glossary.</div>}
                 </div>
                 <span className={`pill ${c.source === "dictionary" ? "green" : "brass"}`}>{c.source}</span>
               </div>
@@ -250,7 +250,7 @@ export default function DishPage({ go, params }) {
                 </div>
               ) : (
                 <div className="tiny muted" style={{ marginTop: 4 }}>
-                  No matching entries in Library yet — add wines/cocktails there to get specific suggestions.
+                  No matching entries in Glossary yet — add wines/cocktails there to get specific suggestions.
                 </div>
               )}
             </div>
@@ -319,7 +319,6 @@ export default function DishPage({ go, params }) {
           <p className="small">{cards.length} flashcard{cards.length === 1 ? "" : "s"} generated for this dish across all its versions.</p>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <button className="btn" onClick={() => go("learn", { dishId: dish.id, mode: "Flashcards" })}>Study flashcards</button>
-            <button className="btn secondary" onClick={() => go("learn", { dishId: dish.id, mode: "Pre-Shift Quiz" })}>Take a quiz</button>
           </div>
           <hr className="sep" />
           <p className="section-title">Selling phrases &amp; FAQ on record</p>

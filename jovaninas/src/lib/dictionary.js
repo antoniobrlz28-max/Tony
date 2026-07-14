@@ -547,7 +547,7 @@ export function registerDiscoveredTerm(dictionary, component) {
     term: component.raw ? component.raw.trim() : key,
     language: "en",
     category: ROLE_TO_CATEGORY[component.role] || "ingredient",
-    definition: "Spotted on the menu — no write-up yet. Add details from the dish's Components tab or here in the Library.",
+    definition: "Spotted on the menu — no write-up yet. Add details from the dish's Components tab or here in the Glossary.",
     origin: "",
     traditional: "",
     flavor: [],

@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { DataProvider, useData } from "./lib/context.jsx";
-import JovaninaMark from "./components/JovaninaMark.jsx";
+import jovaninaLogo from "./assets/jovanina-logo.png";
 import Home from "./screens/Home.jsx";
 import Scan from "./screens/Scan.jsx";
 import MyMenus from "./screens/MyMenus.jsx";
@@ -29,7 +29,7 @@ const TABS = [
   { id: "scan", label: "Scan", icon: ScanLine },
   { id: "menus", label: "My Menus", icon: BookMarked },
   { id: "learn", label: "Learn", icon: GraduationCap },
-  { id: "library", label: "Library", icon: LibraryIcon },
+  { id: "library", label: "Glossary", icon: LibraryIcon },
   { id: "more", label: "More", icon: MoreHorizontal },
 ];
 
@@ -121,7 +121,9 @@ function AppShell() {
     <div className="app-shell">
       <SaveErrorBanner />
       <div className="topbar">
-        <div className="monogram"><JovaninaMark size={26} /></div>
+        <div className="monogram" style={{ padding: 0, overflow: "hidden" }}>
+          <img src={jovaninaLogo} alt="Jovanina's" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
         <div className="brand" style={{ flex: 1 }}>
           <div className="name">Jovanina's</div>
           <div className="tag">Broken Italian</div>

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { FileText, GraduationCap, AlertTriangle } from "lucide-react";
+import { FileText, GraduationCap, AlertTriangle, Filter } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { MENU_TYPES } from "../lib/storage.js";
 import { allergensForComponents } from "../lib/components.js";
 import { confirmChange, markChangeAsNewDish, markChangeIgnored } from "../lib/menuOps.js";
 import { pictureDescription } from "../lib/descriptions.js";
+import { addOnsForSection, addOnsForDish } from "../lib/addOns.js";
 import Highlight from "../components/Highlight.jsx";
 import IngredientTerms from "../components/IngredientTerms.jsx";
 
@@ -23,7 +24,6 @@ function ValueLine({ label, value }) {
 }
 
 const SUB_TABS = ["Current Menu", "Changes", "History", "Drinks"];
-const ALL_ALLERGENS = ["gluten", "dairy", "tree nuts", "peanut", "shellfish", "fish", "egg", "soy", "sesame"];
 
 // Bolds the specific ingredient/price/name inside a change-explanation
 // sentence, so the eye lands on what changed instead of re-reading the
@@ -45,6 +45,7 @@ function CurrentMenuTab({ go, data }) {
   const [menuType, setMenuType] = useState(null);
   const [q, setQ] = useState("");
   const [allergenFilter, setAllergenFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   const latestByType = useMemo(() => {
     const byType = {};
@@ -67,6 +68,22 @@ function CurrentMenuTab({ go, data }) {
     return map;
   }, [changesForMenu]);
 
+  // Auto-generated from what's actually on this menu, instead of a fixed
+  // allergen list — a filter for "sesame" is just clutter on a menu with
+  // no sesame in it.
+  const presentAllergens = useMemo(() => {
+    if (!menu) return [];
+    const set = new Set();
+    for (const section of menu.sections) {
+      for (const id of section.dishVersionIds) {
+        const dv = data.dishVersions[id];
+        if (!dv) continue;
+        for (const a of allergensForComponents(dv.components || [])) set.add(a);
+      }
+    }
+    return Array.from(set).sort();
+  }, [menu, data.dishVersions]);
+
   if (!menu) {
     return (
       <div className="card empty-state">
@@ -85,18 +102,31 @@ function CurrentMenuTab({ go, data }) {
           </button>
         ))}
       </div>
-      <input type="text" placeholder="Search dishes..." value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 10 }} />
-      <div className="chip-row">
-        {ALL_ALLERGENS.map((a) => (
+      <div style={{ display: "flex", gap: 8, marginBottom: showFilters ? 10 : 0 }}>
+        <input type="text" placeholder="Search dishes..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
+        {presentAllergens.length > 0 && (
           <button
-            key={a}
-            className={`toggle-chip ${allergenFilter === a ? "active" : ""}`}
-            onClick={() => setAllergenFilter(allergenFilter === a ? "" : a)}
+            className={`icon-btn ${allergenFilter ? "active" : ""}`}
+            onClick={() => setShowFilters((v) => !v)}
+            title="Filter by allergen"
           >
-            {a}
+            <Filter size={13} />
           </button>
-        ))}
+        )}
       </div>
+      {showFilters && presentAllergens.length > 0 && (
+        <div className="chip-row">
+          {presentAllergens.map((a) => (
+            <button
+              key={a}
+              className={`toggle-chip ${allergenFilter === a ? "active" : ""}`}
+              onClick={() => setAllergenFilter(allergenFilter === a ? "" : a)}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <p className="tiny muted" style={{ margin: 0 }}>
           {activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}
@@ -109,6 +139,15 @@ function CurrentMenuTab({ go, data }) {
         )}
       </div>
 
+      {menu.preservice && (menu.preservice.focacciaFlavor || menu.preservice.oysterOrigin || menu.preservice.gelatoSorbetFlavors) && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <p className="section-title">Tonight's preservice details</p>
+          {menu.preservice.focacciaFlavor && <p className="small">Focaccia: {menu.preservice.focacciaFlavor}</p>}
+          {menu.preservice.oysterOrigin && <p className="small">Oysters from: {menu.preservice.oysterOrigin}</p>}
+          {menu.preservice.gelatoSorbetFlavors && <p className="small">Gelato/sorbet: {menu.preservice.gelatoSorbetFlavors}</p>}
+        </div>
+      )}
+
       {menu.sections.map((section) => {
         const dishVersions = section.dishVersionIds.map((id) => data.dishVersions[id]).filter(Boolean);
         const filtered = dishVersions.filter((dv) => {
@@ -117,12 +156,21 @@ function CurrentMenuTab({ go, data }) {
           return true;
         });
         if (filtered.length === 0) return null;
+        const sectionAddOns = addOnsForSection(section.name);
         return (
           <div key={section.id} className="card" style={{ marginBottom: 12 }}>
             <p className="section-title">{section.name}</p>
+            {sectionAddOns.length > 0 && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+                {sectionAddOns.map((a) => (
+                  <span key={a.label} className="pill neutral">+ {a.label} (${a.price})</span>
+                ))}
+              </div>
+            )}
             {filtered.map((dv) => {
               const change = changeByDishVersion[dv.id];
               const allergens = allergensForComponents(dv.components || []);
+              const dishAddOns = addOnsForDish(dv.displayName);
               return (
                 <div key={dv.id} className="dish-row clickable" onClick={() => go("dish", { dishId: dv.dishId, fromTab: "menus" })}>
                   <div>
@@ -133,6 +181,13 @@ function CurrentMenuTab({ go, data }) {
                     </div>
                     <div className="dish-desc">{pictureDescription(dv)}</div>
                     <IngredientTerms components={dv.components} dictionary={data.dictionary} />
+                    {dishAddOns.length > 0 && (
+                      <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {dishAddOns.map((a) => (
+                          <span key={a.label} className="pill neutral">+ {a.label} (${a.price})</span>
+                        ))}
+                      </div>
+                    )}
                     {allergens.length > 0 && (
                       <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
                         {allergens.map((a) => <span key={a} className="pill wine">{a}</span>)}

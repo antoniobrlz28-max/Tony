@@ -12,10 +12,10 @@ Visual design is a clean, modern light UI matched directly to Jovanina's
 reference mockups: white/near-white surfaces, soft shadows instead of
 borders, underline tabs, solid rounded badges, navy ink (#1e2a44) with red
 (#c0392b) as the primary-action accent, Playfair Display + Libre
-Baskerville type, an original stylized mark inspired by the storefront/menu
-portrait logo, and a phone-width shell with a bottom nav (Brief / Scan / My
-Menus / Learn / Library / More) whose active tab gets a colored highlight
-behind the icon.
+Baskerville type, the restaurant's actual portrait mark in the top-left
+corner, and a phone-width shell with a bottom nav (Brief / Scan / My Menus
+/ Learn / Glossary / More) whose active tab gets a colored highlight behind
+the icon.
 
 ## Master / read-only access
 
@@ -37,6 +37,9 @@ that's wired up; only the storage layer underneath would change.
 ## What's implemented
 
 **Capture → compare → confirm**
+- Scanning has no form to fill out first — Jovanina's is dinner-only, so
+  there's no menu-type/date picker blocking the way; choosing a PDF (or
+  photo, or pasted text) extracts immediately.
 - **Upload a PDF menu** and its embedded text is read straight out of the
   file client-side (Mozilla's pdf.js, loaded at runtime from a CDN — no
   OCR/vision API, no upload to a server). Works for anything exported with
@@ -83,6 +86,25 @@ that's wired up; only the storage layer underneath would change.
   dishes, drinks aren't versioned/diffed across menus (no change-tracking,
   no dish-page wiki entry) — just what was on that specific upload,
   reviewable in the Scan preview and visible under My Menus → Drinks.
+- **Category headers are also recognized by red print color**, not just
+  the static phrase list — Jovanina's menus mark every category header in
+  red ink, so `pdfExtract.js` walks the page's drawing operations
+  alongside its text to find red, title-shaped text that isn't already a
+  known header (excluding the red "Jovanina's" signature specifically) and
+  treats it as a header too, both for splitting sections and for
+  column-anchoring on a multi-column page. This is a genuinely best-effort
+  layer: pdf.js doesn't expose color through its normal text API, so this
+  separately correlates two lower-level data sources by position and bails
+  out safely (falls back to the phrase list alone) if that correlation
+  doesn't line up — it could not be exercised against a real browser in
+  this sandbox, only unit-tested with synthetic input, so treat it as
+  experimental until confirmed against a live upload.
+- **Menu-specific add-on scope** (e.g. "Add Charcuterie" and "Gluten Free
+  Crust" apply only to pizzas; "Gluten Free Pasta" only to Elk Bolognese
+  and the Trapanese pesto pasta) is encoded directly in `lib/addOns.js`
+  from what the restaurant told us, rather than guessed from the PDF's
+  surcharge notes — shown as reference pills next to the section header or
+  specific dish it actually applies to.
 - The original PDF (or photo) is kept on the menu record and viewable from
   Current Menu and History ("Original PDF" / "View original PDF"), so you
   can always confirm exactly what was uploaded.
@@ -97,9 +119,19 @@ that's wired up; only the storage layer underneath would change.
   with "same dish / not the same dish" actions rather than auto-resolved.
 
 **Shift Brief** (the opening screen)
-- Tonight's covers, chef updates, new/changed/removed/price-change counts,
-  86'd items (toggle any dish out for the night), a special-event line, and
-  your flashcard review queue with an estimated review time.
+- New/changed/removed/price-change counts as a clickable, collapsible
+  change log that leads straight to the specific change — not a fixed
+  four-number readout. Tonight's covers/chef updates/wine-features
+  tracking is built (`lib/shiftBrief.js`) but not shown on this screen for
+  now, per current product direction; re-enabling it later is a render
+  change, not a rebuild.
+- A **preservice pop-up** on every menu upload asks the three things that
+  change nightly and aren't printed on the menu — today's focaccia
+  flavor, where tonight's oysters are from, today's gelato/sorbet flavors
+  — saved with that menu and shown at the top of Current Menu.
+- 86'd items (toggle any dish out for the night) default to **temporary**;
+  master can separately mark one **permanent** after reviewing with the
+  chef, rather than every 86 being treated the same.
 - **"Since your last shift"**: remembers when you last opened the app and
   surfaces only what changed since then, so nobody has to ask a coworker
   what's different.
@@ -126,16 +158,19 @@ that's wired up; only the storage layer underneath would change.
   fabricated.
 - Photo timeline per dish (upload + caption + date).
 
-**Learn** — five modes: SRS **flashcards**, a multiple-choice **pre-shift
-quiz** (distractors generated from real dish/ingredient data),
-**pronunciation** practice with an **Italian accent** (browser text-to-speech,
-`lang="it-IT"` + an installed Italian system voice when available — each
-dictionary term is tagged with the language of the word actually being
-read, so English descriptive terms like "black garlic" stay in English),
-an **objection trainer** (guest pushback scenarios with responses grounded
-in the dish's actual technique/flavor data), and a **guest recommendation
-engine** (chip-based preferences in → ranked dishes, wine pairing, upsell
-appetizer/dessert out).
+**Learn** — currently surfaces two modes, by design: **flashcards** (tap
+"Generate flashcards" for a shuffled batch of 10 real, menu-derived cards
+with a flip animation and the answer highlighted; grading feeds the SRS
+scheduler same as before, no "due today"/urgency framing) and
+**pronunciation** practice with an **Italian accent** (browser
+text-to-speech, `lang="it-IT"` + an installed Italian system voice when
+available — each dictionary term is tagged with the language of the word
+actually being read, so English descriptive terms like "black garlic" stay
+in English). A multiple-choice **pre-shift quiz**, an **objection
+trainer**, and a **guest recommendation engine** are fully built
+(`lib/mcq.js`, `lib/objections.js`, `lib/recommend.js`, plus their Learn.jsx
+mode components) but intentionally not in the tab bar right now — re-adding
+them later is one line in `MODES`.
 
 **Change review, practically**
 - Each change card leads with what matters: an allergen-change warning
@@ -150,15 +185,25 @@ appetizer/dessert out).
   price-change explanation and the price embedded in a change card's
   Previous/Current audit lines.
 
-**Library, Search, More**
-- Culinary dictionary with pronunciation guides and category filters; every
-  term has its own wiki page.
-- **The Library grows on its own.** Every ingredient parsed out of an
+**Glossary (formerly "Library"), Search, More**
+- Culinary dictionary with pronunciation guides; every term has its own
+  wiki page. Cards are collapsed by default (tap to reveal the definition,
+  origin, allergens) and the "inferred" status badge is hidden — a term
+  that's still a stub reads clean, not cluttered.
+- **The Glossary grows on its own.** Every ingredient parsed out of an
   uploaded menu is permanently added as a dictionary entry the moment the
   menu is confirmed (tagged "inferred" until someone fills in the real
   write-up) — nothing you upload is ever parsed and then forgotten; it
   becomes part of the restaurant's permanent knowledge base right away. An
   existing researched/chef-confirmed entry is never overwritten by this.
+- Allergen detection tags **specific nut types** (almond, hazelnut,
+  pistachio...) individually instead of one generic "tree nuts" bucket
+  (falling back to the generic tag only when a preparation is nutty by
+  tradition — romesco, pesto — without naming which nut), plus an
+  **Allium** category (onion, garlic, shallot, leek...).
+- My Menus' allergen filter is **auto-generated from what's actually on
+  the current menu** (behind a filter icon) instead of a fixed always-shown
+  list — no "sesame" filter cluttering a menu with no sesame in it.
 - Natural-language-ish search across dishes/ingredients/notes.
 - Cross-dish notes feed, local data export/import/reset, a profile name,
   and a **Roadmap** tab listing what's deliberately deferred (see below).

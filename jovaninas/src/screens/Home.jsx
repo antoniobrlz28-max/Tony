@@ -5,7 +5,7 @@ import { isDue } from "../lib/srs.js";
 import { seedSampleData } from "../lib/seed.js";
 import { nowIso } from "../lib/id.js";
 import {
-  getShiftLog, setShiftLog, get86List, toggle86, featuredBeverages,
+  getShiftLog, setShiftLog, get86List, toggle86, isPermanently86d, setPermanent86,
   changesSince, estimateReviewMinutes,
 } from "../lib/shiftBrief.js";
 
@@ -21,8 +21,8 @@ export default function Home({ go }) {
   const [q, setQ] = useState("");
   const [sinceIso] = useState(() => data.settings?.lastVisit || null);
   const [specialEvent, setSpecialEvent] = useState(() => getShiftLog(data).specialEvent || "");
-  const [editingCovers, setEditingCovers] = useState(false);
   const [editingEvent, setEditingEvent] = useState(false);
+  const [changeLogOpen, setChangeLogOpen] = useState(false);
 
   useEffect(() => {
     update((draft) => {
@@ -54,16 +54,18 @@ export default function Home({ go }) {
   }, [recentChanges]);
 
   const sinceChanges = useMemo(() => changesSince(data, sinceIso), [data, sinceIso]);
-  const chefUpdatesToday = data.notes.filter((n) => n.noteType === "chef note" && n.createdAt.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
 
   const needsReview = data.changes.filter((c) => c.reviewStatus === "needs_review");
   const dueCards = Object.values(data.cards).filter(isDue);
   const reviewMinutes = estimateReviewMinutes(sinceChanges.length, dueCards.length);
 
+  // Covers/chef-updates/wine-features and per-dish featured-beverage tracking
+  // are deferred off this screen for now (see product notes) — the
+  // underlying shiftLog/featuredBeverages logic stays in shiftBrief.js for
+  // later use, just not rendered here.
   const shiftLog = getShiftLog(data);
   const eightySixIds = get86List(data);
   const eightySixDishes = eightySixIds.map((id) => data.dishes[id]).filter(Boolean);
-  const featured = featuredBeverages(data);
 
   const accuracySamples = Object.values(data.cards).filter((c) => c.accuracyRate != null);
   const mastery = accuracySamples.length
@@ -72,14 +74,14 @@ export default function Home({ go }) {
 
   const allActiveDishes = Object.values(data.dishes).filter((d) => d.status === "active");
 
-  function saveCovers(v) {
-    update((draft) => setShiftLog(draft, undefined, { covers: v === "" ? null : Number(v) }));
-  }
   function saveEvent() {
     update((draft) => setShiftLog(draft, undefined, { specialEvent }));
   }
   function toggleDish86(dishId) {
     update((draft) => toggle86(draft, dishId));
+  }
+  function toggleDishPermanent86(dishId, permanent) {
+    update((draft) => setPermanent86(draft, dishId, permanent));
   }
 
   if (data.menus.length === 0) {
@@ -98,7 +100,6 @@ export default function Home({ go }) {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <p className="tiny muted" style={{ fontFamily: "var(--font-stamp)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Shift Brief</p>
         <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 2px" }}>
           {greeting()}, {displayName}.
         </h3>
@@ -121,38 +122,11 @@ export default function Home({ go }) {
       )}
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="grid cols-3">
-          <div>
-            <div className="section-title" style={{ marginBottom: 2 }}>Tonight's covers</div>
-            {isMaster && editingCovers ? (
-              <input
-                type="number"
-                autoFocus
-                defaultValue={shiftLog.covers ?? ""}
-                placeholder="—"
-                onBlur={(e) => { saveCovers(e.target.value); setEditingCovers(false); }}
-                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-              />
-            ) : (
-              <div
-                onClick={() => isMaster && setEditingCovers(true)}
-                style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)", cursor: isMaster ? "pointer" : "default" }}
-              >
-                {shiftLog.covers ?? "—"}
-              </div>
-            )}
-          </div>
-          <div>
-            <div className="section-title" style={{ marginBottom: 2 }}>Chef updates</div>
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)" }}>{chefUpdatesToday}</div>
-          </div>
-          <div>
-            <div className="section-title" style={{ marginBottom: 2 }}>Wine features</div>
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)" }}>{featured.length}</div>
-          </div>
-        </div>
-        <hr className="sep" />
-        <div className="grid cols-4" style={{ textAlign: "center" }}>
+        <div
+          className="grid cols-4"
+          style={{ textAlign: "center", cursor: recentChanges.length ? "pointer" : "default" }}
+          onClick={() => recentChanges.length && setChangeLogOpen((v) => !v)}
+        >
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "var(--forest)" }}>{stats.added}</div>
             <div className="tiny muted">New items</div>
@@ -167,9 +141,27 @@ export default function Home({ go }) {
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{stats.priceChanges}</div>
-            <div className="tiny muted">Price</div>
+            <div className="tiny muted">Price changes</div>
           </div>
         </div>
+        {recentChanges.length > 0 && (
+          <>
+            <hr className="sep" />
+            {changeLogOpen ? (
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+                {recentChanges.map((c) => (
+                  <li key={c.id}>
+                    <a className="link small" onClick={() => go("menus", { subTab: "changes", menuId: c.menuId })}>
+                      {data.dishes[c.dishId]?.canonicalName || c.changeType} — {c.explanation[0]}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <a className="link tiny" onClick={() => setChangeLogOpen(true)}>View change log</a>
+            )}
+          </>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
@@ -178,15 +170,30 @@ export default function Home({ go }) {
         </p>
         {eightySixDishes.length === 0 && <p className="muted small">Nothing 86'd{isMaster ? " — tap a dish below to mark it out." : "."}</p>}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: eightySixDishes.length ? 10 : 0 }}>
-          {eightySixDishes.map((d) =>
-            isMaster ? (
-              <button key={d.id} className="stamp" onClick={() => toggleDish86(d.id)} title="Tap to bring back">
-                {d.canonicalName}
-              </button>
-            ) : (
-              <span key={d.id} className="stamp">{d.canonicalName}</span>
-            )
-          )}
+          {eightySixDishes.map((d) => {
+            const permanent = isPermanently86d(data, d.id);
+            if (!isMaster) {
+              return (
+                <span key={d.id} className="stamp">
+                  {d.canonicalName}{permanent ? " (permanent)" : ""}
+                </span>
+              );
+            }
+            return (
+              <span key={d.id} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <button className="stamp" onClick={() => toggleDish86(d.id)} title="Tap to bring back">
+                  {d.canonicalName}
+                </button>
+                <button
+                  className={`pill ${permanent ? "wine" : "neutral"}`}
+                  onClick={() => toggleDishPermanent86(d.id, !permanent)}
+                  title={permanent ? "Confirmed permanent with chef — tap to mark temporary again" : "Mark permanent (after review with chef)"}
+                >
+                  {permanent ? "Permanent" : "Temporary"}
+                </button>
+              </span>
+            );
+          })}
         </div>
         {isMaster && (
           <select value="" onChange={(e) => e.target.value && toggleDish86(e.target.value)}>

@@ -162,7 +162,7 @@ export default function Search({ go, params }) {
           )}
           {(chip === "All" || chip === "Ingredients") && result.terms.length > 0 && (
             <div className="card" style={{ marginBottom: 12 }}>
-              <p className="section-title">Library terms</p>
+              <p className="section-title">Glossary terms</p>
               {result.terms.map((t) => (
                 <div key={t.term} className="dish-row clickable" onClick={() => go("term", { term: t.term, fromTab: backTab })}>
                   <div>

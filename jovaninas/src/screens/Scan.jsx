@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Camera, Trash2, Plus, Check, Lock, FileText, Loader2 } from "lucide-react";
 import { useData } from "../lib/context.jsx";
-import { MENU_TYPES } from "../lib/storage.js";
 import { parseMenuText } from "../lib/parseMenu.js";
 import { commitMenu } from "../lib/menuOps.js";
 import { todayStr, uid } from "../lib/id.js";
@@ -18,9 +17,11 @@ function readFileAsDataUrl(file) {
 
 export default function Scan({ go }) {
   const { update, isMaster } = useData();
-  const [menuType, setMenuType] = useState("Dinner");
-  const [mealPeriod, setMealPeriod] = useState("");
-  const [effectiveDate, setEffectiveDate] = useState(todayStr());
+  // We're only ever open for dinner — no menu-type/date form to fill out
+  // before scanning; extraction runs immediately on upload.
+  const menuType = "Dinner";
+  const mealPeriod = "";
+  const effectiveDate = todayStr();
   const [rawText, setRawText] = useState("");
   const [photos, setPhotos] = useState([]);
   const [extraction, setExtraction] = useState(null);
@@ -31,6 +32,10 @@ export default function Scan({ go }) {
   const [sourcePdf, setSourcePdf] = useState(null);
   const [sourcePdfName, setSourcePdfName] = useState(null);
   const [showDrinks, setShowDrinks] = useState(false);
+  // These change daily and aren't printed on the menu itself — asked once
+  // per upload, same as the preservice meeting, instead of guessed at.
+  const [showPreservice, setShowPreservice] = useState(false);
+  const [preservice, setPreservice] = useState({ focacciaFlavor: "", oysterOrigin: "", gelatoSorbetFlavors: "" });
 
   async function handlePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -44,7 +49,7 @@ export default function Scan({ go }) {
     setPdfStatus("loading");
     setPdfProgress(null);
     try {
-      const [{ text, hasText, pageCount }, pdfDataUrl] = await Promise.all([
+      const [{ text, hasText, pageCount, discoveredHeaders }, pdfDataUrl] = await Promise.all([
         extractTextFromPdf(file, (page, total) => setPdfProgress({ page, total })),
         readFileAsDataUrl(file),
       ]);
@@ -56,7 +61,7 @@ export default function Scan({ go }) {
       setSourcePdf(pdfDataUrl);
       setSourcePdfName(file.name);
       setPdfStatus(null);
-      runExtractionFromText(text);
+      runExtractionFromText(text, discoveredHeaders);
       void pageCount;
     } catch (err) {
       console.error(err);
@@ -64,13 +69,14 @@ export default function Scan({ go }) {
     }
   }
 
-  function runExtractionFromText(text) {
-    const result = parseMenuText(text);
+  function runExtractionFromText(text, extraFoodHeaders) {
+    const result = parseMenuText(text, { extraFoodHeaders: extraFoodHeaders || [] });
     if (result.sections.length === 0) result.sections.push({ name: "Menu", items: [] });
     if (!result.drinkSections) result.drinkSections = [];
     setExtraction(result);
     setActiveSection(0);
     setShowDrinks(false);
+    setShowPreservice(true);
   }
 
   function runExtraction() {
@@ -150,7 +156,7 @@ export default function Scan({ go }) {
     }
     const menuId = uid("menu");
     update((draft) => {
-      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText, sourcePdf, sourcePdfName });
+      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText, sourcePdf, sourcePdfName, preservice });
     });
     go("menus", { subTab: "changes", menuId });
   }
@@ -169,26 +175,6 @@ export default function Scan({ go }) {
     <div>
       {!extraction && (
         <>
-          <div className="card" style={{ marginBottom: 14 }}>
-            <p className="section-title">Menu details</p>
-            <div className="grid cols-2">
-              <label className="field">
-                Menu type
-                <select value={menuType} onChange={(e) => setMenuType(e.target.value)}>
-                  {MENU_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                Effective date
-                <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
-              </label>
-            </div>
-            <label className="field">
-              Meal period (optional)
-              <input type="text" value={mealPeriod} onChange={(e) => setMealPeriod(e.target.value)} placeholder="e.g. Dinner service" />
-            </label>
-          </div>
-
           <div className="card" style={{ marginBottom: 14, textAlign: "center" }}>
             <FileText size={26} color="var(--red)" />
             <h3 style={{ marginTop: 10 }}>Upload a PDF menu</h3>
@@ -395,6 +381,47 @@ export default function Scan({ go }) {
           <p className="tiny muted" style={{ marginTop: 8 }}>
             Saving compares this menu against the most recent confirmed "{menuType}" menu and generates a change briefing.
           </p>
+        </div>
+      )}
+
+      {showPreservice && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(30,26,15,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55 }}>
+          <div className="card" style={{ width: "min(380px, 88vw)", maxHeight: "80vh", overflowY: "auto" }}>
+            <p className="section-title">Preservice details</p>
+            <p className="tiny muted" style={{ marginBottom: 10 }}>
+              These change daily and aren't printed on the menu — same questions as the preservice meeting. Leave any blank if not applicable tonight.
+            </p>
+            <label className="field">
+              Today's focaccia flavor/ingredient
+              <input
+                type="text"
+                value={preservice.focacciaFlavor}
+                onChange={(e) => setPreservice((p) => ({ ...p, focacciaFlavor: e.target.value }))}
+                placeholder="e.g. rosemary + sea salt"
+              />
+            </label>
+            <label className="field">
+              Where are tonight's oysters from?
+              <input
+                type="text"
+                value={preservice.oysterOrigin}
+                onChange={(e) => setPreservice((p) => ({ ...p, oysterOrigin: e.target.value }))}
+                placeholder="e.g. Kumamoto, Humboldt Bay, CA"
+              />
+            </label>
+            <label className="field">
+              Tonight's gelato/sorbet flavors
+              <input
+                type="text"
+                value={preservice.gelatoSorbetFlavors}
+                onChange={(e) => setPreservice((p) => ({ ...p, gelatoSorbetFlavors: e.target.value }))}
+                placeholder="e.g. pistachio, blood orange sorbet"
+              />
+            </label>
+            <button className="btn accent" style={{ width: "100%", marginTop: 8 }} onClick={() => setShowPreservice(false)}>
+              Continue
+            </button>
+          </div>
         </div>
       )}
     </div>

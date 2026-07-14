@@ -1,71 +1,97 @@
 import { useEffect, useMemo, useState } from "react";
 import { Volume2, Mic, MessageCircleWarning, Compass } from "lucide-react";
 import { useData } from "../lib/context.jsx";
-import { isDue, reviewCard } from "../lib/srs.js";
+import { reviewCard } from "../lib/srs.js";
 import { generateMCQPool } from "../lib/mcq.js";
 import { generateObjectionScenarios } from "../lib/objections.js";
 import { recommendDishes } from "../lib/recommend.js";
 import { speakTerm, hasItalianVoice } from "../lib/speech.js";
 
-const MODES = ["Flashcards", "Pre-Shift Quiz", "Pronunciation", "Objections", "Recommend"];
+const MODES = ["Flashcards", "Pronunciation"];
+const BATCH_SIZE = 10;
+
+function shuffled(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 function FlashcardsMode({ data, update, dishId }) {
-  const [revealed, setRevealed] = useState(false);
+  const [batchIds, setBatchIds] = useState(null);
   const [idx, setIdx] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
 
-  const dueCards = useMemo(() => {
+  const pool = useMemo(() => {
     let all = Object.values(data.cards);
     if (dishId) {
       const dish = data.dishes[dishId];
       const versionIds = new Set(dish?.versions || []);
       all = all.filter((c) => versionIds.has(c.dishVersionId));
-    } else {
-      all = all.filter(isDue);
     }
     return all;
   }, [data.cards, data.dishes, dishId]);
 
-  const card = dueCards[idx % Math.max(dueCards.length, 1)];
+  const cards = batchIds ? batchIds.map((id) => data.cards[id]).filter(Boolean) : [];
+  const card = cards[idx];
   const dv = card ? data.dishVersions[card.dishVersionId] : null;
 
-  const overallAccuracy = useMemo(() => {
-    const withHistory = Object.values(data.cards).filter((c) => c.accuracyRate != null);
-    if (!withHistory.length) return null;
-    return Math.round(withHistory.reduce((sum, c) => sum + c.accuracyRate, 0) / withHistory.length);
-  }, [data.cards]);
+  function generate() {
+    setBatchIds(shuffled(pool).slice(0, BATCH_SIZE).map((c) => c.id));
+    setIdx(0);
+    setFlipped(false);
+    setHasGenerated(true);
+  }
 
   function grade(g) {
     update((draft) => { draft.cards[card.id] = reviewCard(draft.cards[card.id], g); });
-    setRevealed(false);
-    setIdx((i) => i + 1);
+    setFlipped(false);
+    if (idx + 1 < cards.length) setIdx((i) => i + 1);
+    else setBatchIds(null);
+  }
+
+  if (pool.length === 0) {
+    return <div className="card empty-state"><p>No flashcards yet — upload a menu to generate some from real dishes.</p></div>;
+  }
+
+  if (!batchIds || cards.length === 0) {
+    return (
+      <div className="card empty-state">
+        <p>{pool.length} card{pool.length === 1 ? "" : "s"} available{dishId ? " for this dish" : ""}.</p>
+        <button className="btn accent" onClick={generate}>
+          {hasGenerated ? "Generate new flashcards" : "Generate flashcards"}
+        </button>
+      </div>
+    );
   }
 
   return (
     <div>
       <div className="card" style={{ marginBottom: 12 }}>
-        <p className="small">
-          {dueCards.length} card{dueCards.length === 1 ? "" : "s"} {dishId ? "for this dish" : "due today"}.
-          {overallAccuracy != null && ` Overall recall accuracy: ${overallAccuracy}%.`}
-        </p>
+        <p className="small">Card {idx + 1} of {cards.length}</p>
       </div>
-      {!card && <div className="card empty-state"><p>Nothing due right now. Nice work.</p></div>}
-      {card && (
-        <div className="card">
-          <p className="section-title">{card.category.replace("-", " ")} · {dv?.displayName}</p>
-          <p style={{ fontSize: 16, fontWeight: 600, fontFamily: "var(--font-display)" }}>{card.question}</p>
-          {revealed ? (
-            <>
-              <p className="small" style={{ marginTop: 8 }}>{card.answer}</p>
-              <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                <button className="btn danger" onClick={() => grade("again")}>Again</button>
-                <button className="btn secondary" onClick={() => grade("hard")}>Hard</button>
-                <button className="btn" onClick={() => grade("good")}>Good</button>
-                <button className="btn" onClick={() => grade("easy")}>Easy</button>
-              </div>
-            </>
-          ) : (
-            <button className="btn" style={{ marginTop: 12 }} onClick={() => setRevealed(true)}>Reveal answer</button>
-          )}
+      <div className={`flashcard ${flipped ? "flipped" : ""}`} onClick={() => setFlipped((f) => !f)}>
+        <div className="flashcard-inner">
+          <div className="flashcard-face flashcard-front">
+            <p className="section-title">{card.category.replace("-", " ")} · {dv?.displayName}</p>
+            <p style={{ fontSize: 16, fontWeight: 600, fontFamily: "var(--font-display)" }}>{card.question}</p>
+            <p className="tiny muted" style={{ marginTop: 12 }}>Tap to flip</p>
+          </div>
+          <div className="flashcard-face flashcard-back">
+            <p className="section-title">Answer</p>
+            <p className="answer-highlight">{card.answer}</p>
+          </div>
+        </div>
+      </div>
+      {flipped && (
+        <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+          <button className="btn danger" onClick={() => grade("again")}>Again</button>
+          <button className="btn secondary" onClick={() => grade("hard")}>Hard</button>
+          <button className="btn" onClick={() => grade("good")}>Good</button>
+          <button className="btn" onClick={() => grade("easy")}>Easy</button>
         </div>
       )}
     </div>
@@ -165,7 +191,7 @@ function PronunciationMode({ data, update }) {
   }
 
   if (terms.length === 0) {
-    return <div className="card empty-state"><p>No pronunciation guides yet — add one to a Library term.</p></div>;
+    return <div className="card empty-state"><p>No pronunciation guides yet — add one to a Glossary term.</p></div>;
   }
 
   return (
@@ -182,7 +208,7 @@ function PronunciationMode({ data, update }) {
       <div className="tiny muted" style={{ marginBottom: 12, marginTop: 6 }}>
         <Mic size={11} style={{ verticalAlign: "-2px" }} /> Practiced {practiced}x
       </div>
-      <button className="btn" onClick={markPracticed}>I said it — next term</button>
+      <button className="btn" onClick={markPracticed}>Next term</button>
     </div>
   );
 }
@@ -349,6 +375,11 @@ function RecommendMode({ data }) {
   );
 }
 
+// Pre-Shift Quiz / Objections / Recommend modes are built and working but
+// deliberately not surfaced in the tab bar right now — product direction
+// is to focus Learn on Flashcards + Pronunciation for now. Their code is
+// left in place (QuizMode, ObjectionsMode, RecommendMode above) rather
+// than deleted, so re-enabling later is just adding them back to MODES.
 export default function Learn({ params }) {
   const { data, update } = useData();
   const [mode, setMode] = useState(params?.mode && MODES.includes(params.mode) ? params.mode : "Flashcards");
@@ -359,10 +390,7 @@ export default function Learn({ params }) {
         {MODES.map((m) => <button key={m} className={mode === m ? "active" : ""} onClick={() => setMode(m)}>{m}</button>)}
       </div>
       {mode === "Flashcards" && <FlashcardsMode data={data} update={update} dishId={params?.dishId} />}
-      {mode === "Pre-Shift Quiz" && <QuizMode data={data} dishId={params?.dishId} />}
       {mode === "Pronunciation" && <PronunciationMode data={data} update={update} />}
-      {mode === "Objections" && <ObjectionsMode data={data} />}
-      {mode === "Recommend" && <RecommendMode data={data} />}
     </div>
   );
 }

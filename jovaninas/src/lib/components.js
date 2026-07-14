@@ -74,10 +74,21 @@ const ALLERGEN_KEYWORD_MAP = {
     "ricotta", "mascarpone", "gorgonzola", "taleggio", "fontina", "provolone",
     "butter", "cream", "milk", "cheese", "yogurt", "gelato",
   ],
-  "tree nuts": [
-    "hazelnut", "almond", "pistachio", "walnut", "pine nut", "romesco", "pesto",
-    "cashew", "pecan", "chestnut",
-  ],
+  // A named nut is flagged by its specific type (hazelnut, almond...) rather
+  // than a generic "tree nuts" bucket, since that's more actionable at the
+  // table. A preparation that's nutty by tradition but doesn't name a
+  // specific nut (romesco, pesto) still falls back to the generic tag —
+  // real allergen facts should never be more specific than what's actually
+  // known.
+  hazelnut: ["hazelnut"],
+  almond: ["almond", "marcona"],
+  pistachio: ["pistachio"],
+  walnut: ["walnut"],
+  "pine nut": ["pine nut"],
+  cashew: ["cashew"],
+  pecan: ["pecan"],
+  chestnut: ["chestnut"],
+  "tree nuts": ["romesco", "pesto"],
   peanut: ["peanut"],
   shellfish: [
     "shrimp", "prawn", "scallop", "clam", "mussel", "lobster", "crab", "octopus",
@@ -89,6 +100,9 @@ const ALLERGEN_KEYWORD_MAP = {
   sesame: ["sesame", "tahini"],
   sulfites: ["wine", "marsala", "vermouth"],
   alcohol: ["wine", "marsala", "vermouth", "amaro", "beer", "rum", "whiskey", "vodka", "gin", "liqueur"],
+  // Allium family (onion, garlic, shallot, leek...) — a real, if less
+  // common, recognized food sensitivity.
+  allium: ["onion", "garlic", "shallot", "leek", "scallion", "chive", "ramp"],
 };
 
 export function normalizeTerm(raw) {

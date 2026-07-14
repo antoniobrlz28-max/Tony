@@ -27,7 +27,7 @@ export default function TermPopup({ term, entry, onClose }) {
               </div>
             )}
             <p className="tiny muted" style={{ marginTop: 10 }}>
-              {entry.confidence === "inferred" ? "Spotted on the menu — no write-up yet. Add details in the Library." : `Category: ${entry.category}`}
+              {entry.confidence === "inferred" ? "Spotted on the menu — no write-up yet. Add details in the Glossary." : `Category: ${entry.category}`}
             </p>
           </>
         ) : (

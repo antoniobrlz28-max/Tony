@@ -214,6 +214,9 @@ export function commitMenu(draft, extraction, meta) {
     // versioned/diffed like dishes — no change-detection or dish-page
     // wiki entry, just what was on this specific menu upload.
     drinkSections: extraction.drinkSections || [],
+    // Daily details that change every night and aren't printed on the menu
+    // (asked once per upload, same as the preservice meeting).
+    preservice: meta.preservice || null,
     comparedAgainstMenuId: prevMenu?.id || null,
     parseWarnings: extraction.warnings || [],
   });

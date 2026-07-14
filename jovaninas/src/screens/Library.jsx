@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Volume2 } from "lucide-react";
+import { Plus, Volume2, ArrowRight } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { speakTerm } from "../lib/speech.js";
 
@@ -11,21 +11,15 @@ const EMPTY_FORM = {
 export default function Library({ go }) {
   const { data, update, isMaster } = useData();
   const [q, setQ] = useState("");
-  const [category, setCategory] = useState("All");
   const [form, setForm] = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
-
-  const categories = useMemo(() => {
-    const set = new Set(Object.values(data.dictionary).map((e) => e.category).filter(Boolean));
-    return ["All", ...Array.from(set).sort()];
-  }, [data.dictionary]);
+  const [expanded, setExpanded] = useState(null);
 
   const entries = useMemo(() => {
     let list = Object.values(data.dictionary).sort((a, b) => a.term.localeCompare(b.term));
-    if (category !== "All") list = list.filter((e) => e.category === category);
     if (q) list = list.filter((e) => e.term.includes(q.toLowerCase()) || e.definition?.toLowerCase().includes(q.toLowerCase()));
     return list;
-  }, [data.dictionary, q, category]);
+  }, [data.dictionary, q]);
 
   function saveEntry() {
     if (!form.term.trim()) return;
@@ -52,14 +46,9 @@ export default function Library({ go }) {
   return (
     <div>
       <div className="card" style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: showForm ? 10 : 0 }}>
           <input type="text" placeholder="Search ingredients, sauces, techniques..." value={q} onChange={(e) => setQ(e.target.value)} />
           {isMaster && <button className="btn" onClick={() => setShowForm((s) => !s)}><Plus size={13} /></button>}
-        </div>
-        <div className="chip-row" style={{ overflowX: "auto", flexWrap: "nowrap", marginBottom: 0 }}>
-          {categories.map((c) => (
-            <button key={c} className={`btn ghost ${category === c ? "active" : ""}`} onClick={() => setCategory(c)}>{c}</button>
-          ))}
         </div>
         {showForm && (
           <div style={{ marginTop: 12 }}>
@@ -94,29 +83,43 @@ export default function Library({ go }) {
         )}
       </div>
 
-      <div className="grid cols-2">
-        {entries.map((e) => (
-          <div key={e.term} className="card clickable" onClick={() => go("term", { term: e.term, fromTab: "library" })}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <h3 style={{ textTransform: "capitalize" }}>{e.term}</h3>
-              {e.pronunciation && (
-                <button className="icon-btn" style={{ padding: "4px 7px" }} onClick={(ev) => { ev.stopPropagation(); speakTerm(e.term, e.language); }}><Volume2 size={12} /></button>
+      <div className="card" style={{ padding: 0 }}>
+        {entries.map((e, i) => {
+          const isOpen = expanded === e.term;
+          return (
+            <div key={e.term} style={{ borderBottom: i < entries.length - 1 ? "1px solid var(--border)" : "none" }}>
+              <div
+                className="dish-row clickable"
+                onClick={() => setExpanded(isOpen ? null : e.term)}
+                style={{ padding: "10px 14px" }}
+              >
+                <div className="dish-name" style={{ textTransform: "capitalize", fontSize: 13.5 }}>{e.term}</div>
+                {e.pronunciation && (
+                  <button className="icon-btn" style={{ padding: "4px 7px" }} onClick={(ev) => { ev.stopPropagation(); speakTerm(e.term, e.language); }}><Volume2 size={12} /></button>
+                )}
+              </div>
+              {isOpen && (
+                <div style={{ padding: "0 14px 14px" }}>
+                  {e.confidence !== "inferred" && (
+                    <span className={`pill ${e.confidence === "restaurant-confirmed" ? "green" : "neutral"}`}>{e.confidence}</span>
+                  )}
+                  <p className="small muted" style={{ marginTop: 8 }}>{e.category}{e.origin ? ` · ${e.origin}` : ""}</p>
+                  <p className="small">{e.definition}</p>
+                  {e.guestFriendly && <p className="small" style={{ fontStyle: "italic" }}>"{e.guestFriendly}"</p>}
+                  {e.allergens?.length > 0 && (
+                    <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {e.allergens.map((a) => <span key={a} className="pill wine">{a}</span>)}
+                    </div>
+                  )}
+                  <a className="link tiny" style={{ marginTop: 8, display: "inline-flex" }} onClick={() => go("term", { term: e.term, fromTab: "library" })}>
+                    Full entry <ArrowRight size={11} />
+                  </a>
+                </div>
               )}
             </div>
-            <span className={`pill ${e.confidence === "restaurant-confirmed" ? "green" : e.confidence === "inferred" ? "brass" : "neutral"}`}>
-              {e.confidence}
-            </span>
-            <p className="small muted" style={{ marginTop: 8 }}>{e.category}{e.origin ? ` · ${e.origin}` : ""}</p>
-            <p className="small">{e.definition}</p>
-            {e.guestFriendly && <p className="small" style={{ fontStyle: "italic" }}>"{e.guestFriendly}"</p>}
-            {e.allergens?.length > 0 && (
-              <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {e.allergens.map((a) => <span key={a} className="pill wine">{a}</span>)}
-              </div>
-            )}
-          </div>
-        ))}
-        {entries.length === 0 && <p className="muted">No terms found.</p>}
+          );
+        })}
+        {entries.length === 0 && <p className="muted" style={{ padding: 14 }}>No terms found.</p>}
       </div>
     </div>
   );
