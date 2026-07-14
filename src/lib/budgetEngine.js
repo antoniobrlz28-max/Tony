@@ -63,9 +63,11 @@ export function computeBudget(data, ym) {
 export function suggestBudgets(data, monthsBack = 3) {
   const now = currentMonth();
   const months = Array.from({ length: monthsBack }, (_, i) => shiftMonth(now, -(i + 1)));
+  // Only propose budgets for categories we actually have spend for — leave the
+  // rest untouched rather than zeroing them out.
   return data.categories.map(c => {
     const spends = months.map(ym => categoryMonthSpend(data.transactions, c.id, ym)).filter(s => s > 0);
     const avg = spends.length ? spends.reduce((a, b) => a + b, 0) / spends.length : 0;
     return { id: c.id, budget: Math.round(avg / 10) * 10 };
-  });
+  }).filter(x => x.budget > 0);
 }
