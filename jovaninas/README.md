@@ -267,7 +267,3 @@ npm run dev
 > jsDelivr) load from CDNs at runtime and weren't reachable from this
 > sandbox either, so double-check both render/work as expected, especially
 > a real PDF upload end to end.
-
-From the empty Brief screen you can click **Load sample data** to seed two
-versions of a demo Dinner menu and see the full change-detection flow
-without typing anything in.

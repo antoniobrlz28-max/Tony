@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Search as SearchIcon, Sparkles, ArrowRight, Ban, CalendarClock } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { isDue } from "../lib/srs.js";
-import { seedSampleData } from "../lib/seed.js";
 import { nowIso } from "../lib/id.js";
 import {
   getShiftLog, setShiftLog, get86List, toggle86, isPermanently86d, setPermanent86,
@@ -91,7 +90,6 @@ export default function Home({ go }) {
         <p>No menus yet. Start by scanning or pasting your first menu.</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <button className="btn" onClick={() => go("scan")}>Scan a menu</button>
-          <button className="btn secondary" onClick={() => seedSampleData(update)}>Load sample data</button>
         </div>
       </div>
     );
