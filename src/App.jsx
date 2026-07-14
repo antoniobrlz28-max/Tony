@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, X, Check, Edit2, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
-import { Cell, BarChart, Bar, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
+import { LayoutDashboard, Wallet, ArrowLeftRight, Receipt, Target, TrendingDown, TrendingUp, Plus, Activity, ChevronRight, RefreshCw, Settings as SettingsIcon } from "lucide-react";
+import { Cell, BarChart, Bar, ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
 import { STORAGE_KEY, INK, INK_SOFT, CARD, TEXT, PAPER, PAPER_DIM, ACCENT, RUST, SAGE, SLATE, TEAL, VIOLET, VIOLET_BG } from "./lib/constants.js";
-import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, lerpColor, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
+import { uid, fmt, todayStr, addDays, daysBetween, formatShortDate, urgencyColor, formatDuration, getPeriod } from "./lib/helpers.js";
 import { defaultData, generateDemoData, generateRandomData, migrate } from "./lib/data.js";
-import { Section, ProgressBar, CountdownPill, SmallBtn, useLongPress, IconBtn, DeleteBtn, inputStyle, Empty, Row, StatTile } from "./components/shared.jsx";
+import { Section, ProgressBar, CountdownPill, Empty, Row, StatTile } from "./components/shared.jsx";
 import { PaycheckSheet, DailyCheckInSheet } from "./components/sheets.jsx";
 import { AccountsTab } from "./components/AccountsTab.jsx";
+import { BudgetCard } from "./components/BudgetCard.jsx";
 import { TransactionsTab } from "./components/TransactionsTab.jsx";
 import { BillsTab } from "./components/BillsTab.jsx";
 import { GoalsTab } from "./components/GoalsTab.jsx";
@@ -32,9 +33,6 @@ export default function FinanceOS() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
   const [personaToast, setPersonaToast] = useState(null);
-  const [editingRent, setEditingRent] = useState(false);
-  const paydayLongPress = useLongPress(() => setShowPaycheckSheet(true));
-  const rentLongPress = useLongPress(() => setEditingRent(true));
   function loadDemoData() {
     setData(generateDemoData());
     setConfirmAction(null);
@@ -82,54 +80,11 @@ export default function FinanceOS() {
   const periodTx = data.transactions.filter(t => t.date >= period.start && t.date <= period.end);
   const incomeThisPeriod = periodTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const spentThisPeriod = periodTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-  // Rent is dollar-anchored: fixedRent is the MONTHLY rent, pro-rated to this pay
-  // period's length. Every other category's percent is a share of what's left.
+  // Rent is excluded from the runway's daily-burn estimate — it's a modeled bill, not spare cash.
   const isRentCategory = c => c.name.toLowerCase().includes("rent");
-  const rentBudgetThisPeriod = ((Number(data.fixedRent) || 0) * period.totalDays) / 30;
-  const afterRentIncome = Math.max(0, incomeThisPeriod - rentBudgetThisPeriod);
-  const rentPctOfIncome = incomeThisPeriod > 0 ? Math.round((rentBudgetThisPeriod / incomeThisPeriod) * 100) : null;
-  const catPercentTotal = data.categories.filter(c => !isRentCategory(c)).reduce((s, c) => s + Number(c.percent || 0), 0);
   const currentMonth = todayStr().slice(0, 7);
   const habitDaysElapsed = Number(todayStr().slice(8, 10));
   const habitDaysLogged = data.habits.filter(h => h.date.startsWith(currentMonth) && h.date <= todayStr()).length;
-
-  // Cumulative spend curve for this period, with last period's curve (aligned by
-  // day index) as a dashed comparison line running the full period width.
-  const cumulativeSpendData = (() => {
-    const prevStart = addDays(period.start, -period.totalDays);
-    const prevTx = data.transactions.filter(t => t.type === "expense" && t.date >= prevStart && t.date < period.start);
-    const todayIdx = Math.min(period.dayIndex, period.totalDays - 1);
-    let running = 0, prevRunning = 0;
-    const out = [];
-    for (let i = 0; i < period.totalDays; i++) {
-      const d = addDays(period.start, i);
-      const pd = addDays(prevStart, i);
-      prevRunning += prevTx.filter(t => t.date === pd).reduce((s, t) => s + t.amount, 0);
-      let spend = null;
-      if (i <= todayIdx && d <= todayStr()) {
-        running += periodTx.filter(t => t.type === "expense" && t.date === d).reduce((s, t) => s + t.amount, 0);
-        spend = Math.round(running);
-      }
-      out.push({ day: i + 1, spend, last: Math.round(prevRunning) });
-    }
-    return out;
-  })();
-  const hasLastPeriod = cumulativeSpendData.some(p => p.last > 0);
-
-  // Average spend of the prior 3 completed periods (only counting periods that actually have data)
-  const priorPeriodsAvg = (() => {
-    const sums = [];
-    let cursor = period.start;
-    for (let i = 0; i < 3; i++) {
-      const pEnd = addDays(cursor, -1);
-      const pStart = addDays(cursor, -period.totalDays);
-      const sum = data.transactions.filter(t => t.type === "expense" && t.date >= pStart && t.date <= pEnd).reduce((s, t) => s + t.amount, 0);
-      if (sum > 0) sums.push(sum);
-      cursor = pStart;
-    }
-    return sums.length ? sums.reduce((a, b) => a + b, 0) / sums.length : null;
-  })();
-  const vsAvg = priorPeriodsAvg !== null ? spentThisPeriod - priorPeriodsAvg : null;
 
   const daysUntilPayday = daysBetween(todayStr(), period.next);
 
@@ -232,24 +187,6 @@ export default function FinanceOS() {
   const todayLog = data.habits.find(h => h.date === todayStr());
   const checkedInToday = !!(todayLog && (todayLog.identityScore !== undefined || todayLog.wakeTime || todayLog.weight));
 
-  function categorySpend(catId) {
-    return periodTx.filter(t => t.type === "expense" && t.categoryId === catId).reduce((s, t) => s + t.amount, 0);
-  }
-  // Rent is paid once a month but pay periods are shorter, so the rent row
-  // compares calendar month vs monthly rent — otherwise every period containing
-  // the rent payment would falsely read as massively over budget.
-  const rentSpentThisMonth = (() => {
-    const rentCat = data.categories.find(isRentCategory);
-    if (!rentCat) return 0;
-    return data.transactions
-      .filter(t => t.type === "expense" && t.categoryId === rentCat.id && t.date.startsWith(currentMonth))
-      .reduce((s, t) => s + t.amount, 0);
-  })();
-  function categoryBudget(c) {
-    if (isRentCategory(c)) return Number(data.fixedRent) || 0;
-    return (afterRentIncome * Number(c.percent || 0)) / 100;
-  }
-
   function updateAccountBalance(accountId, delta) {
     setData(d => ({ ...d, accounts: d.accounts.map(a => a.id === accountId ? { ...a, balance: a.balance + delta } : a) }));
   }
@@ -263,56 +200,19 @@ export default function FinanceOS() {
     addTransaction({ type: "income", amount: Number(amount), accountId, note });
   }
 
-  // The suggested split: rent share pro-rated from monthly rent, then a repeatable
-  // 10/12/58/20 split of the remainder — groceries broken out, discretionary kept
-  // realistic to actual habits instead of a wishful number, savings a fifth.
-  function computeSuggestedSplit(incomeAmount) {
-    const rent = Math.round(((Number(data.fixedRent) || 0) * (Number(data.cycleDays) || 14)) / 30);
-    const afterRent = Math.max(0, incomeAmount - rent);
-    const groceries = Math.round(afterRent * 0.10);
-    const essentials = Math.round(afterRent * 0.12);
-    const discretionary = Math.round(afterRent * 0.58);
-    const savings = Math.max(0, afterRent - groceries - essentials - discretionary);
-    return { income: incomeAmount, rent, afterRent, groceries, essentials, discretionary, savings };
-  }
-  function setFixedRent(val) {
-    setData(d => ({ ...d, fixedRent: Number(val) || 0 }));
-  }
   function setNextPaycheck(val) {
     setData(d => ({ ...d, nextPaycheck: val }));
   }
   function setCycleDays(val) {
     setData(d => ({ ...d, cycleDays: Math.max(1, Number(val) || 1) }));
   }
-  function receivePaycheck(amount, shouldBudget) {
+  function receivePaycheck(amount) {
     const amt = Number(amount);
     if (!amt) return;
     const checkingAccount = data.accounts.find(a => a.type === "checking") || data.accounts[0];
     addIncome({ amount: amt, accountId: checkingAccount.id, note: "Paycheck" });
     setData(d => ({ ...d, nextPaycheck: addDays(todayStr(), d.cycleDays) }));
-    if (shouldBudget) applySplit(computeSuggestedSplit(amt));
     setShowPaycheckSheet(false);
-  }
-  function applySplit(split) {
-    const { afterRent, groceries, essentials, discretionary, savings } = split;
-    const pct = n => (afterRent > 0 ? Math.round((n / afterRent) * 100) : 0);
-    const targets = [
-      { key: "grocer", percent: pct(groceries) },
-      { key: "essentials", percent: pct(essentials) },
-      { key: "discretionary", percent: pct(discretionary) },
-      { key: "savings", percent: pct(savings) },
-    ];
-    setData(d => {
-      let categories = d.categories;
-      if (!categories.some(c => c.name.toLowerCase().includes("grocer"))) {
-        categories = [...categories, { id: uid(), name: "Groceries", percent: 0 }];
-      }
-      categories = categories.map(c => {
-        const t = targets.find(t => c.name.toLowerCase().includes(t.key));
-        return t ? { ...c, percent: t.percent } : c;
-      });
-      return { ...d, categories };
-    });
   }
   function addExpense({ amount, accountId, categoryId, note }) {
     if (!amount || !accountId || !categoryId) return;
@@ -394,14 +294,21 @@ export default function FinanceOS() {
     setData(d => ({ ...d, debts: d.debts.filter(x => x.id !== id) }));
   }
   function editCategory(id, updates) {
-    setData(d => ({ ...d, categories: d.categories.map(c => c.id === id ? { ...c, ...updates, percent: Number(updates.percent) } : c) }));
+    setData(d => ({ ...d, categories: d.categories.map(c => c.id === id ? { ...c, ...updates, budget: Number(updates.budget) || 0 } : c) }));
   }
   function deleteCategory(id) {
     setData(d => ({ ...d, categories: d.categories.filter(c => c.id !== id) }));
   }
-  function addCategory(name, percent) {
+  function addCategory(name, budget) {
     if (!name) return;
-    setData(d => ({ ...d, categories: [...d.categories, { id: uid(), name, percent: Number(percent) || 0 }] }));
+    setData(d => ({ ...d, categories: [...d.categories, { id: uid(), name, budget: Number(budget) || 0 }] }));
+  }
+  // Bulk-apply suggested budgets (from actual spending) in one shot.
+  function setCategoryBudgets(list) {
+    setData(d => ({ ...d, categories: d.categories.map(c => {
+      const hit = list.find(x => x.id === c.id);
+      return hit ? { ...c, budget: hit.budget } : c;
+    }) }));
   }
 
   function upsertHabitLog(date, updates) {
@@ -641,102 +548,8 @@ export default function FinanceOS() {
               <ChevronRight size={16} color={SLATE} />
             </button>
 
-            <Section
-              title="Spend this period"
-              right={
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {daysUntilPayday > 0 && (
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 9, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Safe to spend</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: SAGE }}>
-                        {fmt(Math.max(0, (incomeThisPeriod - spentThisPeriod) / daysUntilPayday))}
-                        <span style={{ fontSize: 10, fontWeight: 400, color: SLATE }}>/day</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              }
-            >
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{fmt(spentThisPeriod)}</div>
-                    <div style={{ fontSize: 11.5, color: SLATE, marginTop: 3 }}>of <b style={{ color: SAGE }}>{fmt(incomeThisPeriod)}</b> income this period</div>
-                  </div>
-                  {vsAvg !== null && (
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginTop: 4,
-                      padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                      color: vsAvg <= 0 ? SAGE : RUST, background: vsAvg <= 0 ? `${SAGE}1a` : `${RUST}1a`,
-                      border: `1px solid ${vsAvg <= 0 ? SAGE : RUST}40`
-                    }}>
-                      {vsAvg <= 0 ? <TrendingDown size={11} /> : <TrendingUp size={11} />}
-                      {fmt(Math.abs(vsAvg))} vs avg
-                    </span>
-                  )}
-                </div>
-                {cumulativeSpendData.length > 1 && (
-                  <div style={{ height: 150, marginTop: 10 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={cumulativeSpendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={ACCENT} stopOpacity={0.35} />
-                            <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="day" tick={{ fontSize: 9, fill: SLATE }} />
-                        <YAxis hide />
-                        <Tooltip formatter={(v, name) => [fmt(v), name === "last" ? "last period" : "this period"]} labelFormatter={d => `Day ${d}`} />
-                        {hasLastPeriod && (
-                          <Line type="monotone" dataKey="last" stroke={SLATE} strokeWidth={1.5} strokeDasharray="5 4" dot={false} />
-                        )}
-                        <Area type="monotone" dataKey="spend" stroke={ACCENT} strokeWidth={2} fill="url(#spendFill)" connectNulls={false} />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                    {hasLastPeriod && (
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 14, fontSize: 9.5, color: SLATE, marginTop: -4 }}>
-                        <span><span style={{ display: "inline-block", width: 14, height: 2, background: ACCENT, verticalAlign: "middle", marginRight: 4, borderRadius: 1 }} />this period</span>
-                        <span><span style={{ display: "inline-block", width: 14, borderTop: `2px dashed ${SLATE}`, verticalAlign: "middle", marginRight: 4 }} />last period</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => { if (daysUntilPayday === 0) setShowPaycheckSheet(true); }}
-                {...paydayLongPress}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-                  background: PAPER_DIM, border: "none", borderRadius: 10, padding: "12px 14px", cursor: "pointer"
-                }}
-              >
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(49,134,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Wallet size={16} color={ACCENT} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: TEXT }}>
-                    {daysUntilPayday === 0 ? "Payday is today" : `Payday in ${daysUntilPayday} day${daysUntilPayday === 1 ? "" : "s"}`}
-                  </div>
-                  {daysUntilPayday > 0 && <div style={{ fontSize: 10, color: SLATE, marginTop: 1 }}>Hold to log it early</div>}
-                </div>
-              </button>
-
-              {(() => {
-                const leftover = incomeThisPeriod - spentThisPeriod;
-                const openGoal = data.goals.find(g => g.saved < g.target);
-                if (leftover <= 0 || !openGoal) return null;
-                const suggestion = Math.min(Math.round(leftover * 0.2), openGoal.target - openGoal.saved);
-                if (suggestion <= 0) return null;
-                return (
-                  <div style={{ background: PAPER_DIM, borderRadius: 10, padding: "12px 14px", marginTop: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: SAGE }}>{fmt(leftover)} unspent so far this period</div>
-                    <div style={{ fontSize: 12, color: SLATE, marginTop: 2 }}>Consider moving {fmt(suggestion)} toward "{openGoal.name}"</div>
-                  </div>
-                );
-              })()}
-            </Section>
+            <BudgetCard data={data} editCategory={editCategory} deleteCategory={deleteCategory}
+              addCategory={addCategory} setCategoryBudgets={setCategoryBudgets} />
 
             {forecast && (
               <Section
@@ -872,62 +685,6 @@ export default function FinanceOS() {
               <Row left="Net cash" right={fmt(totalBalance)} pill />
             </Section>
 
-            <Section
-              title="Budget split"
-              eyebrow={`${fmt(incomeThisPeriod)} in · ${fmt(afterRentIncome)} after rent`}
-              right={<span style={{ fontSize: 11, color: catPercentTotal !== 100 ? RUST : SLATE }}>{catPercentTotal}% of after-rent</span>}
-            >
-              {editingRent ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                  <span style={{ fontSize: 12, color: SLATE, flexShrink: 0 }}>Monthly rent</span>
-                  <input
-                    type="number" inputMode="decimal" value={data.fixedRent} autoFocus
-                    onChange={e => setFixedRent(e.target.value)}
-                    onBlur={() => setEditingRent(false)}
-                    onKeyDown={e => { if (e.key === "Enter") setEditingRent(false); }}
-                    style={{ ...inputStyle, flex: 1, padding: "6px 10px", fontWeight: 700 }}
-                  />
-                  <IconBtn icon={Check} color={SAGE} onClick={() => setEditingRent(false)} label="Save" />
-                </div>
-              ) : (
-                <button
-                  {...rentLongPress}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
-                    background: "none", border: "none", padding: "4px 2px", marginBottom: 14, cursor: "pointer", textAlign: "left"
-                  }}
-                >
-                  <span style={{ fontSize: 12, color: SLATE }}>Monthly rent</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>
-                    {fmt(data.fixedRent)}
-                    {rentPctOfIncome !== null && <span style={{ fontSize: 11, fontWeight: 400, color: SLATE }}> · {rentPctOfIncome}% of income</span>}
-                  </span>
-                </button>
-              )}
-
-              {incomeThisPeriod > 0 && (
-                <button
-                  onClick={() => applySplit(computeSuggestedSplit(incomeThisPeriod))}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
-                    padding: "9px 0", marginBottom: 14, borderRadius: 8, border: `1px solid ${ACCENT}55`,
-                    background: "rgba(49,134,255,0.10)", color: ACCENT, fontSize: 12, fontWeight: 700, cursor: "pointer"
-                  }}
-                >
-                  <RefreshCw size={12} /> Rebuild budget from monthly rent
-                </button>
-              )}
-
-              {data.categories.map(c => (
-                <CategoryRow key={c.id} category={c}
-                  spent={isRentCategory(c) ? rentSpentThisMonth : categorySpend(c.id)}
-                  budget={categoryBudget(c)}
-                  fixed={isRentCategory(c)} derivedPct={rentPctOfIncome}
-                  onSave={updates => editCategory(c.id, updates)} onDelete={() => deleteCategory(c.id)} />
-              ))}
-              <AddCategoryForm onAdd={addCategory} />
-            </Section>
-
             <Section title="Upcoming bills">
               {data.bills.length === 0 && <Empty text="No bills yet — add one in the Bills tab." />}
               {data.bills.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4).map(b => (
@@ -994,7 +751,6 @@ export default function FinanceOS() {
         {tab === "settings" && (
           <SettingsTab
             data={data}
-            setFixedRent={setFixedRent}
             setGoalWeight={setGoalWeight}
             setCalorieTarget={setCalorieTarget}
             setNextPaycheck={setNextPaycheck}
@@ -1011,7 +767,7 @@ export default function FinanceOS() {
       </div>
 
       {showPaycheckSheet && (
-        <PaycheckSheet onClose={() => setShowPaycheckSheet(false)} onConfirm={receivePaycheck} computeSplit={computeSuggestedSplit} />
+        <PaycheckSheet onClose={() => setShowPaycheckSheet(false)} onConfirm={receivePaycheck} />
       )}
 
       {showCheckIn && (
@@ -1078,77 +834,6 @@ export default function FinanceOS() {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function CategoryRow({ category, spent, budget, fixed = false, derivedPct = null, onSave, onDelete }) {
-  const [editing, setEditing] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-  const [name, setName] = useState(category.name);
-  const [percent, setPercent] = useState(category.percent);
-  const pct = budget > 0 ? (spent / budget) * 100 : 0;
-
-  if (editing) {
-    return (
-      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
-        <input style={{ ...inputStyle, flex: 2 }} value={name} onChange={e => setName(e.target.value)} />
-        {!fixed && <input style={{ ...inputStyle, flex: 1 }} type="number" value={percent} onChange={e => setPercent(e.target.value)} />}
-        <IconBtn icon={Check} color={SAGE} onClick={() => { onSave(fixed ? { name, percent: category.percent } : { name, percent }); setEditing(false); }} label="Save" />
-        <IconBtn icon={X} onClick={() => setEditing(false)} label="Cancel" />
-      </div>
-    );
-  }
-  const barColor = lerpColor(SAGE, RUST, Math.min(1, pct / 100));
-  const pctPill = fixed ? (derivedPct !== null ? `${derivedPct}% of income` : "monthly") : `${category.percent}%`;
-  return (
-    <div onClick={() => setRevealed(r => !r)} style={{ marginBottom: 14, cursor: "pointer", userSelect: "none" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{category.name}</span>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: SLATE, background: PAPER_DIM, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap", flexShrink: 0 }}>{pctPill}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }} onClick={e => revealed && e.stopPropagation()}>
-          <span style={{ fontSize: 12, color: pct > 100 ? RUST : SLATE, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-            {fmt(spent)} <span style={{ opacity: 0.6 }}>/ {fmt(budget)}</span>
-          </span>
-          {revealed && (
-            <>
-              <IconBtn icon={Edit2} onClick={() => setEditing(true)} label="Edit" />
-              <DeleteBtn onDelete={onDelete} />
-            </>
-          )}
-        </div>
-      </div>
-      <div style={{ height: 7, background: PAPER_DIM, borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: Math.min(100, pct) + "%", background: barColor, borderRadius: 4, transition: "width 0.4s ease" }} />
-      </div>
-      <div style={{ fontSize: 10.5, color: pct > 100 ? RUST : SLATE, marginTop: 4 }}>
-        {pct > 100 ? `${fmt(spent - budget)} over` : `${fmt(Math.max(0, budget - spent))} left`}{fixed ? " this month" : ""}
-      </div>
-    </div>
-  );
-}
-function AddCategoryForm({ onAdd }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [percent, setPercent] = useState("");
-
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} style={{
-        display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, padding: "7px 14px",
-        borderRadius: 999, border: `1px dashed ${INK_SOFT}55`, background: "transparent",
-        color: SLATE, fontSize: 12, fontWeight: 600, cursor: "pointer"
-      }}><Plus size={13} /> Add category</button>
-    );
-  }
-  return (
-    <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-      <input style={{ ...inputStyle, flex: 2 }} placeholder="New category" value={name} onChange={e => setName(e.target.value)} autoFocus />
-      <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="%" value={percent} onChange={e => setPercent(e.target.value)} />
-      <SmallBtn tone="gold" onClick={() => { onAdd(name, percent); setName(""); setPercent(""); setOpen(false); }}><Check size={13} /></SmallBtn>
-      <SmallBtn tone="ghost" onClick={() => setOpen(false)}><X size={13} /></SmallBtn>
     </div>
   );
 }

@@ -4,14 +4,14 @@ import { ABSTINENCE_COLORS } from "./constants.js";
 export function defaultData() {
   return {
     accounts: [{ id: uid(), name: "Checking", balance: 0, type: "checking" }],
-    // Rent is dollar-anchored (fixedRent); its percent is derived live, never stored.
-    // The other percents are shares of the income LEFT AFTER rent, and sum to 100.
+    // Each category carries ONE number: a monthly dollar budget. Spend is compared
+    // against it within a calendar month. Simple, editable, no special cases.
     categories: [
-      { id: "cat_rent", name: "Rent", percent: 0 },
-      { id: "cat_groc", name: "Groceries", percent: 10 },
-      { id: "cat_ess", name: "Essentials", percent: 12 },
-      { id: "cat_disc", name: "Discretionary", percent: 58 },
-      { id: "cat_sav", name: "Savings", percent: 20 },
+      { id: "cat_rent", name: "Rent", budget: 1650 },
+      { id: "cat_groc", name: "Groceries", budget: 400 },
+      { id: "cat_ess", name: "Essentials", budget: 300 },
+      { id: "cat_disc", name: "Discretionary", budget: 700 },
+      { id: "cat_sav", name: "Savings", budget: 400 },
     ],
     transactions: [],
     bills: [],
@@ -42,11 +42,11 @@ export function generateDemoData() {
     { id: uid(), name: "Savings", balance: 150, type: "savings" },
   ];
   const categories = [
-    { id: uid(), name: "Rent", percent: 0 },
-    { id: uid(), name: "Groceries", percent: 10 },
-    { id: uid(), name: "Essentials", percent: 12 },
-    { id: uid(), name: "Discretionary", percent: 58 },
-    { id: uid(), name: "Savings", percent: 20 },
+    { id: uid(), name: "Rent", budget: 1650 },
+    { id: uid(), name: "Groceries", budget: 200 },
+    { id: uid(), name: "Essentials", budget: 120 },
+    { id: uid(), name: "Discretionary", budget: 1300 },
+    { id: uid(), name: "Savings", budget: 150 },
   ];
   const [rentCat, grocCat, essCat, discCat] = categories;
   const checkingId = accounts[0].id;
@@ -269,16 +269,17 @@ export function generateRandomData() {
   const savingsId = accounts[1].id;
   const cashId = useCash ? accounts[2].id : null;
 
+  // Split the income left after rent into dollar budgets, weighted by persona.
   const pieces = [ri(5, 15), ri(8, 20), ri(30, 65), ri(5, 30)];
   const pieceSum = pieces.reduce((a, b) => a + b, 0);
-  const pcts = pieces.map(p => Math.round((p / pieceSum) * 100));
-  pcts[3] += 100 - pcts.reduce((a, b) => a + b, 0);
+  const afterRent = Math.max(0, monthlyIncome - rent);
+  const budgetOf = w => Math.round((afterRent * (w / pieceSum)) / 25) * 25;
   const categories = [
-    { id: uid(), name: "Rent", percent: 0 },
-    { id: uid(), name: "Groceries", percent: pcts[0] },
-    { id: uid(), name: "Essentials", percent: pcts[1] },
-    { id: uid(), name: "Discretionary", percent: pcts[2] },
-    { id: uid(), name: "Savings", percent: pcts[3] },
+    { id: uid(), name: "Rent", budget: rent },
+    { id: uid(), name: "Groceries", budget: budgetOf(pieces[0]) },
+    { id: uid(), name: "Essentials", budget: budgetOf(pieces[1]) },
+    { id: uid(), name: "Discretionary", budget: budgetOf(pieces[2]) },
+    { id: uid(), name: "Savings", budget: budgetOf(pieces[3]) },
   ];
   const [rentCat, grocCat, essCat, discCat] = categories;
 
@@ -420,7 +421,43 @@ export function generateRandomData() {
 
 export function migrate(d) {
   if (!d.categories.some(c => c.name.toLowerCase() === "rent")) {
-    d = { ...d, categories: [{ id: uid(), name: "Rent", percent: 0 }, ...d.categories] };
+    d = { ...d, categories: [{ id: uid(), name: "Rent", budget: 0 }, ...d.categories] };
+  }
+  // percent-of-after-rent → flat monthly dollar budgets. Seed each budget from
+  // the category's real trailing-3-month spend; fall back to the old percent
+  // model (or fixedRent for rent) when there's no history to learn from.
+  if (d.categories.some(c => c.budget === undefined)) {
+    const now = todayStr().slice(0, 7);
+    const monthKeys = [1, 2, 3].map(i => {
+      const [y, m] = now.split("-").map(Number);
+      const dt = new Date(y, m - 1 - i, 1);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+    });
+    const avgSpend = catId => {
+      const sums = monthKeys
+        .map(ym => (d.transactions || []).filter(t => t.type === "expense" && t.categoryId === catId && t.date.startsWith(ym)).reduce((s, t) => s + t.amount, 0))
+        .filter(s => s > 0);
+      return sums.length ? sums.reduce((a, b) => a + b, 0) / sums.length : 0;
+    };
+    const monthlyIncome = (() => {
+      const sums = monthKeys
+        .map(ym => (d.transactions || []).filter(t => t.type === "income" && t.date.startsWith(ym)).reduce((s, t) => s + t.amount, 0))
+        .filter(s => s > 0);
+      return sums.length ? sums.reduce((a, b) => a + b, 0) / sums.length : 0;
+    })();
+    const rentBudget = Number(d.fixedRent) || 0;
+    const afterRent = Math.max(0, monthlyIncome - rentBudget);
+    d = {
+      ...d,
+      categories: d.categories.map(c => {
+        if (c.budget !== undefined) return c;
+        const isRent = c.name.toLowerCase().includes("rent");
+        let budget = avgSpend(c.id);
+        if (!budget) budget = isRent ? rentBudget : Math.round((afterRent * Number(c.percent || 0)) / 100);
+        const { percent, ...rest } = c;
+        return { ...rest, budget: Math.round(budget / 10) * 10 };
+      }),
+    };
   }
   if (!d.habits) d = { ...d, habits: [] };
   if (d.goalWeight === undefined) d = { ...d, goalWeight: 80 };

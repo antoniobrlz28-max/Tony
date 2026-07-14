@@ -4,7 +4,7 @@ import { TEXT, SLATE, SAGE, RUST, ACCENT, PAPER_DIM, STORAGE_KEY } from "../lib/
 import { todayStr } from "../lib/helpers.js";
 import { Section, Field, SmallBtn, Empty, inputStyle } from "./shared.jsx";
 
-export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarget, setNextPaycheck, setCycleDays, confirmAction, setConfirmAction, loadDemoData, clearData, rollRandomData, onRestore, onBack }) {
+export function SettingsTab({ data, setGoalWeight, setCalorieTarget, setNextPaycheck, setCycleDays, confirmAction, setConfirmAction, loadDemoData, clearData, rollRandomData, onRestore, onBack }) {
   const [restoreMsg, setRestoreMsg] = useState(null); // { ok: boolean, text: string }
   const restoreRef = useRef(null);
 
@@ -53,12 +53,6 @@ export function SettingsTab({ data, setFixedRent, setGoalWeight, setCalorieTarge
             <input style={inputStyle} type="number" min={1} value={data.cycleDays} onChange={e => setCycleDays(e.target.value)} />
           </Field>
         </div>
-      </Section>
-
-      <Section title="Budget">
-        <Field label="Monthly rent">
-          <input style={inputStyle} type="number" value={data.fixedRent} onChange={e => setFixedRent(e.target.value)} />
-        </Field>
       </Section>
 
       <Section title="Nutrition & body" eyebrow="drives the calorie ring and macro targets">

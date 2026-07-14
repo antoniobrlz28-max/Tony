@@ -1,51 +1,34 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { SAGE, PAPER_DIM, SLATE, VIOLET, TEXT } from "../lib/constants.js";
+import { SAGE, PAPER_DIM, SLATE, VIOLET } from "../lib/constants.js";
 import { fmt, todayStr } from "../lib/helpers.js";
 import { BottomSheet, Field, SmallBtn, inputStyle, minimalInputStyle } from "./shared.jsx";
 
-export function PaycheckSheet({ onClose, onConfirm, computeSplit }) {
-  const [step, setStep] = useState("amount");
+export function PaycheckSheet({ onClose, onConfirm }) {
   const [amount, setAmount] = useState("");
 
-  function goToAsk() {
+  function submit() {
     if (!Number(amount)) return;
-    setStep("ask");
+    onConfirm(amount);
   }
 
-  const split = step === "ask" ? computeSplit(Number(amount)) : null;
-
   return (
-    <BottomSheet title={step === "amount" ? "Received a paycheck" : "Budget this paycheck?"} onClose={onClose}>
-      {step === "amount" ? (
-        <>
-          <Field label="Amount">
-            <input
-              style={inputStyle} type="number" inputMode="decimal" value={amount}
-              onChange={e => setAmount(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") goToAsk(); }}
-              autoFocus placeholder="0.00"
-            />
-          </Field>
-          <SmallBtn tone="gold" onClick={goToAsk} style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
-            <Check size={13} /> Continue
-          </SmallBtn>
-        </>
-      ) : (
-        <>
-          <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.5, marginBottom: 14 }}>
-            Split this <b>{fmt(Number(amount))}</b> paycheck — {fmt(split.rent)} set aside for rent, then {fmt(split.groceries)} groceries, {fmt(split.essentials)} essentials, {fmt(split.discretionary)} discretionary, {fmt(split.savings)} savings?
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <SmallBtn tone="gold" onClick={() => onConfirm(amount, true)} style={{ flex: 1, justifyContent: "center" }}>
-              <Check size={13} /> Budget it
-            </SmallBtn>
-            <SmallBtn tone="ghost" onClick={() => onConfirm(amount, false)} style={{ flex: 1, justifyContent: "center" }}>
-              Just log it
-            </SmallBtn>
-          </div>
-        </>
-      )}
+    <BottomSheet title="Received a paycheck" onClose={onClose}>
+      <Field label="Amount">
+        <input
+          style={inputStyle} type="number" inputMode="decimal" value={amount}
+          onChange={e => setAmount(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") submit(); }}
+          autoFocus placeholder="0.00"
+        />
+      </Field>
+      <div style={{ fontSize: 11.5, color: SLATE, marginTop: 10, lineHeight: 1.5 }}>
+        Adds to your checking balance and resets the countdown to your next payday.
+        Your monthly budgets live in the Budget card.
+      </div>
+      <SmallBtn tone="gold" onClick={submit} style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
+        <Check size={13} /> Log paycheck
+      </SmallBtn>
     </BottomSheet>
   );
 }
