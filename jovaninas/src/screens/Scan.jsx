@@ -30,6 +30,7 @@ export default function Scan({ go }) {
   const [showPasteText, setShowPasteText] = useState(false);
   const [sourcePdf, setSourcePdf] = useState(null);
   const [sourcePdfName, setSourcePdfName] = useState(null);
+  const [showDrinks, setShowDrinks] = useState(false);
 
   async function handlePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -66,8 +67,10 @@ export default function Scan({ go }) {
   function runExtractionFromText(text) {
     const result = parseMenuText(text);
     if (result.sections.length === 0) result.sections.push({ name: "Menu", items: [] });
+    if (!result.drinkSections) result.drinkSections = [];
     setExtraction(result);
     setActiveSection(0);
+    setShowDrinks(false);
   }
 
   function runExtraction() {
@@ -115,10 +118,29 @@ export default function Scan({ go }) {
     setActiveSection((extraction?.sections.length) || 0);
   }
 
+  function updateDrinkItem(sIdx, iIdx, field, value) {
+    setExtraction((prev) => {
+      const next = structuredClone(prev);
+      next.drinkSections[sIdx].items[iIdx][field] = field === "price" ? (value === "" ? null : Number(value)) : value;
+      return next;
+    });
+  }
+
+  function removeDrinkItem(sIdx, iIdx) {
+    setExtraction((prev) => {
+      const next = structuredClone(prev);
+      next.drinkSections[sIdx].items.splice(iIdx, 1);
+      return next;
+    });
+  }
+
   function saveMenu() {
     const cleanExtraction = {
       ...extraction,
       sections: extraction.sections
+        .map((s) => ({ ...s, items: s.items.filter((i) => i.name && i.name.trim()) }))
+        .filter((s) => s.items.length > 0),
+      drinkSections: (extraction.drinkSections || [])
         .map((s) => ({ ...s, items: s.items.filter((i) => i.name && i.name.trim()) }))
         .filter((s) => s.items.length > 0),
     };
@@ -309,6 +331,60 @@ export default function Scan({ go }) {
           <button className="btn ghost" onClick={addSection} style={{ marginBottom: 14 }}>
             <Plus size={12} /> Add section
           </button>
+
+          {extraction.drinkSections?.length > 0 && (
+            <div className="card" style={{ marginBottom: 14 }}>
+              <button
+                className="btn ghost"
+                style={{ width: "100%", justifyContent: "space-between" }}
+                onClick={() => setShowDrinks((v) => !v)}
+              >
+                <span>
+                  Drinks found ({extraction.drinkSections.reduce((n, s) => n + s.items.length, 0)})
+                </span>
+                <span className="tiny muted">{showDrinks ? "Hide" : "Review"}</span>
+              </button>
+              {showDrinks && (
+                <div style={{ marginTop: 10 }}>
+                  <p className="tiny muted" style={{ marginBottom: 10 }}>
+                    Best-effort — on a page that mixes food and drinks columns tightly, some lines can land in the
+                    wrong place. Check names/prices before saving.
+                  </p>
+                  {extraction.drinkSections.map((s, sIdx) => (
+                    <div key={sIdx} style={{ marginBottom: 12 }}>
+                      <p className="small" style={{ fontWeight: 700, marginBottom: 6 }}>{s.name}</p>
+                      {s.items.map((item, iIdx) => (
+                        <div key={iIdx} className="dish-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              type="text"
+                              placeholder="Drink name"
+                              value={item.name}
+                              onChange={(e) => updateDrinkItem(sIdx, iIdx, "name", e.target.value)}
+                            />
+                            <button className="btn ghost" onClick={() => removeDrinkItem(sIdx, iIdx)}><Trash2 size={13} /></button>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Description"
+                            value={item.description}
+                            onChange={(e) => updateDrinkItem(sIdx, iIdx, "description", e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Price"
+                            value={item.price ?? ""}
+                            onChange={(e) => updateDrinkItem(sIdx, iIdx, "price", e.target.value)}
+                            style={{ maxWidth: 120 }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn ghost" onClick={() => setExtraction(null)}>Back</button>

@@ -59,6 +59,30 @@ that's wired up; only the storage layer underneath would change.
   History rather than silently discarded — and treats a glued-digit
   surcharge note like "Gluten Free Crust +6" as an add-on, not a dish
   price.
+- **Multi-column pages** (a hand-designed one-pager that lays out, say,
+  Starters and Sweet side by side, sharing the same vertical space) are a
+  real challenge for text-position-only extraction: reading strictly by
+  height on the page welds unrelated columns' text into one line wherever
+  they happen to sit at the same height. This was verified and fixed
+  directly against Jovanina's actual multi-column dinner menu PDF: a wide
+  horizontal gap (much wider than a normal name → price gap) now forces a
+  line break instead of just adding space, and known section headers
+  (Starters, Handmade Fresh Pasta, Cocktails, Wines by the Glass...) are
+  used as column anchors — their x-positions are clustered into bands, and
+  each column is read fully top-to-bottom before moving to the next one,
+  left to right, instead of row-by-row across the whole page. This isn't
+  guaranteed perfect on every hand-designed layout (two adjacent dishes can
+  still occasionally share a title if there's no gap or header between
+  them), which is exactly why the extraction preview stays fully editable
+  before saving — but it fixes the large majority of cross-column mixing,
+  verified line-by-line against the real file.
+- **Drinks** (cocktails, wine, beer) are recognized by their own header
+  list (Cocktails, Wines by the Glass, Bottled Beer, Draft Beer...)
+  alongside the food headers, in the same pass — captured as their own
+  list (`menu.drinkSections`), not mixed into the dish list. Unlike
+  dishes, drinks aren't versioned/diffed across menus (no change-tracking,
+  no dish-page wiki entry) — just what was on that specific upload,
+  reviewable in the Scan preview and visible under My Menus → Drinks.
 - The original PDF (or photo) is kept on the menu record and viewable from
   Current Menu and History ("Original PDF" / "View original PDF"), so you
   can always confirm exactly what was uploaded.
@@ -148,6 +172,14 @@ generation, spaced repetition) — all pure functions, independent of React.
 - **No OCR/vision API.** PDF text extraction only works when the PDF has a
   real text layer; a scanned/flat-image PDF or a photo isn't auto-transcribed
   — paste or type the menu text instead in that case.
+- **A hand-designed, multi-column page can still occasionally mix up two
+  adjacent dishes/drinks** — the column-splitting described above handles
+  the large majority of cases (verified against a real multi-column menu),
+  but two items sitting right next to each other with no header and no
+  real gap between them can still land in one entry. This is a genuine
+  limit of extracting structure from text position alone, without a
+  vision/layout model — always check the extraction preview before saving,
+  especially on a page that mixes food with cocktails/wine/beer.
 - **No live LLM.** Descriptions, pairings, objections, and recommendations
   are generated from rules + a seed dictionary, not a model call — per the
   product's own rule, generated text must stay traceable to actual parsed

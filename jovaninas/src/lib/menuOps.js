@@ -210,6 +210,10 @@ export function commitMenu(draft, extraction, meta) {
     versionNumber,
     status: "confirmed",
     sections,
+    // Drinks (cocktails/wine/beer) are captured as a simple snapshot, not
+    // versioned/diffed like dishes — no change-detection or dish-page
+    // wiki entry, just what was on this specific menu upload.
+    drinkSections: extraction.drinkSections || [],
     comparedAgainstMenuId: prevMenu?.id || null,
     parseWarnings: extraction.warnings || [],
   });

@@ -12,6 +12,8 @@
 // told apart with a known-category-keyword list rather than guessing from
 // capitalization alone.
 
+import { FOOD_HEADERS, DRINK_HEADERS, normalizeHeaderText } from "./menuHeaders.js";
+
 const PRICE_RE = /\$?\s*(\d{1,3}(?:\.\d{2})?)\s*$/;
 const DASH_SPLIT_RE = /\s+[—–-]\s+/;
 // A "+6" / "+4" glued directly to a number (no space) is a surcharge/add-on
@@ -28,37 +30,22 @@ const MENU_NUMBER_RE = /^(?:menu\s+)?no\.?\s*#?\s*(\d{1,6})\s*\.?$|^#\s*(\d{1,6}
 // roasted/salad/pasta" match would misfire and turn those dishes into
 // phantom sections. Matching the whole (normalized) line against a known
 // set of category titles avoids that.
-const KNOWN_SECTION_TITLES = new Set([
-  "starters", "antipasti", "antipasto", "appetizers", "appetizer",
-  "raw bar", "raw and chilled", "raw roasted and grilled", "oysters",
-  "salads", "soups",
-  "wood fired pizza", "pizza", "pizzas",
-  "handmade fresh pasta", "fresh pasta", "handmade pasta", "pasta",
-  "main plates", "mains", "main", "entrees", "entree",
-  "sweet", "sweets", "dessert", "desserts",
-  "sides", "side dishes",
-  "drinks", "cocktails", "wine", "wines", "wine list", "beer", "beers",
-  "amaro", "amari", "digestivo", "digestivi",
-  "brunch", "lunch", "dinner", "specials", "happy hour",
-  "small plates", "large plates", "snacks", "shareables", "bar menu",
-]);
-
-function normalizeHeaderText(line) {
-  return line
-    .toLowerCase()
-    .replace(/\*+$/, "")
-    .replace(/[.,]/g, "")
-    .replace(/&/g, "and")
-    .replace(/:$/, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function isSectionHeaderLine(line) {
   const trimmed = line.trim();
   if (!trimmed || PRICE_RE.test(trimmed)) return false;
   if (trimmed.split(/\s+/).length > 6) return false;
-  return KNOWN_SECTION_TITLES.has(normalizeHeaderText(trimmed));
+  return FOOD_HEADERS.has(normalizeHeaderText(trimmed));
+}
+
+// Same idea, but for a drinks-menu header (Cocktails, Wines by the Glass,
+// Bottled Beer...) so a single pass over the page's text can pull out a
+// dishes list and a drinks list side by side, rather than needing the
+// drinks content isolated into its own clean block first.
+function isDrinkHeaderLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed || PRICE_RE.test(trimmed)) return false;
+  if (trimmed.split(/\s+/).length > 6) return false;
+  return DRINK_HEADERS.has(normalizeHeaderText(trimmed));
 }
 
 // True when a no-price line reads like an ingredient/description fragment
@@ -103,6 +90,17 @@ function splitNameDescription(rest) {
   return { name: rest.trim(), description: "" };
 }
 
+// Parses a page of menu text into a food dish list AND a drinks list in
+// one pass, rather than requiring the drinks content to already be
+// isolated. A designed one-page menu commonly interleaves food and drinks
+// headers as the page layout dictates (not always food-first, drinks-
+// last) — whichever kind of header was most recently seen is the "active
+// track", and items are appended to that track's currently-open section
+// until the next header (of either kind) switches it. This can't recover
+// perfect column-by-column reading order on a very creatively laid-out
+// page (see pdfExtract.js), but it keeps food and drinks cleanly
+// separated into their own lists rather than mixed into one, and the
+// existing per-item heuristics below are unchanged.
 export function parseMenuText(rawText) {
   const lines = rawText
     .split("\n")
@@ -110,21 +108,34 @@ export function parseMenuText(rawText) {
     .filter((l) => l.length > 0);
 
   const sections = [];
+  const drinkSections = [];
   let current = null;
+  let currentDrink = null;
+  let activeTrack = "food";
   let warnings = [];
   let menuNumber = null;
   let lastItem = null;
 
-  // A dish name spotted on its own line, waiting for its description/price
-  // (possibly spanning further title-fragment lines, e.g. a name that
-  // itself wraps across two lines).
+  // A dish/drink name spotted on its own line, waiting for its
+  // description/price (possibly spanning further title-fragment lines,
+  // e.g. a name that itself wraps across two lines).
   let pendingName = null;
   let pendingDescription = "";
 
   function finalizeItem(name, description, price, rawLine) {
-    if (!current) {
-      current = { name: "Menu", items: [] };
-      sections.push(current);
+    let target;
+    if (activeTrack === "drinks") {
+      if (!currentDrink) {
+        currentDrink = { name: "Drinks", items: [] };
+        drinkSections.push(currentDrink);
+      }
+      target = currentDrink;
+    } else {
+      if (!current) {
+        current = { name: "Menu", items: [] };
+        sections.push(current);
+      }
+      target = current;
     }
     lastItem = {
       rawLine,
@@ -133,7 +144,7 @@ export function parseMenuText(rawText) {
       price,
       confidence: price === null ? 0.6 : 0.9,
     };
-    current.items.push(lastItem);
+    target.items.push(lastItem);
   }
 
   for (const line of lines) {
@@ -151,7 +162,18 @@ export function parseMenuText(rawText) {
 
     if (pendingName !== null) {
       const { price, rest } = extractPrice(line);
-      if (!rest) continue;
+      if (!rest) {
+        // A bare price on its own line (common once a wide right-justified
+        // price gap forces its own line/segment) finishes off the pending
+        // item — dropping it here would silently discard the price and
+        // leave pendingName open to wrongly absorb the next dish's title.
+        if (price !== null) {
+          finalizeItem(pendingName, pendingDescription, price, `${pendingName}\n${line}`);
+          pendingName = null;
+          pendingDescription = "";
+        }
+        continue;
+      }
       if (price !== null || looksLikeIngredientText(rest)) {
         pendingDescription = pendingDescription ? `${pendingDescription}, ${rest}` : rest;
         if (price !== null) {
@@ -161,7 +183,7 @@ export function parseMenuText(rawText) {
         }
         continue;
       }
-      if (looksLikeTitleFragment(rest) && !isSectionHeaderLine(rest)) {
+      if (looksLikeTitleFragment(rest) && !isSectionHeaderLine(rest) && !isDrinkHeaderLine(rest)) {
         // the dish name itself wraps across another line
         pendingName = `${pendingName} ${rest}`;
         continue;
@@ -175,8 +197,17 @@ export function parseMenuText(rawText) {
     }
 
     if (isSectionHeaderLine(line)) {
+      activeTrack = "food";
       current = { name: line.replace(/:$/, ""), items: [] };
       sections.push(current);
+      lastItem = null;
+      continue;
+    }
+
+    if (isDrinkHeaderLine(line)) {
+      activeTrack = "drinks";
+      currentDrink = { name: line.replace(/:$/, ""), items: [] };
+      drinkSections.push(currentDrink);
       lastItem = null;
       continue;
     }
@@ -189,6 +220,16 @@ export function parseMenuText(rawText) {
 
     const { price, rest } = extractPrice(line);
     if (!rest) {
+      // A bare price on its own line: attach it to whichever item is still
+      // missing a price (its description line may itself have wrapped
+      // without a price attached, with the price landing on a separate
+      // line right after) rather than dropping it as unparseable.
+      if (price !== null && lastItem && lastItem.price == null) {
+        lastItem.price = price;
+        lastItem.confidence = Math.max(lastItem.confidence, 0.9);
+        lastItem.rawLine += `\n${line}`;
+        continue;
+      }
       warnings.push(`Could not parse line: "${line}"`);
       continue;
     }
@@ -220,5 +261,5 @@ export function parseMenuText(rawText) {
     finalizeItem(pendingName, pendingDescription, null, pendingName);
   }
 
-  return { title: null, sections, warnings, menuNumber };
+  return { title: null, sections, drinkSections, warnings, menuNumber };
 }

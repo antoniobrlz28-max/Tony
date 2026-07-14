@@ -22,7 +22,7 @@ function ValueLine({ label, value }) {
   );
 }
 
-const SUB_TABS = ["Current Menu", "Changes", "History"];
+const SUB_TABS = ["Current Menu", "Changes", "History", "Drinks"];
 const ALL_ALLERGENS = ["gluten", "dairy", "tree nuts", "peanut", "shellfish", "fish", "egg", "soy", "sesame"];
 
 // Bolds the specific ingredient/price/name inside a change-explanation
@@ -341,6 +341,62 @@ function HistoryTab({ go, data }) {
   );
 }
 
+function DrinksTab({ go, data }) {
+  const [menuType, setMenuType] = useState(null);
+
+  const latestByType = useMemo(() => {
+    const byType = {};
+    for (const m of data.menus) {
+      if (m.status !== "confirmed") continue;
+      const cur = byType[m.menuType];
+      if (!cur || m.uploadDate > cur.uploadDate) byType[m.menuType] = m;
+    }
+    return byType;
+  }, [data.menus]);
+
+  const availableTypes = MENU_TYPES.filter((t) => latestByType[t]?.drinkSections?.length > 0);
+  const activeType = menuType || availableTypes[0];
+  const menu = activeType ? latestByType[activeType] : null;
+
+  if (!menu) {
+    return (
+      <div className="card empty-state">
+        <p>No drinks captured yet.</p>
+        <p className="tiny muted">Drinks are picked up automatically from an uploaded PDF, when present, and can be reviewed before saving.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="chip-row" style={{ overflowX: "auto", flexWrap: "nowrap" }}>
+        {availableTypes.map((t) => (
+          <button key={t} className={`btn ghost ${t === activeType ? "active" : ""}`} onClick={() => setMenuType(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <p className="tiny muted" style={{ marginBottom: 10 }}>
+        {activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}
+      </p>
+      {menu.drinkSections.map((section, sIdx) => (
+        <div key={sIdx} className="card" style={{ marginBottom: 12 }}>
+          <p className="section-title">{section.name}</p>
+          {section.items.map((item, iIdx) => (
+            <div key={iIdx} className="dish-row">
+              <div>
+                <div className="dish-name">{item.name}</div>
+                {item.description && <div className="dish-desc">{item.description}</div>}
+              </div>
+              <div className="price small">{item.price != null ? `$${item.price}` : ""}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MyMenus({ go, params }) {
   const { data, update, isMaster } = useData();
   const [subTab, setSubTab] = useState(params?.subTab === "changes" ? "Changes" : params?.subTab === "history" ? "History" : "Current Menu");
@@ -355,6 +411,7 @@ export default function MyMenus({ go, params }) {
       {subTab === "Current Menu" && <CurrentMenuTab go={go} data={data} />}
       {subTab === "Changes" && <ChangesTab go={go} data={data} update={update} initialMenuId={params?.menuId} isMaster={isMaster} />}
       {subTab === "History" && <HistoryTab go={go} data={data} />}
+      {subTab === "Drinks" && <DrinksTab go={go} data={data} />}
     </div>
   );
 }
