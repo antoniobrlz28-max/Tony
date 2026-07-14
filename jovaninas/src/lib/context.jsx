@@ -18,9 +18,11 @@ export function DataProvider({ children }) {
   // locked on every fresh load/reload of the device, so handing a tablet
   // back to the front-of-house after editing doesn't leave it unlocked.
   const [unlocked, setUnlocked] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
-    saveData(data);
+    const result = saveData(data);
+    setSaveError(result.ok ? null : result.message);
   }, [data]);
 
   // update(draft => { ...mutate draft in place... })
@@ -69,7 +71,7 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider
-      value={{ data, update, setData, isMaster, pinIsSet, unlockMaster, lockMaster, setMasterPin, clearMasterPin }}
+      value={{ data, update, setData, isMaster, pinIsSet, unlockMaster, lockMaster, setMasterPin, clearMasterPin, saveError, dismissSaveError: () => setSaveError(null) }}
     >
       {children}
     </DataContext.Provider>

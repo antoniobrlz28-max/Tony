@@ -42,8 +42,17 @@ export function loadData() {
 export function saveData(data) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return { ok: true };
   } catch (e) {
     console.warn("Failed to save jovaninas data", e);
+    const isQuota = e && (e.name === "QuotaExceededError" || e.code === 22 || e.code === 1014);
+    return {
+      ok: false,
+      quota: isQuota,
+      message: isQuota
+        ? "This device's local storage is full — your last change was NOT saved. Original PDF/photo attachments are usually the biggest space users; export a backup from More → Settings, then consider removing an older attached PDF."
+        : `Save failed: ${e.message || e}`,
+    };
   }
 }
 

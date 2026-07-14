@@ -9,6 +9,8 @@ import {
   Search as SearchIcon,
   Lock,
   Unlock,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { DataProvider, useData } from "./lib/context.jsx";
 import JovaninaMark from "./components/JovaninaMark.jsx";
@@ -92,6 +94,20 @@ function LockControl() {
   );
 }
 
+function SaveErrorBanner() {
+  const { saveError, dismissSaveError } = useData();
+  if (!saveError) return null;
+  return (
+    <div style={{ background: "var(--red-bg)", color: "var(--red)", padding: "10px 14px", display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5 }}>
+      <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+      <span style={{ flex: 1 }}>{saveError}</span>
+      <button onClick={dismissSaveError} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", flexShrink: 0 }}>
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 function AppShell() {
   const [route, setRoute] = useState({ screen: "home", params: {} });
 
@@ -103,6 +119,7 @@ function AppShell() {
 
   return (
     <div className="app-shell">
+      <SaveErrorBanner />
       <div className="topbar">
         <div className="monogram"><JovaninaMark size={26} /></div>
         <div className="brand" style={{ flex: 1 }}>

@@ -4,6 +4,10 @@
 
 const PRICE_RE = /\$?\s*(\d{1,3}(?:\.\d{2})?)\s*$/;
 const DASH_SPLIT_RE = /\s+[—–-]\s+/;
+// Matches a menu print/archive number line, e.g. "No. 248", "No.248",
+// "Menu No. 248", "#248" — restaurants often print one somewhere on the
+// page for their own filing, and it should never be read as a dish.
+const MENU_NUMBER_RE = /^(?:menu\s+)?no\.?\s*#?\s*(\d{1,6})\s*\.?$|^#\s*(\d{1,6})$/i;
 
 function looksLikeSectionHeader(line) {
   const trimmed = line.trim();
@@ -55,6 +59,7 @@ export function parseMenuText(rawText) {
   let current = null;
   let title = null;
   let warnings = [];
+  let menuNumber = null;
   // Tracks the most recently added item so a following no-price line (very
   // common in PDF menus, where the description wraps to its own line under
   // the name+price line) can be folded in as more description instead of
@@ -66,6 +71,12 @@ export function parseMenuText(rawText) {
       // could be a menu title line, e.g. "JOVANINA'S — DINNER"; keep as
       // title candidate only if no section has started and it's short.
     }
+    const numberMatch = line.match(MENU_NUMBER_RE);
+    if (numberMatch) {
+      menuNumber = numberMatch[1] || numberMatch[2];
+      return;
+    }
+
     if (looksLikeSectionHeader(line)) {
       current = { name: line.replace(/:$/, ""), items: [] };
       sections.push(current);
@@ -108,5 +119,5 @@ export function parseMenuText(rawText) {
     current.items.push(lastItem);
   });
 
-  return { title, sections, warnings };
+  return { title, sections, warnings, menuNumber };
 }

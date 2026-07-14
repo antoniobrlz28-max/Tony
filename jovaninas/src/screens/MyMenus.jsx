@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FileText, GraduationCap, AlertTriangle } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { MENU_TYPES } from "../lib/storage.js";
 import { allergensForComponents } from "../lib/components.js";
@@ -16,7 +17,7 @@ function HighlightedLine({ line }) {
   if (m) return <><mark className="highlight">{m[1]}</mark> {m[2]}</>;
 
   m = line.match(/^Price changed from (\$[\d.]+) to (\$[\d.]+)\.$/);
-  if (m) return <>Price changed from <mark className="highlight">{m[1]}</mark> to <mark className="highlight">{m[2]}</mark>.</>;
+  if (m) return <>Price changed from <mark className="highlight price">{m[1]}</mark> to <mark className="highlight price">{m[2]}</mark>.</>;
 
   m = line.match(/^Name changed from ("[^"]+") to ("[^"]+")\.$/);
   if (m) return <>Name changed from <mark className="highlight">{m[1]}</mark> to <mark className="highlight">{m[2]}</mark>.</>;
@@ -80,7 +81,17 @@ function CurrentMenuTab({ go, data }) {
           </button>
         ))}
       </div>
-      <p className="tiny muted" style={{ marginBottom: 10 }}>{activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <p className="tiny muted" style={{ margin: 0 }}>
+          {activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}
+          {menu.menuNumber && ` · No. ${menu.menuNumber}`}
+        </p>
+        {menu.sourcePdf && (
+          <a className="link tiny" href={menu.sourcePdf} target="_blank" rel="noreferrer" download={menu.sourcePdfName || "menu.pdf"}>
+            <FileText size={11} /> Original PDF
+          </a>
+        )}
+      </div>
 
       {menu.sections.map((section) => {
         const dishVersions = section.dishVersionIds.map((id) => data.dishVersions[id]).filter(Boolean);
@@ -111,7 +122,7 @@ function CurrentMenuTab({ go, data }) {
                       </div>
                     )}
                   </div>
-                  <div className="muted small">{dv.price != null ? `$${dv.price}` : ""}</div>
+                  <div className="price small">{dv.price != null ? `$${dv.price}` : ""}</div>
                 </div>
               );
             })}
@@ -122,10 +133,11 @@ function CurrentMenuTab({ go, data }) {
   );
 }
 
-const IMPORTANCE_PILL = { High: "wine", Medium: "brass", Low: "neutral" };
-
 function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
   const dish = data.dishes[change.dishId];
+  const isAllergenChange = change.serviceImportance === "High";
+  const worthStudying = change.culinaryImportance === "High" || change.culinaryImportance === "Medium";
+
   return (
     <div className="dish-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
@@ -133,9 +145,11 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
           <span className="dish-name">{dish?.canonicalName || "Unknown dish"}</span>{" "}
           <span className="pill neutral">{change.changeType}</span>
         </div>
-        <div style={{ display: "flex", gap: 4 }}>
-          <span className={`pill ${IMPORTANCE_PILL[change.serviceImportance] || "neutral"}`}>Service: {change.serviceImportance}</span>
-        </div>
+        {isAllergenChange && (
+          <span className="pill wine" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+            <AlertTriangle size={10} /> Allergen change — tell your team
+          </span>
+        )}
       </div>
       {change.oldValue && <div className="small muted">Previous: {change.oldValue}</div>}
       {change.newValue && <div className="small muted">Current: {change.newValue}</div>}
@@ -143,7 +157,6 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
         {change.explanation.map((line, i) => <li key={i} className="small"><HighlightedLine line={line} /></li>)}
       </ul>
       <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <span className="tiny muted">Confidence {Math.round(change.confidence * 100)}% · Training: {change.trainingPriority}</span>
         {change.reviewStatus === "needs_review" && onConfirm && (
           <>
             <button className="btn accent" onClick={() => onConfirm(change.id)}>Same dish</button>
@@ -155,11 +168,16 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
         {change.reviewStatus === "needs_review" && !onConfirm && (
           <span className="pill brass">Needs master review</span>
         )}
-        {change.reviewStatus !== "needs_review" && (
+        {change.reviewStatus !== "needs_review" && change.reviewStatus !== "auto" && (
           <span className="pill green">{change.reviewStatus === "confirmed" ? "Confirmed" : change.reviewStatus}</span>
         )}
         {change.newVersionId && (
           <a className="link tiny" onClick={() => go("dish", { dishId: change.dishId, fromTab: "menus" })}>View dish</a>
+        )}
+        {worthStudying && change.newVersionId && (
+          <a className="link tiny" onClick={() => go("learn", { dishId: change.dishId, mode: "Flashcards" })}>
+            <GraduationCap size={11} /> Study this dish
+          </a>
         )}
       </div>
     </div>
@@ -258,7 +276,10 @@ function HistoryTab({ go, data }) {
               <div style={{ display: "flex", justifyContent: "space-between", cursor: "pointer" }} onClick={() => setOpenId(open ? null : m.id)}>
                 <div>
                   <div className="dish-name" style={{ fontSize: 13.5 }}>{m.menuType} v{m.versionNumber}</div>
-                  <div className="tiny muted">Effective {m.effectiveDate} {i === 0 && <span className="pill brass">Current</span>}</div>
+                  <div className="tiny muted">
+                    Effective {m.effectiveDate}{m.menuNumber && ` · No. ${m.menuNumber}`}{" "}
+                    {i === 0 && <span className="pill brass">Current</span>}
+                  </div>
                 </div>
                 <a className="link tiny" onClick={(e) => { e.stopPropagation(); go("menus", { subTab: "changes", menuId: m.id }); }}>
                   {changeCount} changes
@@ -266,11 +287,16 @@ function HistoryTab({ go, data }) {
               </div>
               {open && (
                 <div style={{ marginTop: 8 }}>
-                  {m.photos?.length > 0 && (
-                    <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  {(m.photos?.length > 0 || m.sourcePdf) && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
                       {m.photos.map((p, idx) => (
-                        <img key={idx} src={p} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} />
+                        <img key={idx} src={p} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} />
                       ))}
+                      {m.sourcePdf && (
+                        <a className="icon-btn" href={m.sourcePdf} target="_blank" rel="noreferrer" download={m.sourcePdfName || "menu.pdf"}>
+                          <FileText size={12} /> View original PDF
+                        </a>
+                      )}
                     </div>
                   )}
                   {m.sections.map((s) => (
@@ -281,7 +307,8 @@ function HistoryTab({ go, data }) {
                         if (!dv) return null;
                         return (
                           <div key={id} className="tiny muted">
-                            {dv.displayName} — {dv.description}{dv.price != null ? ` ($${dv.price})` : ""}
+                            {dv.displayName} — {dv.description}
+                            {dv.price != null && <span className="price"> (${dv.price})</span>}
                           </div>
                         );
                       })}

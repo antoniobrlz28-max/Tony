@@ -45,7 +45,13 @@ that's wired up; only the storage layer underneath would change.
   extractor also fixes a real two-line-per-dish layout that's common in
   PDF menus (name+price on one line, description wrapping to the next) by
   folding the wrapped line back into that dish's description instead of
-  inventing a bogus extra dish.
+  inventing a bogus extra dish, and recognizes a "No. 248"-style print/
+  archive number (common in the corner of a printed menu) as menu metadata
+  rather than a dish — it's kept as `menu.menuNumber` and shown next to the
+  version/date in Current Menu and History rather than silently discarded.
+- The original PDF (or photo) is kept on the menu record and viewable from
+  Current Menu and History ("Original PDF" / "View original PDF"), so you
+  can always confirm exactly what was uploaded.
 - Photo capture for the archive, or paste/type text directly, both feeding
   the same heuristic extraction into sections/dishes, editable before
   saving.
@@ -88,6 +94,18 @@ in the dish's actual technique/flavor data), and a **guest recommendation
 engine** (chip-based preferences in → ranked dishes, wine pairing, upsell
 appetizer/dessert out).
 
+**Change review, practically**
+- Each change card leads with what matters: an allergen-change warning
+  badge only when a change actually touches an allergen ("tell your
+  team"), and a "Study this dish" action only when the change is
+  culinarily significant enough to be worth learning — replacing the raw
+  "Confidence 85% · Training: This week" / "Service: Medium" internal
+  scoring that used to show on every card regardless of whether it meant
+  anything actionable.
+- All dollar amounts render in the brand's green (`--forest`) throughout
+  the app, including the specific before/after prices highlighted inside a
+  price-change explanation.
+
 **Library, Search, More**
 - Culinary dictionary with pronunciation guides and category filters; every
   term has its own wiki page.
@@ -115,6 +133,13 @@ generation, spaced repetition) — all pure functions, independent of React.
   knowledge-score/AI-coach layer are real parts of the bigger vision but are
   intentionally left out rather than faked — they need a backend and/or a
   live LLM/vision API. See the **Roadmap** tab under More in the app.
+- **localStorage has a real size ceiling** (commonly 5–10MB per browser).
+  Original PDFs/photos are the biggest consumers of that budget — if you
+  attach several ~1MB PDFs, you may hit the limit. This no longer fails
+  silently: a save failure now shows a dismissible banner explaining what
+  happened (and that the fix is exporting a backup and/or trimming older
+  attachments from More → Settings), instead of quietly losing your last
+  change.
 
 ## Running it
 

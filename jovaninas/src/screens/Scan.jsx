@@ -28,6 +28,8 @@ export default function Scan({ go }) {
   const [pdfStatus, setPdfStatus] = useState(null); // null | "loading" | "no-text" | "error"
   const [pdfProgress, setPdfProgress] = useState(null);
   const [showPasteText, setShowPasteText] = useState(false);
+  const [sourcePdf, setSourcePdf] = useState(null);
+  const [sourcePdfName, setSourcePdfName] = useState(null);
 
   async function handlePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -41,12 +43,17 @@ export default function Scan({ go }) {
     setPdfStatus("loading");
     setPdfProgress(null);
     try {
-      const { text, hasText, pageCount } = await extractTextFromPdf(file, (page, total) => setPdfProgress({ page, total }));
+      const [{ text, hasText, pageCount }, pdfDataUrl] = await Promise.all([
+        extractTextFromPdf(file, (page, total) => setPdfProgress({ page, total })),
+        readFileAsDataUrl(file),
+      ]);
       if (!hasText) {
         setPdfStatus("no-text");
         return;
       }
       setRawText(text);
+      setSourcePdf(pdfDataUrl);
+      setSourcePdfName(file.name);
       setPdfStatus(null);
       runExtractionFromText(text);
       void pageCount;
@@ -121,7 +128,7 @@ export default function Scan({ go }) {
     }
     const menuId = uid("menu");
     update((draft) => {
-      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText });
+      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText, sourcePdf, sourcePdfName });
     });
     go("menus", { subTab: "changes", menuId });
   }
@@ -241,7 +248,10 @@ export default function Scan({ go }) {
 
       {extraction && (
         <div>
-          <p className="section-title">Extraction preview · Step 2 of 2</p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <p className="section-title" style={{ margin: 0 }}>Extraction preview · Step 2 of 2</p>
+            {extraction.menuNumber && <span className="pill neutral">Menu No. {extraction.menuNumber}</span>}
+          </div>
           {extraction.warnings?.length > 0 && (
             <div className="pill brass" style={{ marginBottom: 10 }}>
               {extraction.warnings.length} line(s) need a manual look

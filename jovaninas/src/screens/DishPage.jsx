@@ -104,7 +104,7 @@ export default function DishPage({ go, params }) {
       <h3 style={{ fontSize: 22, margin: "0 0 2px" }}>{latest.displayName}</h3>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <span className="muted small">{latest.section} · {dish.status}</span>
-        {latest.price != null && <span style={{ fontWeight: 700, fontFamily: "var(--font-display)" }}>${latest.price}</span>}
+        {latest.price != null && <span className="price">${latest.price}</span>}
       </div>
 
       <div className="segmented" style={{ marginBottom: 14 }}>
@@ -336,7 +336,10 @@ export default function DishPage({ go, params }) {
               <div>
                 <div className="dish-name" style={{ fontSize: 13.5 }}>Version {i + 1}: {v.displayName}</div>
                 <div className="dish-desc">{v.description}</div>
-                <div className="tiny muted">{v.effectiveDate}{v.price != null ? ` · $${v.price}` : ""}</div>
+                <div className="tiny muted">
+                  {v.effectiveDate}
+                  {v.price != null && <span className="price tiny"> · ${v.price}</span>}
+                </div>
               </div>
             </div>
           ))}

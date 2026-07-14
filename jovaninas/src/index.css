@@ -438,6 +438,17 @@ mark.highlight {
   font-weight: 700;
 }
 
+mark.highlight.price {
+  background: var(--forest-bg);
+  color: var(--forest);
+}
+
+.price {
+  color: var(--forest);
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
 .stamp {
   display: inline-flex;
   align-items: center;
