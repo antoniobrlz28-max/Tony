@@ -163,6 +163,49 @@ async function extractRedFlags(pdfjsLib, page, itemCount) {
   }
 }
 
+// A header that's laid out across two printed lines (e.g. "RAW, ROASTED"
+// on one line, "& GRILLED" on the next, as its own styled block) ends up
+// as two separate segments — verified against Jovanina's real PDF, where
+// this specific header's two halves land ~20pt apart in Y with unrelated
+// column content interleaved between them in row order (since they're a
+// third column's header, sitting beside — not inside — the food column
+// whose rows happen to fall at the same page heights). Neither half alone
+// matches the known header list, so both leak into whatever dish text
+// they end up next to. This looks for a segment elsewhere on the page
+// that's roughly the same column (close in X) and a plausible next/prev
+// line (close in Y) whose combined text *does* match a known header, and
+// merges the two into one recognized header segment.
+export function stitchFragmentedHeaders(segments) {
+  const used = new Set();
+  const merged = [];
+  for (let i = 0; i < segments.length; i++) {
+    if (used.has(i)) {
+      continue;
+    }
+    const seg = segments[i];
+    let partner = -1;
+    for (let j = 0; j < segments.length; j++) {
+      if (j === i || used.has(j)) continue;
+      const other = segments[j];
+      if (Math.abs(other.x - seg.x) > 40) continue;
+      const dy = seg.y - other.y;
+      if (dy <= 0 || dy > 40) continue; // other must be the next line down
+      const norm = normalizeHeaderText(`${seg.text} ${other.text}`);
+      if (FOOD_HEADERS.has(norm) || DRINK_HEADERS.has(norm)) {
+        partner = j;
+        break;
+      }
+    }
+    if (partner >= 0) {
+      used.add(partner);
+      merged.push({ ...seg, text: `${seg.text} ${segments[partner].text}`, red: seg.red || segments[partner].red });
+    } else {
+      merged.push(seg);
+    }
+  }
+  return merged;
+}
+
 // Segments whose text is red, short, and title-shaped, but aren't already
 // in the known header lists — new header phrases found "for free" from
 // this page's own red print, so the phrase list doesn't need to name
@@ -245,7 +288,10 @@ export async function extractTextFromPdf(file, onProgress) {
     const page = await doc.getPage(i);
     const textContent = await page.getTextContent();
     const redFlags = await extractRedFlags(pdfjsLib, page, textContent.items.length);
-    const segments = buildSegments(textContent.items, redFlags);
+    const rawSegments = buildSegments(textContent.items, redFlags);
+    // Run twice: a header split across 3 lines needs its first two
+    // fragments stitched before the result can match against the third.
+    const segments = stitchFragmentedHeaders(stitchFragmentedHeaders(rawSegments));
     const discovered = redFlags ? discoverRedHeaders(segments) : new Set();
     for (const h of discovered) allDiscovered.add(h);
     pageTexts.push(reorderByColumns(segments, allDiscovered).join("\n"));

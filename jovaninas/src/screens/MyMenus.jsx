@@ -6,6 +6,7 @@ import { allergensForComponents } from "../lib/components.js";
 import { confirmChange, markChangeAsNewDish, markChangeIgnored } from "../lib/menuOps.js";
 import { pictureDescription } from "../lib/descriptions.js";
 import { addOnsForSection, addOnsForDish } from "../lib/addOns.js";
+import { isWineHeaderName } from "../lib/menuHeaders.js";
 import Highlight from "../components/Highlight.jsx";
 import IngredientTerms from "../components/IngredientTerms.jsx";
 
@@ -23,7 +24,9 @@ function ValueLine({ label, value }) {
   );
 }
 
-const SUB_TABS = ["Current Menu", "Changes", "History", "Drinks"];
+// Grouped so Menu, Drink menu, and Wine menu sit next to each other, with
+// the audit-trail tabs (Changes, History) following.
+const SUB_TABS = ["Current Menu", "Drinks", "Wine", "Changes", "History"];
 
 // Bolds the specific ingredient/price/name inside a change-explanation
 // sentence, so the eye lands on what changed instead of re-reading the
@@ -396,7 +399,12 @@ function HistoryTab({ go, data }) {
   );
 }
 
-function DrinksTab({ go, data }) {
+// Shared by DrinksTab and WineTab: `sectionFilter` splits a menu's
+// drinkSections into "wine" (Wines by the Glass, Sparkling, Still Rose,
+// White, Red) vs everything else (Cocktails, Spritzes, Beer, N/A
+// Beverages) so wine gets its own tab next to Drinks instead of being
+// lumped in with cocktails and beer.
+function DrinkSectionsTab({ go, data, sectionFilter, emptyText }) {
   const [menuType, setMenuType] = useState(null);
 
   const latestByType = useMemo(() => {
@@ -409,14 +417,15 @@ function DrinksTab({ go, data }) {
     return byType;
   }, [data.menus]);
 
-  const availableTypes = MENU_TYPES.filter((t) => latestByType[t]?.drinkSections?.length > 0);
+  const availableTypes = MENU_TYPES.filter((t) => latestByType[t]?.drinkSections?.some(sectionFilter));
   const activeType = menuType || availableTypes[0];
   const menu = activeType ? latestByType[activeType] : null;
+  const sections = menu ? menu.drinkSections.filter(sectionFilter) : [];
 
   if (!menu) {
     return (
       <div className="card empty-state">
-        <p>No drinks captured yet.</p>
+        <p>{emptyText}</p>
         <p className="tiny muted">Drinks are picked up automatically from an uploaded PDF, when present, and can be reviewed before saving.</p>
       </div>
     );
@@ -434,7 +443,7 @@ function DrinksTab({ go, data }) {
       <p className="tiny muted" style={{ marginBottom: 10 }}>
         {activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}
       </p>
-      {menu.drinkSections.map((section, sIdx) => (
+      {sections.map((section, sIdx) => (
         <div key={sIdx} className="card" style={{ marginBottom: 12 }}>
           <p className="section-title">{section.name}</p>
           {section.items.map((item, iIdx) => (
@@ -452,6 +461,28 @@ function DrinksTab({ go, data }) {
   );
 }
 
+function DrinksTab({ go, data }) {
+  return (
+    <DrinkSectionsTab
+      go={go}
+      data={data}
+      sectionFilter={(s) => !isWineHeaderName(s.name)}
+      emptyText="No drinks captured yet."
+    />
+  );
+}
+
+function WineTab({ go, data }) {
+  return (
+    <DrinkSectionsTab
+      go={go}
+      data={data}
+      sectionFilter={(s) => isWineHeaderName(s.name)}
+      emptyText="No wine list captured yet."
+    />
+  );
+}
+
 export default function MyMenus({ go, params }) {
   const { data, update, isMaster } = useData();
   const [subTab, setSubTab] = useState(params?.subTab === "changes" ? "Changes" : params?.subTab === "history" ? "History" : "Current Menu");
@@ -464,9 +495,10 @@ export default function MyMenus({ go, params }) {
         ))}
       </div>
       {subTab === "Current Menu" && <CurrentMenuTab go={go} data={data} />}
+      {subTab === "Drinks" && <DrinksTab go={go} data={data} />}
+      {subTab === "Wine" && <WineTab go={go} data={data} />}
       {subTab === "Changes" && <ChangesTab go={go} data={data} update={update} initialMenuId={params?.menuId} isMaster={isMaster} />}
       {subTab === "History" && <HistoryTab go={go} data={data} />}
-      {subTab === "Drinks" && <DrinksTab go={go} data={data} />}
     </div>
   );
 }

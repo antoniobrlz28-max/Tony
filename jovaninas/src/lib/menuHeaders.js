@@ -11,12 +11,11 @@
 
 export const FOOD_HEADERS = new Set([
   "starters", "antipasti", "antipasto", "appetizers", "appetizer",
-  "raw bar", "raw and chilled", "raw roasted and grilled", "oysters",
-  "chilled fresh", "salads", "soups",
+  "raw bar", "raw and chilled", "raw roasted and grilled", "salads", "soups",
   "wood fired pizza", "pizza", "pizzas",
   "handmade fresh pasta", "fresh pasta", "handmade pasta", "pasta",
   "main plates", "mains", "main", "entrees", "entree",
-  "sweet", "sweets", "dessert", "desserts",
+  "sweet", "sweets", "dolce", "dessert", "desserts",
   "sides", "side dishes",
   "brunch", "lunch", "dinner", "specials", "happy hour",
   "small plates", "large plates", "snacks", "shareables", "bar menu",
@@ -29,6 +28,19 @@ export const DRINK_HEADERS = new Set([
   "sparkling", "still rose", "white", "red", "n/a beverages",
   "non-alcoholic", "amaro", "amari", "digestivo", "digestivi",
 ]);
+
+// The subset of DRINK_HEADERS that names a wine section specifically, so
+// the app can present "Menu, Drink menu, Wine menu" as three adjacent,
+// distinct tabs instead of lumping wine in with cocktails/beer under one
+// generic Drinks tab.
+export const WINE_HEADERS = new Set([
+  "wines by the glass", "wine list", "wine", "wines",
+  "sparkling", "still rose", "white", "red",
+]);
+
+export function isWineHeaderName(name) {
+  return WINE_HEADERS.has(normalizeHeaderText(name || ""));
+}
 
 export function normalizeHeaderText(line) {
   return line

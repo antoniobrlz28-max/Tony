@@ -85,7 +85,40 @@ that's wired up; only the storage layer underneath would change.
   list (`menu.drinkSections`), not mixed into the dish list. Unlike
   dishes, drinks aren't versioned/diffed across menus (no change-tracking,
   no dish-page wiki entry) — just what was on that specific upload,
-  reviewable in the Scan preview and visible under My Menus → Drinks.
+  reviewable in the Scan preview. **My Menus presents Menu, Drinks, and
+  Wine as three adjacent tabs** rather than one catch-all Drinks tab —
+  wine sections (Wines by the Glass, Sparkling, Still Rose, White, Red)
+  are split out from cocktails/beer/N-A by name (`isWineHeaderName` in
+  `lib/menuHeaders.js`) into their own tab, since wine is its own program
+  on the actual menu, not a subcategory of drinks.
+- **A header design that legitimately spans two printed lines** (e.g.
+  "RAW, ROASTED" on one line, "& GRILLED" on the next, with an unrelated
+  column's content landing between them in raw top-to-bottom reading
+  order purely by y-coordinate proximity) is stitched back together
+  (`stitchFragmentedHeaders` in `pdfExtract.js`) by matching a same-x,
+  next-line-down fragment against the known header list before the page
+  is split into sections — verified directly against Jovanina's real PDF,
+  which prints several category headers this way.
+- **ALL-CAPS is the primary signal for "this line is a dish/style title"
+  vs. "this line is a description fragment"**, replacing an earlier
+  punctuation-based guess that broke on short, connector-less description
+  fragments ("Pink Peppercorn & Pomegranate", "Calabrian Cocktail Sauce")
+  with no comma/plus sign to key off of. A dish name still wraps onto a
+  second title line when both lines are all-caps and no description has
+  started yet; once a description line has begun, a later all-caps line
+  is treated as the **next** dish's title, not a continuation — a real
+  title never resumes once its ingredients have started printing.
+- **"- or -" style-alternative blocks** (e.g. Oysters offered three ways —
+  Chilled Fresh, Fire Roasted, Rockefeller — each with its own short
+  description, sharing one trailing price) are folded into a single item
+  instead of splitting into unrelated dishes or bleeding into neighboring
+  ones: an all-caps style-option name right after a "- or -" separator is
+  forced into the description rather than read as a new title, even
+  though it reads exactly like one.
+- **"29 per 6"-style shared pricing** (a per-half-dozen/per-dozen price on
+  a multi-style item) is parsed as its own price note ("$29 per half
+  dozen") instead of misreading the trailing count digit as the price and
+  leaving "29 per" behind as unparsed text.
 - **Category headers are also recognized by red print color**, not just
   the static phrase list — Jovanina's menus mark every category header in
   red ink, so `pdfExtract.js` walks the page's drawing operations

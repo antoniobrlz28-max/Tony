@@ -23,6 +23,14 @@ const SURCHARGE_RE = /\+\d{1,3}\s*$/;
 // "No. 248", "No.248", "Menu No. 248", "#248" — a print/archive number,
 // never a dish.
 const MENU_NUMBER_RE = /^(?:menu\s+)?no\.?\s*#?\s*(\d{1,6})\s*\.?$|^#\s*(\d{1,6})$/i;
+// "29 per 6" — a shared price for a multi-style item (e.g. a dozen/half-
+// dozen oyster count), not a per-item price. Plain PRICE_RE would
+// misparse this by grabbing the trailing "6" as the price.
+const PER_COUNT_PRICE_RE = /\$?\s*(\d{1,3}(?:\.\d{2})?)\s*per\s*(\d{1,2})\s*$/i;
+// "- or -" / "— or —" between two style options of the same dish (e.g.
+// three oyster preparations sharing one price) — a continuation marker,
+// never a new dish.
+const OR_SEPARATOR_RE = /^[-—]\s*or\s*[-—]$/i;
 
 // Exact (not substring) category titles — many real dish names contain
 // category-ish words ("La Scala Salad", "Oak Ember Roasted Rainbow
@@ -52,10 +60,10 @@ function isDrinkHeaderLine(line) {
 }
 
 // True when a no-price line reads like an ingredient/description fragment
-// rather than a title fragment: starts lowercase, uses "+"/"," separators,
-// or is simply long.
+// rather than a title fragment: starts lowercase, uses "+"/","/"&"
+// separators, or is simply long.
 function looksLikeIngredientText(line) {
-  return /^[a-z]/.test(line) || line.includes(",") || line.includes("+") || line.split(/\s+/).length > 6;
+  return /^[a-z]/.test(line) || line.includes(",") || line.includes("+") || line.includes("&") || line.split(/\s+/).length > 6;
 }
 
 function looksLikeTitleFragment(line) {
@@ -64,12 +72,37 @@ function looksLikeTitleFragment(line) {
   return line.split(/\s+/).length <= 6;
 }
 
+// Real dish/section titles in these menus print in full capitals; every
+// description fragment (ingredients, sauces, style notes) is Title Case or
+// mixed case. This is a far more reliable signal than word-count/
+// punctuation for telling "the title wraps onto another line" apart from
+// "the description continues on another line" — verified against
+// Jovanina's real PDF, where several short description fragments ("Pink
+// Peppercorn & Pomegranate", "Calabrian Cocktail Sauce") have no comma/
+// plus/ampersand at all and would otherwise be mistaken for a title
+// continuation.
+function isAllCapsLine(line) {
+  const letters = line.replace(/[^A-Za-z]/g, "");
+  return letters.length > 0 && letters === letters.toUpperCase();
+}
+
 function extractPrice(line) {
   const m = line.match(PRICE_RE);
   if (!m) return { price: null, rest: line.trim() };
   const price = parseFloat(m[1]);
   const rest = line.slice(0, m.index).trim();
   return { price: Number.isFinite(price) ? price : null, rest };
+}
+
+// "29 per 6" -> { price: 29, rest: "", note: "per half dozen" }. Falls
+// back to a generic "per N" note for any other count.
+function extractPerCountPrice(line) {
+  const m = line.match(PER_COUNT_PRICE_RE);
+  if (!m) return null;
+  const price = parseFloat(m[1]);
+  const count = m[2];
+  const note = count === "6" ? "per half dozen" : count === "12" ? "per dozen" : `per ${count}`;
+  return { price: Number.isFinite(price) ? price : null, rest: line.slice(0, m.index).trim(), note };
 }
 
 function splitNameDescription(rest) {
@@ -127,6 +160,12 @@ export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
   // e.g. a name that itself wraps across two lines).
   let pendingName = null;
   let pendingDescription = "";
+  // True right after a "- or -" style-alternative separator: the next
+  // line is a style-option name (e.g. "FIRE ROASTED OYSTERS"), which reads
+  // as all-caps just like a real title, but must NOT be treated as one —
+  // it belongs in the description as an alternative to the item already
+  // being built.
+  let justSawOrSeparator = false;
 
   function finalizeItem(name, description, price, rawLine) {
     let target;
@@ -166,7 +205,43 @@ export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
       continue;
     }
 
+    // "29 per 6" (a shared price for a multi-style item, e.g. an oyster
+    // half-dozen) must be checked before any other price extraction —
+    // plain PRICE_RE would grab the trailing "6" as the price and leave
+    // "29 per" behind as bogus rest text.
+    const perCount = extractPerCountPrice(line);
+    if (perCount !== null) {
+      const priceNote = `$${perCount.price} ${perCount.note}`;
+      if (pendingName !== null) {
+        if (perCount.rest) {
+          pendingDescription = pendingDescription ? `${pendingDescription}, ${perCount.rest}` : perCount.rest;
+        }
+        pendingDescription = pendingDescription ? `${pendingDescription}, ${priceNote}` : priceNote;
+        finalizeItem(pendingName, pendingDescription, perCount.price, `${pendingName}\n${line}`);
+        pendingName = null;
+        pendingDescription = "";
+        justSawOrSeparator = false;
+      } else if (!perCount.rest && lastItem && lastItem.price == null) {
+        lastItem.price = perCount.price;
+        lastItem.description = lastItem.description ? `${lastItem.description}, ${priceNote}` : priceNote;
+        lastItem.confidence = Math.max(lastItem.confidence, 0.9);
+        lastItem.rawLine += `\n${line}`;
+      } else {
+        warnings.push(`Could not parse line: "${line}"`);
+      }
+      continue;
+    }
+
     if (pendingName !== null) {
+      const trimmedLine = line.trim();
+      if (OR_SEPARATOR_RE.test(trimmedLine)) {
+        // "- or -" between style options of the same dish (e.g. three
+        // oyster preparations sharing one price) — never a new dish.
+        pendingDescription = pendingDescription ? `${pendingDescription} - or -` : "- or -";
+        justSawOrSeparator = true;
+        continue;
+      }
+
       const { price, rest } = extractPrice(line);
       if (!rest) {
         // A bare price on its own line (common once a wide right-justified
@@ -177,11 +252,50 @@ export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
           finalizeItem(pendingName, pendingDescription, price, `${pendingName}\n${line}`);
           pendingName = null;
           pendingDescription = "";
+          justSawOrSeparator = false;
         }
         continue;
       }
-      if (price !== null || looksLikeIngredientText(rest)) {
-        pendingDescription = pendingDescription ? `${pendingDescription}, ${rest}` : rest;
+
+      const isHeaderLine = price === null && (isSectionHeaderLine(rest, extraFoodHeaderNorms) || isDrinkHeaderLine(rest));
+      if (isHeaderLine) {
+        // a real section/drink header interrupts the pending item — flush
+        // it as-is and let the header be handled below (re-processed via
+        // fallthrough using the original, unstripped `line`)
+        finalizeItem(pendingName, pendingDescription, null, pendingName);
+        pendingName = null;
+        pendingDescription = "";
+        justSawOrSeparator = false;
+        // no `continue` — falls through to the header checks below
+      } else {
+        // Real dish/section titles print in full capitals; every
+        // description fragment (ingredients, sauces, style notes) is Title
+        // Case or mixed case — a far more reliable title/description
+        // signal than punctuation. Right after a "- or -" separator, force
+        // description treatment even for an all-caps line: a style-option
+        // name like "FIRE ROASTED OYSTERS" reads as a title but is really
+        // an alternative folded into the same item.
+        const isAllCapsCandidate = price === null && !justSawOrSeparator && isAllCapsLine(rest) && !looksLikeIngredientText(rest);
+        if (isAllCapsCandidate && !pendingDescription) {
+          // still in the "still reading the name" phase (no description
+          // line seen yet) — the dish name itself wraps across another line
+          pendingName = `${pendingName} ${rest}`;
+          continue;
+        }
+        if (isAllCapsCandidate) {
+          // an all-caps line arriving AFTER the description has already
+          // started is the NEXT dish's title, not a continuation of this
+          // one's — a real title never resumes once its ingredients have
+          // begun printing.
+          finalizeItem(pendingName, pendingDescription, null, pendingName);
+          pendingName = rest;
+          pendingDescription = "";
+          justSawOrSeparator = false;
+          continue;
+        }
+        const joiner = justSawOrSeparator ? " " : ", ";
+        pendingDescription = pendingDescription ? `${pendingDescription}${joiner}${rest}` : rest;
+        justSawOrSeparator = false;
         if (price !== null) {
           finalizeItem(pendingName, pendingDescription, price, `${pendingName}\n${line}`);
           pendingName = null;
@@ -189,17 +303,6 @@ export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
         }
         continue;
       }
-      if (looksLikeTitleFragment(rest) && !isSectionHeaderLine(rest, extraFoodHeaderNorms) && !isDrinkHeaderLine(rest)) {
-        // the dish name itself wraps across another line
-        pendingName = `${pendingName} ${rest}`;
-        continue;
-      }
-      // fell through: whatever we were building didn't resolve cleanly —
-      // flush it as-is (better to surface an imperfect item than lose it)
-      finalizeItem(pendingName, pendingDescription, null, pendingName);
-      pendingName = null;
-      pendingDescription = "";
-      // then re-process this line fresh below by falling through
     }
 
     if (isSectionHeaderLine(line, extraFoodHeaderNorms)) {
