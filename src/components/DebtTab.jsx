@@ -29,16 +29,16 @@ export function DebtTab({ data, setData, payDebt, editDebt, deleteDebt }) {
         const paidPct = grand > 0 ? (totalPaid / grand) * 100 : 0;
         return (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Still owed</div>
-            <div style={{ fontSize: 26, fontWeight: 700, color: RUST, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>{fmt(totalRemaining)}</div>
-            <div style={{ display: "flex", height: 10, background: PAPER_DIM, borderRadius: 5, overflow: "hidden", marginTop: 10 }}>
+            <div style={{ fontSize: 10.5, color: SLATE, textTransform: "uppercase", letterSpacing: "0.06em" }}>Still owed</div>
+            <div style={{ fontSize: 32, fontWeight: 700, color: RUST, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>{fmt(totalRemaining)}</div>
+            <div style={{ fontSize: 11.5, color: SLATE, marginTop: 2 }}>
+              <b style={{ color: SAGE }}>{fmt(totalPaid)}</b> paid off · {Math.round(paidPct)}% clear
+            </div>
+            <div style={{ display: "flex", height: 8, background: PAPER_DIM, borderRadius: 4, overflow: "hidden", marginTop: 10 }}>
               <div style={{ width: `${paidPct}%`, background: SAGE, transition: "width 0.5s ease" }} />
               <div style={{ flex: 1, background: RUST }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: SLATE, marginTop: 7 }}>
-              <span><b style={{ color: SAGE }}>{fmt(totalPaid)}</b> paid off</span>
-              <span>{data.debts.length} debt{data.debts.length === 1 ? "" : "s"}</span>
-            </div>
+            <div style={{ fontSize: 11, color: SLATE, marginTop: 7 }}>{data.debts.length} debt{data.debts.length === 1 ? "" : "s"} tracked</div>
           </div>
         );
       })()}
