@@ -17,10 +17,12 @@ function greeting() {
 }
 
 export default function Home({ go }) {
-  const { data, update } = useData();
+  const { data, update, isMaster } = useData();
   const [q, setQ] = useState("");
   const [sinceIso] = useState(() => data.settings?.lastVisit || null);
   const [specialEvent, setSpecialEvent] = useState(() => getShiftLog(data).specialEvent || "");
+  const [editingCovers, setEditingCovers] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(false);
 
   useEffect(() => {
     update((draft) => {
@@ -120,10 +122,26 @@ export default function Home({ go }) {
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="grid cols-3">
-          <label className="field">
-            Tonight's covers
-            <input type="number" value={shiftLog.covers ?? ""} placeholder="—" onChange={(e) => saveCovers(e.target.value)} />
-          </label>
+          <div>
+            <div className="section-title" style={{ marginBottom: 2 }}>Tonight's covers</div>
+            {isMaster && editingCovers ? (
+              <input
+                type="number"
+                autoFocus
+                defaultValue={shiftLog.covers ?? ""}
+                placeholder="—"
+                onBlur={(e) => { saveCovers(e.target.value); setEditingCovers(false); }}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              />
+            ) : (
+              <div
+                onClick={() => isMaster && setEditingCovers(true)}
+                style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)", cursor: isMaster ? "pointer" : "default" }}
+              >
+                {shiftLog.covers ?? "—"}
+              </div>
+            )}
+          </div>
           <div>
             <div className="section-title" style={{ marginBottom: 2 }}>Chef updates</div>
             <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)" }}>{chefUpdatesToday}</div>
@@ -158,28 +176,52 @@ export default function Home({ go }) {
         <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <Ban size={12} /> 86'd items tonight
         </p>
-        {eightySixDishes.length === 0 && <p className="muted small">Nothing 86'd. Tap a dish below to mark it out.</p>}
+        {eightySixDishes.length === 0 && <p className="muted small">Nothing 86'd{isMaster ? " — tap a dish below to mark it out." : "."}</p>}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: eightySixDishes.length ? 10 : 0 }}>
-          {eightySixDishes.map((d) => (
-            <button key={d.id} className="stamp" onClick={() => toggleDish86(d.id)} title="Tap to bring back">
-              {d.canonicalName}
-            </button>
-          ))}
+          {eightySixDishes.map((d) =>
+            isMaster ? (
+              <button key={d.id} className="stamp" onClick={() => toggleDish86(d.id)} title="Tap to bring back">
+                {d.canonicalName}
+              </button>
+            ) : (
+              <span key={d.id} className="stamp">{d.canonicalName}</span>
+            )
+          )}
         </div>
-        <select value="" onChange={(e) => e.target.value && toggleDish86(e.target.value)}>
-          <option value="">86 a dish...</option>
-          {allActiveDishes.filter((d) => !eightySixIds.includes(d.id)).map((d) => (
-            <option key={d.id} value={d.id}>{d.canonicalName}</option>
-          ))}
-        </select>
+        {isMaster && (
+          <select value="" onChange={(e) => e.target.value && toggleDish86(e.target.value)}>
+            <option value="">86 a dish...</option>
+            {allActiveDishes.filter((d) => !eightySixIds.includes(d.id)).map((d) => (
+              <option key={d.id} value={d.id}>{d.canonicalName}</option>
+            ))}
+          </select>
+        )}
       </div>
 
-      <div className="card" style={{ marginBottom: 12 }}>
-        <p className="section-title">Special event</p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input type="text" value={specialEvent} onChange={(e) => setSpecialEvent(e.target.value)} placeholder="e.g. Private dining at 7:00" onBlur={saveEvent} />
+      {(shiftLog.specialEvent || isMaster) && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <p className="section-title">Special event</p>
+          {isMaster && editingEvent ? (
+            <input
+              type="text"
+              autoFocus
+              value={specialEvent}
+              onChange={(e) => setSpecialEvent(e.target.value)}
+              placeholder="e.g. Private dining at 7:00"
+              onBlur={() => { saveEvent(); setEditingEvent(false); }}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            />
+          ) : (
+            <p
+              className="small"
+              onClick={() => isMaster && setEditingEvent(true)}
+              style={{ cursor: isMaster ? "pointer" : "default", margin: 0 }}
+            >
+              {shiftLog.specialEvent || <span className="muted">Tap to add tonight's event</span>}
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
       <div className="card" style={{ marginBottom: 12, display: "flex", gap: 14, alignItems: "center" }}>
         <div style={{ flex: 1 }}>

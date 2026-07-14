@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Volume2, Mic, MessageCircleWarning, Compass } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { isDue, reviewCard } from "../lib/srs.js";
 import { generateMCQPool } from "../lib/mcq.js";
 import { generateObjectionScenarios } from "../lib/objections.js";
 import { recommendDishes } from "../lib/recommend.js";
+import { speakTerm, hasItalianVoice } from "../lib/speech.js";
 
 const MODES = ["Flashcards", "Pre-Shift Quiz", "Pronunciation", "Objections", "Recommend"];
 
@@ -140,22 +141,19 @@ function QuizMode({ data, dishId }) {
   );
 }
 
-function speak(text) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 0.85;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utter);
-}
-
 function PronunciationMode({ data, update }) {
   const terms = useMemo(
     () => Object.values(data.dictionary).filter((e) => e.pronunciation).sort((a, b) => a.term.localeCompare(b.term)),
     [data.dictionary]
   );
   const [idx, setIdx] = useState(0);
+  const [italianVoiceAvailable, setItalianVoiceAvailable] = useState(true);
   const term = terms[idx % Math.max(terms.length, 1)];
   const practiced = data.settings?.pronunciationPracticed?.[term?.term] || 0;
+
+  useEffect(() => {
+    hasItalianVoice().then(setItalianVoiceAvailable);
+  }, []);
 
   function markPracticed() {
     update((draft) => {
@@ -175,10 +173,13 @@ function PronunciationMode({ data, update }) {
       <p className="section-title">Practice saying this term</p>
       <h3 style={{ fontSize: 24, textTransform: "capitalize" }}>{term.term}</h3>
       <p className="muted small" style={{ fontFamily: "ui-monospace, monospace" }}>({term.pronunciation})</p>
-      <button className="icon-btn" style={{ margin: "12px auto" }} onClick={() => speak(term.term)}>
-        <Volume2 size={14} /> Listen
+      <button className="icon-btn" style={{ margin: "12px auto" }} onClick={() => speakTerm(term.term, term.language)}>
+        <Volume2 size={14} /> Listen{term.language === "it" ? " (Italian)" : ""}
       </button>
-      <div className="tiny muted" style={{ marginBottom: 12 }}>
+      {term.language === "it" && !italianVoiceAvailable && (
+        <p className="tiny muted" style={{ marginTop: -4 }}>No Italian voice installed on this device — using the default voice with Italian phonetics.</p>
+      )}
+      <div className="tiny muted" style={{ marginBottom: 12, marginTop: 6 }}>
         <Mic size={11} style={{ verticalAlign: "-2px" }} /> Practiced {practiced}x
       </div>
       <button className="btn" onClick={markPracticed}>I said it — next term</button>
@@ -227,21 +228,45 @@ function ObjectionsMode({ data }) {
 }
 
 function RecommendMode({ data }) {
-  const [protein, setProtein] = useState("");
+  const [protein, setProtein] = useState(null);
   const [avoidSpicy, setAvoidSpicy] = useState(false);
   const [richness, setRichness] = useState("");
-  const [exclude, setExclude] = useState("");
+  const [exclude, setExclude] = useState([]);
   const [result, setResult] = useState(null);
+
+  const availableProteins = useMemo(() => {
+    const set = new Set();
+    for (const dish of Object.values(data.dishes)) {
+      if (dish.status !== "active") continue;
+      const dv = data.dishVersions[dish.versions.at(-1)];
+      for (const c of dv?.components || []) if (c.role === "protein") set.add(c.normalized);
+    }
+    return Array.from(set).sort();
+  }, [data]);
+
+  const availableExcludable = useMemo(() => {
+    const set = new Set();
+    for (const dish of Object.values(data.dishes)) {
+      if (dish.status !== "active") continue;
+      const dv = data.dishVersions[dish.versions.at(-1)];
+      for (const c of dv?.components || []) set.add(c.normalized);
+    }
+    return Array.from(set).sort();
+  }, [data]);
 
   function run() {
     setResult(
       recommendDishes(data, {
-        protein: protein.trim() || null,
+        protein,
         avoidSpicy,
         richness: richness || null,
-        excludeIngredients: exclude.split(",").map((s) => s.trim()).filter(Boolean),
+        excludeIngredients: exclude,
       })
     );
+  }
+
+  function toggleExclude(ing) {
+    setExclude((prev) => (prev.includes(ing) ? prev.filter((x) => x !== ing) : [...prev, ing]));
   }
 
   return (
@@ -250,25 +275,41 @@ function RecommendMode({ data }) {
         <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <Compass size={12} /> Guest preferences
         </p>
-        <div className="grid cols-2">
-          <label className="field">
-            Protein guest likes
-            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. pork, octopus, vegetarian" />
-          </label>
-          <label className="field">
-            Richness
-            <select value={richness} onChange={(e) => setRichness(e.target.value)}>
-              <option value="">No preference</option>
-              <option value="rich">Rich</option>
-              <option value="light">Light</option>
-            </select>
-          </label>
+
+        {availableProteins.length > 0 && (
+          <>
+            <p className="tiny muted" style={{ marginBottom: 6 }}>Protein guest likes</p>
+            <div className="chip-row">
+              {availableProteins.map((p) => (
+                <button key={p} className={`toggle-chip ${protein === p ? "active" : ""}`} onClick={() => setProtein(protein === p ? null : p)}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <p className="tiny muted" style={{ marginBottom: 6 }}>Richness</p>
+        <div className="chip-row">
+          {[["", "No preference"], ["rich", "Rich"], ["light", "Light"]].map(([val, label]) => (
+            <button key={val} className={`toggle-chip ${richness === val ? "active" : ""}`} onClick={() => setRichness(val)}>{label}</button>
+          ))}
         </div>
-        <label className="field">
-          Ingredients to avoid (comma separated)
-          <input type="text" value={exclude} onChange={(e) => setExclude(e.target.value)} placeholder="e.g. mushroom, shellfish" />
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 10 }}>
+
+        {availableExcludable.length > 0 && (
+          <>
+            <p className="tiny muted" style={{ marginBottom: 6 }}>Ingredients to avoid</p>
+            <div className="chip-row" style={{ maxHeight: 90, overflowY: "auto" }}>
+              {availableExcludable.map((ing) => (
+                <button key={ing} className={`toggle-chip ${exclude.includes(ing) ? "active" : ""}`} onClick={() => toggleExclude(ing)}>
+                  {ing}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, margin: "10px 0" }}>
           <input type="checkbox" checked={avoidSpicy} onChange={(e) => setAvoidSpicy(e.target.checked)} />
           Guest wants to avoid spice
         </label>

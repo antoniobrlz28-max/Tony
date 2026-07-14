@@ -6,6 +6,7 @@
 export const SEED_DICTIONARY = [
   {
     term: "mostarda",
+    language: "it",
     category: "condiment",
     pronunciation: "mos-TAHR-dah",
     definition:
@@ -20,6 +21,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "nduja",
+    language: "it",
     category: "cured meat",
     pronunciation: "en-DOO-yah",
     definition: "A spreadable, spicy pork salume from Calabria, made from pork fat and meat with Calabrian chile.",
@@ -33,6 +35,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "agnolotti",
+    language: "it",
     category: "pasta shape",
     pronunciation: "ahn-yoh-LOT-tee",
     definition: "Small, pillow-shaped stuffed pasta from Piedmont, traditionally sealed by folding a sheet of dough over filling and pinching.",
@@ -46,6 +49,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "gnocchi",
+    language: "it",
     category: "pasta shape",
     pronunciation: "NYOH-kee",
     definition: "Soft dumplings, most commonly potato-based, though can be made from ricotta, semolina, or vegetables.",
@@ -59,6 +63,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "calabrian chile",
+    language: "en",
     category: "spice / pepper",
     definition: "A medium-hot red chile from Calabria, Italy, typically sold crushed and packed in oil.",
     origin: "Calabria, Italy",
@@ -71,6 +76,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "stracciatella",
+    language: "it",
     category: "cheese",
     pronunciation: "strah-chah-TEL-lah",
     definition: "A fresh cheese made of shredded curd and cream, also the filling inside burrata.",
@@ -84,6 +90,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "cacciucco",
+    language: "it",
     category: "regional dish",
     pronunciation: "kah-CHOO-koh",
     definition: "A Tuscan fish stew from Livorno, built on multiple types of fish and shellfish in a tomato-based broth.",
@@ -97,6 +104,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "romesco",
+    language: "es",
     category: "sauce",
     definition: "A Catalan sauce of roasted red peppers, tomato, garlic, toasted nuts, and bread, bound with olive oil and vinegar.",
     origin: "Catalonia, Spain",
@@ -109,6 +117,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "bagna càuda",
+    language: "it",
     category: "sauce",
     pronunciation: "BAHN-yah COW-dah",
     definition: "A warm Piedmontese dip of anchovy, garlic, and olive oil, traditionally kept warm at the table.",
@@ -121,7 +130,8 @@ export const SEED_DICTIONARY = [
     confidence: "researched",
   },
   {
-    term: "'nduja", // alt spelling alias
+    term: "'nduja",
+    language: "it",
     category: "cured meat",
     definition: "Alternate spelling of nduja — see 'nduja'.",
     origin: "Calabria, Italy",
@@ -134,6 +144,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "guanciale",
+    language: "it",
     category: "cured meat",
     definition: "Cured pork jowl, the traditional fat base for carbonara and amatriciana.",
     origin: "Central Italy (Lazio, Umbria)",
@@ -146,6 +157,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "gremolata",
+    language: "it",
     category: "garnish",
     definition: "A raw garnish of chopped parsley, lemon zest, and garlic, classically served over osso buco.",
     origin: "Lombardy, Italy",
@@ -158,6 +170,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "salsa verde",
+    language: "it",
     category: "sauce",
     definition: "An Italian green sauce of chopped herbs, capers, garlic, and olive oil, used to cut richness.",
     origin: "Italy (regional variations)",
@@ -170,6 +183,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "ragù",
+    language: "it",
     category: "sauce",
     definition: "A slow-simmered meat sauce, the broad Italian term for a long-cooked sauce built on a meat base.",
     origin: "Italy (regional variations, e.g. Bolognese)",
@@ -182,6 +196,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "pappardelle",
+    language: "it",
     category: "pasta shape",
     definition: "A wide, flat ribbon pasta, traditionally paired with rich, slow-cooked meat ragùs.",
     origin: "Tuscany, Italy",
@@ -194,6 +209,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "mafaldine",
+    language: "it",
     category: "pasta shape",
     definition: "A long, ribbon-cut pasta with ruffled edges, named for Princess Mafalda of Savoy.",
     origin: "Italy",
@@ -206,6 +222,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "tagliatelle",
+    language: "it",
     category: "pasta shape",
     definition: "A long, flat ribbon pasta narrower than pappardelle, classic partner to Bolognese ragù.",
     origin: "Emilia-Romagna, Italy",
@@ -218,6 +235,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "burrata",
+    language: "it",
     category: "cheese",
     definition: "A fresh mozzarella shell filled with stracciatella (curd and cream).",
     origin: "Puglia, Italy",
@@ -230,6 +248,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "juniper",
+    language: "en",
     category: "spice",
     definition: "A pine-forward, resinous berry/spice, common in game preparations and in gin.",
     origin: "Northern Europe",
@@ -242,6 +261,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "marsala",
+    language: "it",
     category: "wine",
     definition: "A fortified wine from Sicily, ranging from dry to sweet, widely used in cooking.",
     origin: "Marsala, Sicily",
@@ -254,6 +274,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "black garlic",
+    language: "en",
     category: "ingredient",
     definition: "Whole garlic aged under heat and humidity until it turns black and develops deep umami sweetness.",
     origin: "East Asia (adapted widely in modern cooking)",
@@ -266,6 +287,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "castelfranco",
+    language: "it",
     category: "vegetable",
     definition: "A speckled red-and-cream Italian chicory, related to radicchio but milder and slightly sweet.",
     origin: "Veneto, Italy",
@@ -278,6 +300,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "radicchio",
+    language: "it",
     category: "vegetable",
     definition: "A bitter Italian chicory, usually deep red-purple, eaten raw, grilled, or braised.",
     origin: "Veneto, Italy",
@@ -290,6 +313,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "saba",
+    language: "it",
     category: "condiment",
     definition: "A syrup made from reduced, unfermented grape must, sweet with a raisin-like depth.",
     origin: "Italy (Emilia-Romagna, Puglia)",
@@ -302,6 +326,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "aioli",
+    language: "fr",
     category: "sauce",
     definition: "An emulsified garlic sauce; traditionally garlic and olive oil, though modern versions often add egg like mayonnaise.",
     origin: "Provence / Catalonia",
@@ -314,6 +339,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "harissa",
+    language: "ar",
     category: "sauce",
     definition: "A North African chile paste built from roasted peppers, garlic, and warm spices like cumin and caraway.",
     origin: "Maghreb (Tunisia especially)",
@@ -326,6 +352,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "preserved lemon",
+    language: "en",
     category: "condiment",
     definition: "Lemons cured in salt and their own juice until the rind softens and turns intensely savory-citrus.",
     origin: "North Africa / Middle East",
@@ -338,6 +365,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "amaro",
+    language: "it",
     category: "spirit",
     definition: "An Italian bitter herbal liqueur, typically served as a digestif.",
     origin: "Italy",
@@ -350,6 +378,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "vermouth",
+    language: "it",
     category: "spirit",
     definition: "An aromatized, fortified wine flavored with botanicals, available in dry and sweet styles.",
     origin: "Italy / France",
@@ -362,6 +391,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "fennel pollen",
+    language: "en",
     category: "spice",
     definition: "The pollen dust of the fennel flower — an intensely concentrated, sweeter version of fennel seed.",
     origin: "Mediterranean / Tuscany",
@@ -377,6 +407,7 @@ export const SEED_DICTIONARY = [
   // restaurant's actual current wine/cocktail list in Library.
   {
     term: "vermentino",
+    language: "it",
     category: "wine",
     pronunciation: "vair-men-TEE-noh",
     definition: "A crisp, high-acid Italian white wine, often coastal, with citrus and light herbal notes.",
@@ -391,6 +422,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "etna bianco",
+    language: "it",
     category: "wine",
     pronunciation: "ET-nah bee-AHN-koh",
     definition: "A volcanic, mineral-driven white wine from the slopes of Mount Etna in Sicily, usually Carricante-based.",
@@ -405,6 +437,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "barbera",
+    language: "it",
     category: "wine",
     pronunciation: "bar-BEH-rah",
     definition: "A high-acid, low-tannin red wine from Piedmont, food-friendly across rich and tomato-based dishes.",
@@ -419,6 +452,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "nebbiolo",
+    language: "it",
     category: "wine",
     pronunciation: "neb-bee-OH-loh",
     definition: "A tannic, structured red grape from Piedmont behind Barolo and Barbaresco.",
@@ -433,6 +467,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "negroni sbagliato",
+    language: "it",
     category: "cocktail",
     pronunciation: "neh-GROH-nee zbah-LYAH-toh",
     definition: "A Negroni variant made with sparkling wine instead of gin — bitter, sweet, and effervescent.",
@@ -447,6 +482,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "aperol spritz",
+    language: "it",
     category: "cocktail",
     pronunciation: "AH-peh-rol shprits",
     definition: "A low-proof Italian aperitif cocktail of Aperol, prosecco, and soda.",
@@ -461,6 +497,7 @@ export const SEED_DICTIONARY = [
   },
   {
     term: "amaro montenegro",
+    language: "it",
     category: "amaro",
     pronunciation: "ah-MAH-roh mon-teh-NEH-groh",
     definition: "A moderately bitter, approachable amaro with orange peel, vanilla, and a wide botanical blend.",

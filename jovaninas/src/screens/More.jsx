@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from "react";
-import { Download, Upload, Trash2, Users, Compass } from "lucide-react";
+import { Download, Upload, Trash2, Users, Compass, KeyRound } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { saveData, resetData, emptyData } from "../lib/storage.js";
+import MasterGate from "../lib/MasterGate.jsx";
+import JovaninaMark from "../components/JovaninaMark.jsx";
 
 const SUB_TABS = ["Notes", "Settings", "Profile", "Team", "Roadmap"];
 
@@ -42,6 +44,7 @@ function NotesTab({ data }) {
 }
 
 function SettingsTab({ data, setData }) {
+  const { pinIsSet, clearMasterPin } = useData();
   const fileRef = useRef(null);
 
   function exportData() {
@@ -78,20 +81,49 @@ function SettingsTab({ data, setData }) {
   }
 
   return (
-    <div className="card">
-      <p className="section-title">Data</p>
-      <p className="small muted">
-        Everything is stored locally in this browser ({"localStorage"}) — no server, no account. Export a backup
-        before clearing browser data.
-      </p>
-      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-        <button className="icon-btn" onClick={exportData}><Download size={13} /> Export JSON</button>
-        <button className="icon-btn" onClick={() => fileRef.current?.click()}><Upload size={13} /> Import JSON</button>
-        <input ref={fileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importData} />
+    <div>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <p className="section-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <KeyRound size={12} /> Master access
+        </p>
+        <p className="small muted">
+          {pinIsSet
+            ? "This device is protected by a master PIN (set from the lock icon at the top of the app). Anyone without it can view everything but can't edit."
+            : "No master PIN set yet — this device is currently unlocked for everyone. Tap the lock icon at the top of the app to set one."}
+        </p>
+        {pinIsSet && (
+          <MasterGate message="Unlock master access to change or remove the PIN.">
+            <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => confirm("Remove the master PIN? This device will be unlocked for everyone until you set a new one.") && clearMasterPin()}>
+              Remove master PIN
+            </button>
+          </MasterGate>
+        )}
+        <p className="tiny muted" style={{ marginTop: 8 }}>
+          This is a device-level convenience lock, not real account security — there's no "forgot PIN" recovery
+          short of restoring from an exported backup.
+        </p>
       </div>
-      <hr className="sep" />
-      <p className="section-title">Danger zone</p>
-      <button className="btn danger" onClick={handleReset}><Trash2 size={13} /> Reset all data</button>
+
+      <div className="card">
+        <p className="section-title">Data</p>
+        <p className="small muted">
+          Everything is stored locally in this browser ({"localStorage"}) — no server, no account (yet — ask about
+          connecting a shared cloud database if you want this synced across every phone). Export a backup before
+          clearing browser data.
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+          <button className="icon-btn" onClick={exportData}><Download size={13} /> Export JSON</button>
+          <MasterGate message="Unlock master access to import data.">
+            <button className="icon-btn" onClick={() => fileRef.current?.click()}><Upload size={13} /> Import JSON</button>
+          </MasterGate>
+          <input ref={fileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importData} />
+        </div>
+        <hr className="sep" />
+        <p className="section-title">Danger zone</p>
+        <MasterGate message="Unlock master access to reset data.">
+          <button className="btn danger" onClick={handleReset}><Trash2 size={13} /> Reset all data</button>
+        </MasterGate>
+      </div>
     </div>
   );
 }
@@ -122,7 +154,7 @@ function TeamTab() {
   return (
     <div>
       <div className="card empty-state" style={{ marginBottom: 12 }}>
-        <div className="seal" style={{ margin: "0 auto 10px" }}>JJ</div>
+        <div className="seal" style={{ margin: "0 auto 10px" }}><JovaninaMark size={34} /></div>
         <p className="letterpress" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontStyle: "italic", margin: 0 }}>
           "Not to win, but to delight."
         </p>
@@ -148,8 +180,8 @@ const ROADMAP_ITEMS = [
     detail: "Point a camera at a garnish or plate and identify it. Needs a vision API.",
   },
   {
-    title: "Live, shared staff notes & service analytics",
-    detail: "Notes, 86 lists, and knowledge scores shared across the whole team in real time. Needs real accounts and a backend — everything here currently lives in one browser's local storage.",
+    title: "Live sync across every phone",
+    detail: "Notes, 86 lists, changes, and knowledge scores shared across the whole team in real time on everyone's own device. Needs a hosted database (Supabase is the recommended path) plus a manager login — the master PIN lock works today but only on a single shared device.",
   },
   {
     title: "Chef voice notes",

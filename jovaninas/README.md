@@ -8,10 +8,28 @@ Client-side only (React + `localStorage`, no backend). Built as a separate
 project inside this repo — it does not touch the existing `Tony` file
 (the personal finance tracker) at the repo root.
 
-Visual design is a vintage passport / field-guide aesthetic: cream paper,
-navy ink, red and brass accents, Playfair Display + Libre Baskerville type,
-a phone-width shell with a bottom nav (Brief / Scan / My Menus / Learn /
-Library / More).
+Visual design matches Jovanina's real brand: cream paper, navy ink
+(#1e2a44), red and brass accents, Playfair Display + Libre Baskerville
+type, an original stylized mark inspired by the storefront/menu portrait
+logo, and a phone-width shell with a bottom nav (Brief / Scan / My Menus /
+Learn / Library / More).
+
+## Master / read-only access
+
+The topbar lock icon gates every write action (scanning menus, confirming
+changes, 86'ing dishes, editing covers/events, adding notes, editing the
+library) behind a device-level PIN — set one from the lock icon, and it
+hashes with SHA-256 (Web Crypto) rather than storing it in plain text.
+Anyone using the device without unlocking can browse, search, and study
+(Learn) but can't change anything.
+
+**Important scope note:** this only locks *one shared device* — it does
+not sync a master's edits to other people's own phones, because there's no
+backend. If you need "I edit on my phone, staff see it read-only on
+theirs," that requires a real hosted database (Supabase is the recommended
+path — free tier, realtime sync, built-in auth) plus a manager login. The
+permission *logic* here (isMaster gating) is written to carry over once
+that's wired up; only the storage layer underneath would change.
 
 ## What's implemented
 
@@ -49,11 +67,14 @@ Library / More).
 
 **Learn** — five modes: SRS **flashcards**, a multiple-choice **pre-shift
 quiz** (distractors generated from real dish/ingredient data),
-**pronunciation** practice (browser text-to-speech), an **objection
-trainer** (guest pushback scenarios with responses grounded in the dish's
-actual technique/flavor data), and a **guest recommendation engine**
-(preferences in → ranked dishes, wine pairing, upsell appetizer/dessert
-out).
+**pronunciation** practice with an **Italian accent** (browser text-to-speech,
+`lang="it-IT"` + an installed Italian system voice when available — each
+dictionary term is tagged with the language of the word actually being
+read, so English descriptive terms like "black garlic" stay in English),
+an **objection trainer** (guest pushback scenarios with responses grounded
+in the dish's actual technique/flavor data), and a **guest recommendation
+engine** (chip-based preferences in → ranked dishes, wine pairing, upsell
+appetizer/dessert out).
 
 **Library, Search, More**
 - Culinary dictionary with pronunciation guides and category filters; every
@@ -74,12 +95,13 @@ generation, spaced repetition) — all pure functions, independent of React.
   are generated from rules + a seed dictionary, not a model call — per the
   product's own rule, generated text must stay traceable to actual parsed
   input, never invented.
-- **Single-user, local-storage only.** No accounts, no backend, no
-  multi-device or multi-staff sync. "Ask Chef" (open conversational Q&A),
-  search-by-photo, live shared staff notes/analytics, chef voice notes, and
-  a knowledge-score/AI-coach layer are real parts of the bigger vision but
-  are intentionally left out rather than faked — they need a backend and/or
-  a live LLM/vision API. See the **Roadmap** tab under More in the app.
+- **Single-device, local-storage only.** The master PIN lock works today,
+  but only on one shared device — no accounts, no backend, no true
+  multi-phone sync yet (see above). "Ask Chef" (open conversational Q&A),
+  search-by-photo, live sync across every phone, chef voice notes, and a
+  knowledge-score/AI-coach layer are real parts of the bigger vision but are
+  intentionally left out rather than faked — they need a backend and/or a
+  live LLM/vision API. See the **Roadmap** tab under More in the app.
 
 ## Running it
 

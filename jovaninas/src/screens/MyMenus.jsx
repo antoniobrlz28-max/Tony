@@ -3,8 +3,26 @@ import { useData } from "../lib/context.jsx";
 import { MENU_TYPES } from "../lib/storage.js";
 import { allergensForComponents } from "../lib/components.js";
 import { confirmChange, markChangeAsNewDish, markChangeIgnored } from "../lib/menuOps.js";
+import Highlight from "../components/Highlight.jsx";
 
 const SUB_TABS = ["Current Menu", "Changes", "History"];
+const ALL_ALLERGENS = ["gluten", "dairy", "tree nuts", "peanut", "shellfish", "fish", "egg", "soy", "sesame"];
+
+// Bolds the specific ingredient/price/name inside a change-explanation
+// sentence, so the eye lands on what changed instead of re-reading the
+// whole line.
+function HighlightedLine({ line }) {
+  let m = line.match(/^(.+?) (was added\.|was removed\.)$/);
+  if (m) return <><mark className="highlight">{m[1]}</mark> {m[2]}</>;
+
+  m = line.match(/^Price changed from (\$[\d.]+) to (\$[\d.]+)\.$/);
+  if (m) return <>Price changed from <mark className="highlight">{m[1]}</mark> to <mark className="highlight">{m[2]}</mark>.</>;
+
+  m = line.match(/^Name changed from ("[^"]+") to ("[^"]+")\.$/);
+  if (m) return <>Name changed from <mark className="highlight">{m[1]}</mark> to <mark className="highlight">{m[2]}</mark>.</>;
+
+  return line;
+}
 
 function CurrentMenuTab({ go, data }) {
   const [menuType, setMenuType] = useState(null);
@@ -32,8 +50,6 @@ function CurrentMenuTab({ go, data }) {
     return map;
   }, [changesForMenu]);
 
-  const allAllergens = ["gluten", "dairy", "tree nuts", "peanut", "shellfish", "fish", "egg", "soy", "sesame"];
-
   if (!menu) {
     return (
       <div className="card empty-state">
@@ -52,12 +68,17 @@ function CurrentMenuTab({ go, data }) {
           </button>
         ))}
       </div>
-      <div className="grid cols-2" style={{ marginBottom: 12 }}>
-        <input type="text" placeholder="Search dishes..." value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={allergenFilter} onChange={(e) => setAllergenFilter(e.target.value)}>
-          <option value="">Filter by allergen...</option>
-          {allAllergens.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
+      <input type="text" placeholder="Search dishes..." value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 10 }} />
+      <div className="chip-row">
+        {ALL_ALLERGENS.map((a) => (
+          <button
+            key={a}
+            className={`toggle-chip ${allergenFilter === a ? "active" : ""}`}
+            onClick={() => setAllergenFilter(allergenFilter === a ? "" : a)}
+          >
+            {a}
+          </button>
+        ))}
       </div>
       <p className="tiny muted" style={{ marginBottom: 10 }}>{activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}</p>
 
@@ -76,14 +97,14 @@ function CurrentMenuTab({ go, data }) {
               const change = changeByDishVersion[dv.id];
               const allergens = allergensForComponents(dv.components || []);
               return (
-                <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("dish", { dishId: dv.dishId, fromTab: "menus" })}>
+                <div key={dv.id} className="dish-row clickable" onClick={() => go("dish", { dishId: dv.dishId, fromTab: "menus" })}>
                   <div>
                     <div className="dish-name">
-                      {dv.displayName}{" "}
+                      <Highlight text={dv.displayName} query={q} />{" "}
                       {change?.changeType === "Added item" && <span className="pill green">New</span>}
                       {change && change.changeType !== "Added item" && <span className="pill brass">Changed</span>}
                     </div>
-                    <div className="dish-desc">{dv.description}</div>
+                    <div className="dish-desc"><Highlight text={dv.description} query={q} /></div>
                     {allergens.length > 0 && (
                       <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
                         {allergens.map((a) => <span key={a} className="pill wine">{a}</span>)}
@@ -119,17 +140,20 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
       {change.oldValue && <div className="small muted">Previous: {change.oldValue}</div>}
       {change.newValue && <div className="small muted">Current: {change.newValue}</div>}
       <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-        {change.explanation.map((line, i) => <li key={i} className="small">{line}</li>)}
+        {change.explanation.map((line, i) => <li key={i} className="small"><HighlightedLine line={line} /></li>)}
       </ul>
       <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
         <span className="tiny muted">Confidence {Math.round(change.confidence * 100)}% · Training: {change.trainingPriority}</span>
-        {change.reviewStatus === "needs_review" && (
+        {change.reviewStatus === "needs_review" && onConfirm && (
           <>
             <button className="btn" onClick={() => onConfirm(change.id)}>Same dish</button>
             <button className="btn secondary" onClick={() => onSplit(change.id)}>New dish</button>
             <button className="btn ghost" onClick={() => onIgnore(change.id, "ocr_error")}>OCR error</button>
             <button className="btn ghost" onClick={() => onIgnore(change.id, "ignored")}>Ignore</button>
           </>
+        )}
+        {change.reviewStatus === "needs_review" && !onConfirm && (
+          <span className="pill brass">Needs master review</span>
         )}
         {change.reviewStatus !== "needs_review" && (
           <span className="pill green">{change.reviewStatus === "confirmed" ? "Confirmed" : change.reviewStatus}</span>
@@ -142,7 +166,7 @@ function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
   );
 }
 
-function ChangesTab({ go, data, update, initialMenuId }) {
+function ChangesTab({ go, data, update, initialMenuId, isMaster }) {
   const sortedMenus = useMemo(() => [...data.menus].sort((a, b) => b.uploadDate.localeCompare(a.uploadDate)), [data.menus]);
   const [menuId, setMenuId] = useState(initialMenuId || sortedMenus[0]?.id);
   const menu = data.menus.find((m) => m.id === menuId) || sortedMenus[0];
@@ -194,7 +218,15 @@ function ChangesTab({ go, data, update, initialMenuId }) {
       <div className="card">
         {filtered.length === 0 && <p className="muted small">No changes in this category.</p>}
         {filtered.map((c) => (
-          <ChangeCard key={c.id} change={c} data={data} go={go} onConfirm={doConfirm} onSplit={doSplit} onIgnore={doIgnore} />
+          <ChangeCard
+            key={c.id}
+            change={c}
+            data={data}
+            go={go}
+            onConfirm={isMaster ? doConfirm : undefined}
+            onSplit={isMaster ? doSplit : undefined}
+            onIgnore={isMaster ? doIgnore : undefined}
+          />
         ))}
       </div>
     </div>
@@ -266,7 +298,7 @@ function HistoryTab({ go, data }) {
 }
 
 export default function MyMenus({ go, params }) {
-  const { data, update } = useData();
+  const { data, update, isMaster } = useData();
   const [subTab, setSubTab] = useState(params?.subTab === "changes" ? "Changes" : params?.subTab === "history" ? "History" : "Current Menu");
 
   return (
@@ -277,7 +309,7 @@ export default function MyMenus({ go, params }) {
         ))}
       </div>
       {subTab === "Current Menu" && <CurrentMenuTab go={go} data={data} />}
-      {subTab === "Changes" && <ChangesTab go={go} data={data} update={update} initialMenuId={params?.menuId} />}
+      {subTab === "Changes" && <ChangesTab go={go} data={data} update={update} initialMenuId={params?.menuId} isMaster={isMaster} />}
       {subTab === "History" && <HistoryTab go={go} data={data} />}
     </div>
   );

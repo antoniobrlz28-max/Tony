@@ -173,6 +173,19 @@ nav.bottom-nav button.active { color: var(--red); }
   border-radius: var(--radius);
   padding: 16px;
   box-shadow: var(--shadow);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: var(--gold);
+}
+
+.clickable:active {
+  opacity: 0.85;
 }
 
 .card h3 {
@@ -224,7 +237,11 @@ button.btn {
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font-body);
+  transition: opacity 0.12s ease, transform 0.08s ease;
 }
+
+button.btn:not(:disabled):hover { opacity: 0.88; }
+button.btn:not(:disabled):active { transform: scale(0.97); }
 
 button.btn.secondary { background: transparent; color: var(--navy); }
 button.btn.ghost { border-color: var(--line); background: transparent; color: var(--navy-soft); }
@@ -280,6 +297,12 @@ label.field {
   gap: 10px;
   padding: 11px 0;
   border-bottom: 1px dashed var(--line);
+  transition: padding-left 0.12s ease;
+}
+
+.dish-row.clickable:hover {
+  padding-left: 4px;
+  border-color: var(--line);
 }
 
 .dish-row:last-child { border-bottom: none; }
@@ -385,6 +408,35 @@ a.link {
 .timeline-dot.current { background: var(--red); box-shadow: 0 0 0 3px var(--red-bg); }
 
 .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-family: var(--font-body);
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--navy-soft);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.toggle-chip.active {
+  background: var(--red-bg);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+mark.highlight {
+  background: var(--gold-bg);
+  color: var(--navy);
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: 700;
+}
 
 /* Vintage flourishes */
 .letterpress {

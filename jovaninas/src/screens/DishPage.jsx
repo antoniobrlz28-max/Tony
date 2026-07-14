@@ -21,7 +21,7 @@ function readFileAsDataUrl(file) {
 }
 
 export default function DishPage({ go, params }) {
-  const { data, update } = useData();
+  const { data, update, isMaster } = useData();
   const [tab, setTab] = useState("Overview");
   const [audience, setAudience] = useState("Guest");
   const [notesOpen, setNotesOpen] = useState(false);
@@ -163,19 +163,24 @@ export default function DishPage({ go, params }) {
           {notesOpen && (
             <div style={{ marginTop: 14 }}>
               <hr className="sep" />
-              <div className="grid cols-2" style={{ marginBottom: 8 }}>
-                <select value={noteType} onChange={(e) => setNoteType(e.target.value)}>
-                  {["chef note", "manager update", "staff observation", "faq", "modification", "guest question", "selling phrase"].map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                  <input type="checkbox" checked={chefConfirmed} onChange={(e) => setChefConfirmed(e.target.checked)} />
-                  Chef-confirmed
-                </label>
-              </div>
-              <textarea rows={3} value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
-              <button className="btn" style={{ marginTop: 8 }} onClick={saveNote}>Save note</button>
+              {isMaster && (
+                <>
+                  <div className="grid cols-2" style={{ marginBottom: 8 }}>
+                    <select value={noteType} onChange={(e) => setNoteType(e.target.value)}>
+                      {["chef note", "manager update", "staff observation", "faq", "modification", "guest question", "selling phrase"].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                      <input type="checkbox" checked={chefConfirmed} onChange={(e) => setChefConfirmed(e.target.checked)} />
+                      Chef-confirmed
+                    </label>
+                  </div>
+                  <textarea rows={3} value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
+                  <button className="btn" style={{ marginTop: 8 }} onClick={saveNote}>Save note</button>
+                </>
+              )}
+              {notes.length === 0 && !isMaster && <p className="muted small">No notes yet.</p>}
               {notes.length > 0 && <hr className="sep" />}
               {[...notes].reverse().map((n) => (
                 <div key={n.id} className="dish-row">
@@ -267,19 +272,25 @@ export default function DishPage({ go, params }) {
               <span className="tiny muted">{new Date(n.createdAt).toLocaleDateString()}</span>
             </div>
           ))}
-          <textarea rows={2} style={{ marginTop: 8 }} value={guestQText} onChange={(e) => setGuestQText(e.target.value)} placeholder='e.g. "A guest asked if the mostarda contains nuts."' />
-          <button className="btn" style={{ marginTop: 8 }} onClick={saveGuestQuestion}>Log question</button>
+          {isMaster && (
+            <>
+              <textarea rows={2} style={{ marginTop: 8 }} value={guestQText} onChange={(e) => setGuestQText(e.target.value)} placeholder='e.g. "A guest asked if the mostarda contains nuts."' />
+              <button className="btn" style={{ marginTop: 8 }} onClick={saveGuestQuestion}>Log question</button>
+            </>
+          )}
         </div>
       )}
 
       {tab === "Photos" && (
         <div className="card">
           <p className="section-title">Plating photo timeline</p>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <input type="text" placeholder="Caption (optional)" value={photoCaption} onChange={(e) => setPhotoCaption(e.target.value)} />
-            <button className="icon-btn" onClick={() => fileRef.current?.click()}><Camera size={13} /> Add</button>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} />
-          </div>
+          {isMaster && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <input type="text" placeholder="Caption (optional)" value={photoCaption} onChange={(e) => setPhotoCaption(e.target.value)} />
+              <button className="icon-btn" onClick={() => fileRef.current?.click()}><Camera size={13} /> Add</button>
+              <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} />
+            </div>
+          )}
           {photos.length === 0 && <p className="muted small">No photos yet.</p>}
           {photos.map((p) => (
             <div key={p.id} className="dish-row">
@@ -290,7 +301,9 @@ export default function DishPage({ go, params }) {
                   <div className="tiny muted">{p.date}</div>
                 </div>
               </div>
-              <button className="btn ghost" onClick={() => update((draft) => removeDishPhoto(draft, params.dishId, p.id))}><Trash2 size={12} /></button>
+              {isMaster && (
+                <button className="btn ghost" onClick={() => update((draft) => removeDishPhoto(draft, params.dishId, p.id))}><Trash2 size={12} /></button>
+              )}
             </div>
           ))}
         </div>

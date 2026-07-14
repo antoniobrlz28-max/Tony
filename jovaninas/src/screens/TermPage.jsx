@@ -3,17 +3,10 @@ import { ArrowLeft, Volume2 } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { dishesContainingTerm, notesForTerm } from "../lib/wiki.js";
 import { addNote } from "../lib/menuOps.js";
-
-function speak(text) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 0.85;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utter);
-}
+import { speakTerm } from "../lib/speech.js";
 
 export default function TermPage({ go, params }) {
-  const { data, update } = useData();
+  const { data, update, isMaster } = useData();
   const [noteText, setNoteText] = useState("");
   const [noteType, setNoteType] = useState("chef note");
   const [chefConfirmed, setChefConfirmed] = useState(false);
@@ -55,7 +48,7 @@ export default function TermPage({ go, params }) {
             {entry.pronunciation && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
                 <span className="muted small" style={{ fontFamily: "var(--font-stamp)" }}>({entry.pronunciation})</span>
-                <button className="icon-btn" style={{ padding: "3px 7px" }} onClick={() => speak(entry.term)}><Volume2 size={11} /></button>
+                <button className="icon-btn" style={{ padding: "3px 7px" }} onClick={() => speakTerm(entry.term, entry.language)}><Volume2 size={11} /></button>
               </div>
             )}
           </div>
@@ -100,7 +93,7 @@ export default function TermPage({ go, params }) {
         <p className="section-title">Current dishes</p>
         {current.length === 0 && <p className="muted small">Not used on the current menu.</p>}
         {current.map((dv) => (
-          <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("dish", { dishId: dv.dishId, fromTab: "library" })}>
+          <div key={dv.id} className="dish-row clickable" onClick={() => go("dish", { dishId: dv.dishId, fromTab: "library" })}>
             <div className="dish-name" style={{ fontSize: 13.5 }}>{dv.displayName}</div>
           </div>
         ))}
@@ -110,7 +103,7 @@ export default function TermPage({ go, params }) {
         <div className="card" style={{ marginBottom: 12 }}>
           <p className="section-title">Past dishes</p>
           {past.map((dv) => (
-            <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("dish", { dishId: dv.dishId, fromTab: "library" })}>
+            <div key={dv.id} className="dish-row clickable" onClick={() => go("dish", { dishId: dv.dishId, fromTab: "library" })}>
               <div>
                 <div className="dish-name" style={{ fontSize: 13.5 }}>{dv.displayName}</div>
                 <div className="tiny muted">{dv.effectiveDate}</div>
@@ -135,20 +128,25 @@ export default function TermPage({ go, params }) {
       )}
 
       <div className="card">
-        <p className="section-title">Add a note</p>
-        <div className="grid cols-2" style={{ marginBottom: 8 }}>
-          <select value={noteType} onChange={(e) => setNoteType(e.target.value)}>
-            {["chef note", "manager update", "staff observation", "guest question", "selling phrase"].map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-            <input type="checkbox" checked={chefConfirmed} onChange={(e) => setChefConfirmed(e.target.checked)} />
-            Chef-confirmed
-          </label>
-        </div>
-        <textarea rows={3} value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="e.g. Chef confirmed we use the sweeter northern-Italian style, not the sharper Cremona version." />
-        <button className="btn" style={{ marginTop: 8 }} onClick={saveNote}>Save note</button>
+        <p className="section-title">Notes</p>
+        {isMaster && (
+          <>
+            <div className="grid cols-2" style={{ marginBottom: 8 }}>
+              <select value={noteType} onChange={(e) => setNoteType(e.target.value)}>
+                {["chef note", "manager update", "staff observation", "guest question", "selling phrase"].map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                <input type="checkbox" checked={chefConfirmed} onChange={(e) => setChefConfirmed(e.target.checked)} />
+                Chef-confirmed
+              </label>
+            </div>
+            <textarea rows={3} value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="e.g. Chef confirmed we use the sweeter northern-Italian style, not the sharper Cremona version." />
+            <button className="btn" style={{ marginTop: 8 }} onClick={saveNote}>Save note</button>
+          </>
+        )}
+        {notes.length === 0 && !isMaster && <p className="muted small">No notes yet.</p>}
         {notes.length > 0 && (
           <>
             <hr className="sep" />

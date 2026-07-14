@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { allergensForComponents } from "../lib/components.js";
 import { latestDishVersion } from "../lib/menuOps.js";
+import Highlight from "../components/Highlight.jsx";
 
 function activeDishVersions(data) {
   return Object.values(data.dishes)
@@ -105,7 +106,7 @@ export default function Search({ go, params }) {
       {result.kind === "empty" && <p className="muted">Try a question above.</p>}
 
       {result.kind === "term" && (
-        <div className="card" style={{ cursor: "pointer" }} onClick={() => go("term", { term: result.hit.term, fromTab: backTab })}>
+        <div className="card clickable" onClick={() => go("term", { term: result.hit.term, fromTab: backTab })}>
           <h3 style={{ textTransform: "capitalize" }}>{result.hit.term}</h3>
           <p className="small">{result.hit.definition}</p>
           <p className="small" style={{ fontStyle: "italic" }}>{result.hit.guestFriendly}</p>
@@ -134,10 +135,10 @@ export default function Search({ go, params }) {
         <div className="card">
           <p className="section-title">{result.label || "Matching dishes"} ({result.dishes.length})</p>
           {result.dishes.map((dv) => (
-            <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => goDish(dv.dishId)}>
+            <div key={dv.id} className="dish-row clickable" onClick={() => goDish(dv.dishId)}>
               <div>
-                <div className="dish-name" style={{ fontSize: 13.5 }}>{dv.displayName}</div>
-                <div className="dish-desc">{dv.description}</div>
+                <div className="dish-name" style={{ fontSize: 13.5 }}><Highlight text={dv.displayName} query={q} /></div>
+                <div className="dish-desc"><Highlight text={dv.description} query={q} /></div>
               </div>
             </div>
           ))}
@@ -150,10 +151,10 @@ export default function Search({ go, params }) {
             <div className="card" style={{ marginBottom: 12 }}>
               <p className="section-title">Dishes</p>
               {result.dishes.map((dv) => (
-                <div key={dv.id} className="dish-row" style={{ cursor: "pointer" }} onClick={() => goDish(dv.dishId)}>
+                <div key={dv.id} className="dish-row clickable" onClick={() => goDish(dv.dishId)}>
                   <div>
-                    <div className="dish-name" style={{ fontSize: 13.5 }}>{dv.displayName}</div>
-                    <div className="dish-desc">{dv.description}</div>
+                    <div className="dish-name" style={{ fontSize: 13.5 }}><Highlight text={dv.displayName} query={q} /></div>
+                    <div className="dish-desc"><Highlight text={dv.description} query={q} /></div>
                   </div>
                 </div>
               ))}
@@ -163,10 +164,10 @@ export default function Search({ go, params }) {
             <div className="card" style={{ marginBottom: 12 }}>
               <p className="section-title">Library terms</p>
               {result.terms.map((t) => (
-                <div key={t.term} className="dish-row" style={{ cursor: "pointer" }} onClick={() => go("term", { term: t.term, fromTab: backTab })}>
+                <div key={t.term} className="dish-row clickable" onClick={() => go("term", { term: t.term, fromTab: backTab })}>
                   <div>
-                    <div className="dish-name" style={{ fontSize: 13.5, textTransform: "capitalize" }}>{t.term}</div>
-                    <div className="dish-desc">{t.definition}</div>
+                    <div className="dish-name" style={{ fontSize: 13.5, textTransform: "capitalize" }}><Highlight text={t.term} query={q} /></div>
+                    <div className="dish-desc"><Highlight text={t.definition} query={q} /></div>
                   </div>
                 </div>
               ))}
@@ -175,7 +176,7 @@ export default function Search({ go, params }) {
           {(chip === "All" || chip === "Notes") && result.notes.length > 0 && (
             <div className="card">
               <p className="section-title">Notes</p>
-              {result.notes.map((n) => <div key={n.id} className="small" style={{ padding: "4px 0" }}>{n.content}</div>)}
+              {result.notes.map((n) => <div key={n.id} className="small" style={{ padding: "4px 0" }}><Highlight text={n.content} query={q} /></div>)}
             </div>
           )}
           {result.dishes.length + result.terms.length + result.notes.length === 0 && q && (
