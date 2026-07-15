@@ -1,0 +1,504 @@
+import { useMemo, useState } from "react";
+import { FileText, GraduationCap, AlertTriangle, Filter } from "lucide-react";
+import { useData } from "../lib/context.jsx";
+import { MENU_TYPES } from "../lib/storage.js";
+import { allergensForComponents } from "../lib/components.js";
+import { confirmChange, markChangeAsNewDish, markChangeIgnored } from "../lib/menuOps.js";
+import { pictureDescription } from "../lib/descriptions.js";
+import { addOnsForSection, addOnsForDish } from "../lib/addOns.js";
+import { isWineHeaderName } from "../lib/menuHeaders.js";
+import Highlight from "../components/Highlight.jsx";
+import IngredientTerms from "../components/IngredientTerms.jsx";
+
+// Renders a "Previous:"/"Current:" audit line with its trailing "($X.XX)"
+// price colored green, without changing the stored oldValue/newValue
+// strings themselves.
+function ValueLine({ label, value }) {
+  const m = value.match(/^(.*)(\s\(\$[\d.,]+\))$/);
+  if (!m) return <div className="small muted">{label} {value}</div>;
+  return (
+    <div className="small muted">
+      {label} {m[1]}
+      <span className="price">{m[2]}</span>
+    </div>
+  );
+}
+
+// Grouped so Menu, Drink menu, and Wine menu sit next to each other, with
+// the audit-trail tabs (Changes, History) following.
+const SUB_TABS = ["Current Menu", "Drinks", "Wine", "Changes", "History"];
+
+// Bolds the specific ingredient/price/name inside a change-explanation
+// sentence, so the eye lands on what changed instead of re-reading the
+// whole line.
+function HighlightedLine({ line }) {
+  let m = line.match(/^(.+?) (was added\.|was removed\.)$/);
+  if (m) return <><mark className="highlight">{m[1]}</mark> {m[2]}</>;
+
+  m = line.match(/^Price changed from (\$[\d.]+) to (\$[\d.]+)\.$/);
+  if (m) return <>Price changed from <mark className="highlight price">{m[1]}</mark> to <mark className="highlight price">{m[2]}</mark>.</>;
+
+  m = line.match(/^Name changed from ("[^"]+") to ("[^"]+")\.$/);
+  if (m) return <>Name changed from <mark className="highlight">{m[1]}</mark> to <mark className="highlight">{m[2]}</mark>.</>;
+
+  return line;
+}
+
+function CurrentMenuTab({ go, data }) {
+  const [menuType, setMenuType] = useState(null);
+  const [q, setQ] = useState("");
+  const [allergenFilter, setAllergenFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const latestByType = useMemo(() => {
+    const byType = {};
+    for (const m of data.menus) {
+      if (m.status !== "confirmed") continue;
+      const cur = byType[m.menuType];
+      if (!cur || m.uploadDate > cur.uploadDate) byType[m.menuType] = m;
+    }
+    return byType;
+  }, [data.menus]);
+
+  const availableTypes = MENU_TYPES.filter((t) => latestByType[t]);
+  const activeType = menuType || availableTypes[0];
+  const menu = activeType ? latestByType[activeType] : null;
+
+  const changesForMenu = useMemo(() => (menu ? data.changes.filter((c) => c.menuId === menu.id) : []), [data.changes, menu]);
+  const changeByDishVersion = useMemo(() => {
+    const map = {};
+    for (const c of changesForMenu) if (c.newVersionId) map[c.newVersionId] = c;
+    return map;
+  }, [changesForMenu]);
+
+  // Auto-generated from what's actually on this menu, instead of a fixed
+  // allergen list — a filter for "sesame" is just clutter on a menu with
+  // no sesame in it.
+  const presentAllergens = useMemo(() => {
+    if (!menu) return [];
+    const set = new Set();
+    for (const section of menu.sections) {
+      for (const id of section.dishVersionIds) {
+        const dv = data.dishVersions[id];
+        if (!dv) continue;
+        for (const a of allergensForComponents(dv.components || [])) set.add(a);
+      }
+    }
+    return Array.from(set).sort();
+  }, [menu, data.dishVersions]);
+
+  if (!menu) {
+    return (
+      <div className="card empty-state">
+        <p>No confirmed menu yet.</p>
+        <button className="btn" onClick={() => go("scan")}>Scan a menu</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="chip-row" style={{ overflowX: "auto", flexWrap: "nowrap" }}>
+        {availableTypes.map((t) => (
+          <button key={t} className={`btn ghost ${t === activeType ? "active" : ""}`} onClick={() => setMenuType(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: showFilters ? 10 : 0 }}>
+        <input type="text" placeholder="Search dishes..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
+        {presentAllergens.length > 0 && (
+          <button
+            className={`icon-btn ${allergenFilter ? "active" : ""}`}
+            onClick={() => setShowFilters((v) => !v)}
+            title="Filter by allergen"
+          >
+            <Filter size={13} />
+          </button>
+        )}
+      </div>
+      {showFilters && presentAllergens.length > 0 && (
+        <div className="chip-row">
+          {presentAllergens.map((a) => (
+            <button
+              key={a}
+              className={`toggle-chip ${allergenFilter === a ? "active" : ""}`}
+              onClick={() => setAllergenFilter(allergenFilter === a ? "" : a)}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <p className="tiny muted" style={{ margin: 0 }}>
+          {activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}
+          {menu.menuNumber && ` · No. ${menu.menuNumber}`}
+        </p>
+        {menu.sourcePdf && (
+          <a className="link tiny" href={menu.sourcePdf} target="_blank" rel="noreferrer" download={menu.sourcePdfName || "menu.pdf"}>
+            <FileText size={11} /> Original PDF
+          </a>
+        )}
+      </div>
+
+      {menu.preservice && (menu.preservice.focacciaFlavor || menu.preservice.oysterOrigin || menu.preservice.gelatoSorbetFlavors) && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <p className="section-title">Tonight's preservice details</p>
+          {menu.preservice.focacciaFlavor && <p className="small">Focaccia: {menu.preservice.focacciaFlavor}</p>}
+          {menu.preservice.oysterOrigin && <p className="small">Oysters from: {menu.preservice.oysterOrigin}</p>}
+          {menu.preservice.gelatoSorbetFlavors && <p className="small">Gelato/sorbet: {menu.preservice.gelatoSorbetFlavors}</p>}
+        </div>
+      )}
+
+      {menu.sections.map((section) => {
+        const dishVersions = section.dishVersionIds.map((id) => data.dishVersions[id]).filter(Boolean);
+        const filtered = dishVersions.filter((dv) => {
+          if (q && !`${dv.displayName} ${dv.description}`.toLowerCase().includes(q.toLowerCase())) return false;
+          if (allergenFilter && !allergensForComponents(dv.components || []).includes(allergenFilter)) return false;
+          return true;
+        });
+        if (filtered.length === 0) return null;
+        const sectionAddOns = addOnsForSection(section.name);
+        return (
+          <div key={section.id} className="card" style={{ marginBottom: 12 }}>
+            <p className="section-title">{section.name}</p>
+            {sectionAddOns.length > 0 && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+                {sectionAddOns.map((a) => (
+                  <span key={a.label} className="pill neutral">+ {a.label} (${a.price})</span>
+                ))}
+              </div>
+            )}
+            {filtered.map((dv) => {
+              const change = changeByDishVersion[dv.id];
+              const allergens = allergensForComponents(dv.components || []);
+              const dishAddOns = addOnsForDish(dv.displayName);
+              return (
+                <div key={dv.id} className="dish-row clickable" onClick={() => go("dish", { dishId: dv.dishId, fromTab: "menus" })}>
+                  <div>
+                    <div className="dish-name">
+                      <Highlight text={dv.displayName} query={q} />{" "}
+                      {change?.changeType === "Added item" && <span className="pill green">New</span>}
+                      {change && change.changeType !== "Added item" && <span className="pill brass">Changed</span>}
+                    </div>
+                    <div className="dish-desc">{pictureDescription(dv)}</div>
+                    <IngredientTerms components={dv.components} dictionary={data.dictionary} />
+                    {dishAddOns.length > 0 && (
+                      <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {dishAddOns.map((a) => (
+                          <span key={a.label} className="pill neutral">+ {a.label} (${a.price})</span>
+                        ))}
+                      </div>
+                    )}
+                    {allergens.length > 0 && (
+                      <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {allergens.map((a) => <span key={a} className="pill wine">{a}</span>)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="price small">{dv.price != null ? `$${dv.price}` : ""}</div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ChangeCard({ change, data, go, onConfirm, onSplit, onIgnore }) {
+  const dish = data.dishes[change.dishId];
+  const isAllergenChange = change.serviceImportance === "High";
+  const worthStudying = change.culinaryImportance === "High" || change.culinaryImportance === "Medium";
+
+  return (
+    <div className="dish-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+        <div>
+          <span className="dish-name">{dish?.canonicalName || "Unknown dish"}</span>{" "}
+          <span className="pill neutral">{change.changeType}</span>
+        </div>
+        {isAllergenChange && (
+          <span className="pill wine" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+            <AlertTriangle size={10} /> Allergen change — tell your team
+          </span>
+        )}
+      </div>
+      {change.oldValue && <ValueLine label="Previous:" value={change.oldValue} />}
+      {change.newValue && <ValueLine label="Current:" value={change.newValue} />}
+      <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+        {change.explanation.map((line, i) => <li key={i} className="small"><HighlightedLine line={line} /></li>)}
+      </ul>
+      <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {change.reviewStatus === "needs_review" && onConfirm && (
+          <>
+            <button className="btn accent" onClick={() => onConfirm(change.id)}>Same dish</button>
+            <button className="btn secondary" onClick={() => onSplit(change.id)}>New dish</button>
+            <button className="btn ghost" onClick={() => onIgnore(change.id, "ocr_error")}>OCR error</button>
+            <button className="btn ghost" onClick={() => onIgnore(change.id, "ignored")}>Ignore</button>
+          </>
+        )}
+        {change.reviewStatus === "needs_review" && !onConfirm && (
+          <span className="pill brass">Needs master review</span>
+        )}
+        {change.reviewStatus !== "needs_review" && change.reviewStatus !== "auto" && (
+          <span className="pill green">{change.reviewStatus === "confirmed" ? "Confirmed" : change.reviewStatus}</span>
+        )}
+        {change.newVersionId && (
+          <a className="link tiny" onClick={() => go("dish", { dishId: change.dishId, fromTab: "menus" })}>View dish</a>
+        )}
+        {worthStudying && change.newVersionId && (
+          <a className="link tiny" onClick={() => go("learn", { dishId: change.dishId, mode: "Flashcards" })}>
+            <GraduationCap size={11} /> Study this dish
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChangesTab({ go, data, update, initialMenuId, isMaster }) {
+  const sortedMenus = useMemo(() => [...data.menus].sort((a, b) => b.uploadDate.localeCompare(a.uploadDate)), [data.menus]);
+  const [menuId, setMenuId] = useState(initialMenuId || sortedMenus[0]?.id);
+  const menu = data.menus.find((m) => m.id === menuId) || sortedMenus[0];
+  const [filter, setFilter] = useState("All");
+
+  const changes = useMemo(() => (menu ? data.changes.filter((c) => c.menuId === menu.id) : []), [data.changes, menu]);
+  const counts = {
+    All: changes.length,
+    Added: changes.filter((c) => c.changeType === "Added item").length,
+    Changed: changes.filter((c) => !["Added item", "Removed item"].includes(c.changeType)).length,
+    Removed: changes.filter((c) => c.changeType === "Removed item").length,
+  };
+  const filtered = changes.filter((c) => {
+    if (filter === "All") return true;
+    if (filter === "Added") return c.changeType === "Added item";
+    if (filter === "Removed") return c.changeType === "Removed item";
+    return !["Added item", "Removed item"].includes(c.changeType);
+  });
+
+  const doConfirm = (id) => update((draft) => confirmChange(draft, id));
+  const doSplit = (id) => update((draft) => markChangeAsNewDish(draft, id));
+  const doIgnore = (id, reason) => update((draft) => markChangeIgnored(draft, id, reason));
+
+  if (!menu) {
+    return (
+      <div className="card empty-state">
+        <p>No menus scanned yet.</p>
+        <button className="btn" onClick={() => go("scan")}>Scan a menu</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <select value={menuId} onChange={(e) => setMenuId(e.target.value)}>
+          {sortedMenus.map((m) => (
+            <option key={m.id} value={m.id}>{m.menuType} v{m.versionNumber} — {m.effectiveDate}</option>
+          ))}
+        </select>
+      </div>
+      <div className="chip-row">
+        {Object.entries(counts).map(([label, n]) => (
+          <button key={label} className={`btn ghost ${filter === label ? "active" : ""}`} onClick={() => setFilter(label)}>
+            {label} {n}
+          </button>
+        ))}
+      </div>
+      <div className="card">
+        {filtered.length === 0 && <p className="muted small">No changes in this category.</p>}
+        {filtered.map((c) => (
+          <ChangeCard
+            key={c.id}
+            change={c}
+            data={data}
+            go={go}
+            onConfirm={isMaster ? doConfirm : undefined}
+            onSplit={isMaster ? doSplit : undefined}
+            onIgnore={isMaster ? doIgnore : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HistoryTab({ go, data }) {
+  const [openId, setOpenId] = useState(null);
+  const sorted = useMemo(() => [...data.menus].sort((a, b) => b.uploadDate.localeCompare(a.uploadDate)), [data.menus]);
+
+  if (sorted.length === 0) {
+    return (
+      <div className="card empty-state">
+        <p>No menu history yet.</p>
+        <button className="btn" onClick={() => go("scan")}>Scan a menu</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="timeline">
+        {sorted.map((m, i) => {
+          const changeCount = data.changes.filter((c) => c.menuId === m.id).length;
+          const open = openId === m.id;
+          return (
+            <div key={m.id} className="timeline-item">
+              <div className={`timeline-dot ${i === 0 ? "current" : ""}`} />
+              <div style={{ display: "flex", justifyContent: "space-between", cursor: "pointer" }} onClick={() => setOpenId(open ? null : m.id)}>
+                <div>
+                  <div className="dish-name" style={{ fontSize: 13.5 }}>{m.menuType} v{m.versionNumber}</div>
+                  <div className="tiny muted">
+                    Effective {m.effectiveDate}{m.menuNumber && ` · No. ${m.menuNumber}`}{" "}
+                    {i === 0 && <span className="pill brass">Current</span>}
+                  </div>
+                </div>
+                <a className="link tiny" onClick={(e) => { e.stopPropagation(); go("menus", { subTab: "changes", menuId: m.id }); }}>
+                  {changeCount} changes
+                </a>
+              </div>
+              {open && (
+                <div style={{ marginTop: 8 }}>
+                  {(m.photos?.length > 0 || m.sourcePdf) && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      {m.photos.map((p, idx) => (
+                        <img key={idx} src={p} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} />
+                      ))}
+                      {m.sourcePdf && (
+                        <a className="icon-btn" href={m.sourcePdf} target="_blank" rel="noreferrer" download={m.sourcePdfName || "menu.pdf"}>
+                          <FileText size={12} /> View original PDF
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  {m.sections.map((s) => (
+                    <div key={s.id} style={{ marginBottom: 8 }}>
+                      <div className="small" style={{ fontWeight: 700 }}>{s.name}</div>
+                      {s.dishVersionIds.map((id) => {
+                        const dv = data.dishVersions[id];
+                        if (!dv) return null;
+                        return (
+                          <div key={id} className="tiny muted">
+                            {dv.displayName} — {dv.description}
+                            {dv.price != null && <span className="price"> (${dv.price})</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Shared by DrinksTab and WineTab: `sectionFilter` splits a menu's
+// drinkSections into "wine" (Wines by the Glass, Sparkling, Still Rose,
+// White, Red) vs everything else (Cocktails, Spritzes, Beer, N/A
+// Beverages) so wine gets its own tab next to Drinks instead of being
+// lumped in with cocktails and beer.
+function DrinkSectionsTab({ go, data, sectionFilter, emptyText }) {
+  const [menuType, setMenuType] = useState(null);
+
+  const latestByType = useMemo(() => {
+    const byType = {};
+    for (const m of data.menus) {
+      if (m.status !== "confirmed") continue;
+      const cur = byType[m.menuType];
+      if (!cur || m.uploadDate > cur.uploadDate) byType[m.menuType] = m;
+    }
+    return byType;
+  }, [data.menus]);
+
+  const availableTypes = MENU_TYPES.filter((t) => latestByType[t]?.drinkSections?.some(sectionFilter));
+  const activeType = menuType || availableTypes[0];
+  const menu = activeType ? latestByType[activeType] : null;
+  const sections = menu ? menu.drinkSections.filter(sectionFilter) : [];
+
+  if (!menu) {
+    return (
+      <div className="card empty-state">
+        <p>{emptyText}</p>
+        <p className="tiny muted">Drinks are picked up automatically from an uploaded PDF, when present, and can be reviewed before saving.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="chip-row" style={{ overflowX: "auto", flexWrap: "nowrap" }}>
+        {availableTypes.map((t) => (
+          <button key={t} className={`btn ghost ${t === activeType ? "active" : ""}`} onClick={() => setMenuType(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <p className="tiny muted" style={{ marginBottom: 10 }}>
+        {activeType} · v{menu.versionNumber} · effective {menu.effectiveDate}
+      </p>
+      {sections.map((section, sIdx) => (
+        <div key={sIdx} className="card" style={{ marginBottom: 12 }}>
+          <p className="section-title">{section.name}</p>
+          {section.items.map((item, iIdx) => (
+            <div key={iIdx} className="dish-row">
+              <div>
+                <div className="dish-name">{item.name}</div>
+                {item.description && <div className="dish-desc">{item.description}</div>}
+              </div>
+              <div className="price small">{item.price != null ? `$${item.price}` : ""}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DrinksTab({ go, data }) {
+  return (
+    <DrinkSectionsTab
+      go={go}
+      data={data}
+      sectionFilter={(s) => !isWineHeaderName(s.name)}
+      emptyText="No drinks captured yet."
+    />
+  );
+}
+
+function WineTab({ go, data }) {
+  return (
+    <DrinkSectionsTab
+      go={go}
+      data={data}
+      sectionFilter={(s) => isWineHeaderName(s.name)}
+      emptyText="No wine list captured yet."
+    />
+  );
+}
+
+export default function MyMenus({ go, params }) {
+  const { data, update, isMaster } = useData();
+  const [subTab, setSubTab] = useState(params?.subTab === "changes" ? "Changes" : params?.subTab === "history" ? "History" : "Current Menu");
+
+  return (
+    <div>
+      <div className="segmented" style={{ marginBottom: 14 }}>
+        {SUB_TABS.map((t) => (
+          <button key={t} className={subTab === t ? "active" : ""} onClick={() => setSubTab(t)}>{t}</button>
+        ))}
+      </div>
+      {subTab === "Current Menu" && <CurrentMenuTab go={go} data={data} />}
+      {subTab === "Drinks" && <DrinksTab go={go} data={data} />}
+      {subTab === "Wine" && <WineTab go={go} data={data} />}
+      {subTab === "Changes" && <ChangesTab go={go} data={data} update={update} initialMenuId={params?.menuId} isMaster={isMaster} />}
+      {subTab === "History" && <HistoryTab go={go} data={data} />}
+    </div>
+  );
+}
