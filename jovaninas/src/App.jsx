@@ -65,7 +65,7 @@ function AppShell() {
           <img
             src={jovaninaLogo}
             alt="Jovanina's"
-            style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.18)" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.53)" }}
           />
         </div>
         <div className="brand" style={{ flex: 1 }}>
