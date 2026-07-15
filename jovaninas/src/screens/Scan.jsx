@@ -17,10 +17,7 @@ function readFileAsDataUrl(file) {
 
 export default function Scan({ go }) {
   const { update } = useData();
-  // We're only ever open for dinner — no menu-type/date form to fill out
-  // before scanning; extraction runs immediately on upload.
   const menuType = "Dinner";
-  const mealPeriod = "";
   const effectiveDate = todayStr();
   const [rawText, setRawText] = useState("");
   const [photos, setPhotos] = useState([]);
@@ -156,7 +153,7 @@ export default function Scan({ go }) {
     }
     const menuId = uid("menu");
     update((draft) => {
-      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText, sourcePdf, sourcePdfName, preservice });
+      commitMenu(draft, cleanExtraction, { menuId, menuType, effectiveDate, photos, rawText, sourcePdf, sourcePdfName, preservice });
     });
     go("menus", { subTab: "changes", menuId });
   }
@@ -247,7 +244,7 @@ export default function Scan({ go }) {
       {extraction && (
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <p className="section-title" style={{ margin: 0 }}>Extraction preview · Step 2 of 2</p>
+            <p className="section-title" style={{ margin: 0 }}>Food menu preview</p>
             {extraction.menuNumber && <span className="pill neutral">Menu No. {extraction.menuNumber}</span>}
           </div>
           {extraction.warnings?.length > 0 && (

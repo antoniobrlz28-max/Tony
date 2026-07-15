@@ -9,11 +9,13 @@ import {
   Search as SearchIcon,
   AlertTriangle,
   X,
+  Wine,
 } from "lucide-react";
 import { DataProvider, useData } from "./lib/context.jsx";
 import jovaninaLogo from "./assets/jovanina-logo.png";
 import Home from "./screens/Home.jsx";
 import Scan from "./screens/Scan.jsx";
+import WineMenu from "./screens/WineMenu.jsx";
 import MyMenus from "./screens/MyMenus.jsx";
 import DishPage from "./screens/DishPage.jsx";
 import TermPage from "./screens/TermPage.jsx";
@@ -25,6 +27,7 @@ import More from "./screens/More.jsx";
 const TABS = [
   { id: "home", label: "Brief", icon: HomeIcon },
   { id: "scan", label: "Scan", icon: ScanLine },
+  { id: "wine", label: "Wine", icon: Wine },
   { id: "menus", label: "My Menus", icon: BookMarked },
   { id: "learn", label: "Learn", icon: GraduationCap },
   { id: "library", label: "Glossary", icon: LibraryIcon },
@@ -76,6 +79,7 @@ function AppShell() {
       <main className="content">
         {route.screen === "home" && <Home go={go} />}
         {route.screen === "scan" && <Scan go={go} />}
+        {route.screen === "wine" && <WineMenu />}
         {route.screen === "menus" && <MyMenus go={go} params={route.params} />}
         {route.screen === "learn" && <Learn go={go} params={route.params} />}
         {route.screen === "library" && <Library go={go} />}

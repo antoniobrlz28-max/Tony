@@ -3,9 +3,18 @@
 
 import { uid } from "./id.js";
 
-export function emptyProfile() {
+/**
+ * Menu types supported by parser profiles.
+ */
+export const MENU_TYPE = {
+  FOOD: "food",
+  WINE: "wine",
+};
+
+export function emptyProfile(menuType = MENU_TYPE.FOOD) {
   return {
     profileId: uid("profile"),
+    menuType,                 // "food" | "wine"
     createdAt: new Date().toISOString(),
     lastUsed: null,
     menuSignature: null,  // Hash of menu layout/structure for matching
@@ -17,6 +26,20 @@ export function emptyProfile() {
     sectionRenames: {},    // original_section -> correct_section
     useCount: 0,
   };
+}
+
+/**
+ * Create a pre-configured wine parser profile with sensible defaults.
+ * Recognises multi-price wine format and origin separators.
+ */
+export function defaultWineProfile() {
+  const profile = emptyProfile(MENU_TYPE.WINE);
+  profile.menuSignature = "wine:default";
+  profile.skipPatterns = [
+    /^\d+$/.toString(),          // bare page numbers
+    /^[\-–—]+$/.toString(),      // divider lines
+  ];
+  return profile;
 }
 
 // Compute a signature for a menu to match similar layouts
