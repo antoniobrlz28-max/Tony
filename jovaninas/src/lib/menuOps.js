@@ -115,3 +115,71 @@ export function commitWineMenu(draft, extraction, opts = {}) {
   draft.wineMenus.unshift(menu);
   if (draft.wineMenus.length > 30) draft.wineMenus.length = 30;
 }
+
+// ─── audit & rollback ───────────────────────────────────────────────────────
+
+/**
+ * Commit a scan audit record alongside a menu save.
+ *
+ * An audit captures the raw parser output, confidence score, issue list, and
+ * source metadata so that quality can be reviewed and corrections replayed.
+ *
+ * @param {object} draft
+ * @param {object} auditData
+ * @param {string} auditData.menuId         - ID of the associated menu snapshot
+ * @param {string} auditData.parser         - "layout-aware" | "text"
+ * @param {number} auditData.confidence     - 0–1 overall confidence
+ * @param {Array}  auditData.issues         - From collectParserIssues / validateParsedMenu
+ * @param {object} [auditData.parserMeta]   - metadata from parseMenuFromLayout
+ * @param {object} [opts]
+ * @param {string} [opts.menuType]
+ */
+export function commitScanAudit(draft, auditData, opts = {}) {
+  if (!draft.scanAudits) draft.scanAudits = [];
+
+  const { menuId, parser, confidence, issues = [], parserMeta = {} } = auditData;
+  const { menuType = "Dinner" } = opts;
+
+  const audit = {
+    id: uid("audit"),
+    menuId,
+    menuType,
+    parser,
+    confidence,
+    issueCount: issues.length,
+    criticalCount: issues.filter((i) => i.severity === "critical").length,
+    warningCount: issues.filter((i) => i.severity === "warning").length,
+    issues,
+    parserMeta,
+    createdAt: new Date().toISOString(),
+  };
+
+  draft.scanAudits.unshift(audit);
+  // Keep the last 200 audit records
+  if (draft.scanAudits.length > 200) draft.scanAudits.length = 200;
+}
+
+/**
+ * Roll back to the previous menu snapshot of the same type.
+ *
+ * Finds the two most-recent menus where `menu.menuType === menuType`, and if
+ * the first one matches `currentMenuId` it is removed (or marked inactive) so
+ * that the prior snapshot becomes current again.
+ *
+ * @param {object} draft
+ * @param {string} currentMenuId - ID of the menu to roll back from
+ * @returns {string|null} The ID of the menu that is now "current", or null
+ */
+export function rollbackToPreviousMenu(draft, currentMenuId) {
+  if (!draft.menus || draft.menus.length === 0) return null;
+
+  const idx = draft.menus.findIndex((m) => m.id === currentMenuId);
+  if (idx < 0) return null;
+
+  // Remove the current menu (it will be preserved in scanAudits if one was created)
+  draft.menus.splice(idx, 1);
+
+  // Return the ID of the menu that is now at the top of the same type, or null
+  const current = draft.menus[0];
+  return current ? current.id : null;
+}

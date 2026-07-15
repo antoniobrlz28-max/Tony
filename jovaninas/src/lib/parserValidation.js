@@ -16,6 +16,7 @@ export const ISSUE_TYPES = {
   LIKELY_HEADER: "likely_header",
   SHORT_NAME: "short_name",
   DUPLICATE_IN_SECTION: "duplicate_in_section",
+  EMPTY_SECTION: "empty_section",
 };
 
 // Detect if text looks like a section header (ALL CAPS, short, minimal description)
@@ -30,7 +31,7 @@ function looksLikeHeader(name, description) {
 function isSuspiciousName(name) {
   const trimmed = (name || "").trim();
   if (trimmed.length < 2) return true;
-  if (trimmed.length < 4 && /^[A-Z]\w?$/.test(trimmed)) return true; // single letter or 2-char
+  if (trimmed.length < 4 && /^[A-Z]\w?$/.test(trimmed)) return true;
   return false;
 }
 
@@ -38,39 +39,39 @@ function isSuspiciousName(name) {
 function isUnusualPrice(price) {
   if (price === null || price === undefined) return false;
   if (price < 0) return true;
-  if (price > 200) return true;  // Jovanina's doesn't typically go this high
-  if (price > 0 && price < 2) return true;  // Too cheap
-  if (price % 1 !== 0 && price % 0.5 !== 0) return true;  // Unusual fractional (not .00 or .50)
+  if (price > 200) return true;
+  if (price > 0 && price < 2) return true;
+  if (price % 1 !== 0 && price % 0.5 !== 0) return true;
   return false;
 }
 
 // Score individual fields for confidence
 export function scoreFieldConfidence(field, value, context = {}) {
-  if (!value) return 0.3;  // Missing field
+  if (!value) return 0.3;
   
   const str = String(value).trim();
   if (str.length === 0) return 0.2;
   
-  let score = 0.5;  // baseline
+  let score = 0.5;
   
   switch (field) {
     case "name":
-      if (str.length > 30) score += 0.15;  // Longer names are usually more confident
-      if (str.includes("&") || str.includes("/")) score += 0.1;  // Complex names often real
-      if (/[àáâãäåèéêëìíîïòóôõöùúûü]/i.test(str)) score += 0.1;  // Accent marks = likely real
+      if (str.length > 30) score += 0.15;
+      if (str.includes("&") || str.includes("/")) score += 0.1;
+      if (/[àáâãäåèéêëìíîïòóôõöùúûü]/i.test(str)) score += 0.1;
       if (isSuspiciousName(str)) score -= 0.2;
       break;
       
     case "description":
       if (str.length > 50) score += 0.2;
       if (str.length > 100) score += 0.1;
-      if (str.includes(",")) score += 0.1;  // Lists of ingredients
-      if (/\d+/.test(str)) score += 0.05;  // Has numbers (quantities, temps)
+      if (str.includes(",")) score += 0.1;
+      if (/\d+/.test(str)) score += 0.05;
       break;
       
     case "price":
       if (typeof value === "number" && value > 8 && value < 150) score += 0.25;
-      if (value % 0.5 === 0) score += 0.05;  // Clean .00 or .50
+      if (value % 0.5 === 0) score += 0.05;
       if (isUnusualPrice(value)) score -= 0.2;
       break;
   }
@@ -78,12 +79,19 @@ export function scoreFieldConfidence(field, value, context = {}) {
   return Math.max(0, Math.min(1, score));
 }
 
-// Generate issues for a single item
-export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {}) {
+// ─── spec-required validators ─────────────────────────────────────────────────
+
+/**
+ * Validate a single parsed item.
+ * @param {object} item - { name, description, price, ... }
+ * @param {{ sectionIdx?: number, itemIdx?: number }} [ctx]
+ * @returns {Array} issues
+ */
+export function validateParsedItem(item, ctx = {}) {
   const issues = [];
-  const { name, description, price } = item;
-  
-  // Critical: likely a header leak
+  const { sectionIdx = 0, itemIdx = 0 } = ctx;
+  const { name, description, price } = item || {};
+
   if (looksLikeHeader(name, description)) {
     issues.push({
       type: ISSUE_TYPES.LIKELY_HEADER,
@@ -94,8 +102,7 @@ export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {
       sectionIdx,
     });
   }
-  
-  // Critical: missing name
+
   if (!name || name.trim().length === 0) {
     issues.push({
       type: ISSUE_TYPES.MISSING_NAME,
@@ -106,8 +113,7 @@ export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {
       sectionIdx,
     });
   }
-  
-  // Warning: suspicious name
+
   if (isSuspiciousName(name)) {
     issues.push({
       type: ISSUE_TYPES.SHORT_NAME,
@@ -118,8 +124,7 @@ export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {
       sectionIdx,
     });
   }
-  
-  // Info: no price
+
   if (price === null || price === undefined) {
     issues.push({
       type: ISSUE_TYPES.NO_PRICE,
@@ -130,8 +135,7 @@ export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {
       sectionIdx,
     });
   }
-  
-  // Warning: unusual price
+
   if (isUnusualPrice(price)) {
     issues.push({
       type: ISSUE_TYPES.UNUSUAL_PRICE,
@@ -142,76 +146,141 @@ export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {
       sectionIdx,
     });
   }
-  
-  // Info: weak description
+
   if (!description || description.trim().length < 10) {
     issues.push({
       type: ISSUE_TYPES.WEAK_DESCRIPTION,
       severity: ISSUE_SEVERITY.INFO,
       field: "description",
-      message: "Description is missing or very short. Add ingredients/notes if available.",
+      message: "Description is missing or very short.",
       itemIdx,
       sectionIdx,
     });
   }
-  
-  // Warning: likely duplicate in same section
-  if (name && name.trim().length > 0) {
-    const sectionItems = allItems[sectionIdx]?.items || [];
-    const duplicates = sectionItems.filter(
-      (it, idx) => idx !== itemIdx && 
-      it.name && 
-      it.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
-    if (duplicates.length > 0) {
+
+  return issues;
+}
+
+/**
+ * Validate a parsed section (name + items, including cross-item duplicate check).
+ * @param {object} section - { name, items: [] }
+ * @param {{ sectionIdx?: number }} [ctx]
+ * @returns {Array} issues
+ */
+export function validateParsedSection(section, ctx = {}) {
+  const issues = [];
+  const { sectionIdx = 0 } = ctx;
+  const items = section?.items || [];
+
+  if (items.length === 0) {
+    issues.push({
+      type: ISSUE_TYPES.EMPTY_SECTION,
+      severity: ISSUE_SEVERITY.WARNING,
+      field: "items",
+      message: `Section "${section?.name || "?"}" has no items.`,
+      sectionIdx,
+    });
+    return issues;
+  }
+
+  const seenNames = new Set();
+  items.forEach((item, itemIdx) => {
+    const itemIssues = validateParsedItem(item, { sectionIdx, itemIdx });
+    issues.push(...itemIssues);
+
+    const lower = (item.name || "").toLowerCase().trim();
+    if (lower && seenNames.has(lower)) {
       issues.push({
         type: ISSUE_TYPES.DUPLICATE_IN_SECTION,
         severity: ISSUE_SEVERITY.WARNING,
         field: "name",
-        message: `This dish name already appears in this section.`,
+        message: `Dish name "${item.name}" already appears in this section.`,
         itemIdx,
         sectionIdx,
       });
     }
-  }
-  
+    seenNames.add(lower);
+  });
+
   return issues;
 }
 
-// Validate entire extraction result
-export function validateExtraction(extraction, dictionary = {}) {
+/**
+ * Validate an entire parsed menu.
+ * @param {object} menu - { sections: [], drinkSections: [] }
+ * @returns {{ issues: Array, summary: { critical, warning, info } }}
+ */
+export function validateParsedMenu(menu) {
   const allIssues = [];
-  const sections = extraction.sections || [];
-  
+  const sections = [...(menu?.sections || []), ...(menu?.drinkSections || [])];
+
   sections.forEach((section, sIdx) => {
-    const items = section.items || [];
-    items.forEach((item, iIdx) => {
-      const itemIssues = validateItem(item, sIdx, iIdx, sections, dictionary);
-      allIssues.push(...itemIssues);
-    });
+    allIssues.push(...validateParsedSection(section, { sectionIdx: sIdx }));
   });
-  
-  // Summary: count by severity
+
   const summary = {
-    critical: allIssues.filter(i => i.severity === ISSUE_SEVERITY.CRITICAL).length,
-    warning: allIssues.filter(i => i.severity === ISSUE_SEVERITY.WARNING).length,
-    info: allIssues.filter(i => i.severity === ISSUE_SEVERITY.INFO).length,
+    critical: allIssues.filter((i) => i.severity === ISSUE_SEVERITY.CRITICAL).length,
+    warning: allIssues.filter((i) => i.severity === ISSUE_SEVERITY.WARNING).length,
+    info: allIssues.filter((i) => i.severity === ISSUE_SEVERITY.INFO).length,
   };
-  
+
   return { issues: allIssues, summary };
 }
 
-// Score overall extraction confidence (0-1) based on issues
+/**
+ * Collect all issues from a parsed menu (alias for validateParsedMenu that only
+ * returns the flat issues array for convenience).
+ * @param {object} menu
+ * @returns {Array}
+ */
+export function collectParserIssues(menu) {
+  return validateParsedMenu(menu).issues;
+}
+
+/**
+ * Map a confidence score (0–1) to a named state.
+ * @param {number} confidence
+ * @returns {"high"|"medium"|"low"|"critical"}
+ */
+export function getConfidenceState(confidence) {
+  if (confidence >= 0.8) return "high";
+  if (confidence >= 0.6) return "medium";
+  if (confidence >= 0.4) return "low";
+  return "critical";
+}
+
+/**
+ * Return true when the issues list contains critical-severity entries that
+ * the user must resolve before the menu can be published.
+ * @param {Array} issues
+ * @returns {boolean}
+ */
+export function requiresImmediateResolution(issues) {
+  return (issues || []).some((i) => i.severity === ISSUE_SEVERITY.CRITICAL);
+}
+
+// ─── legacy exports (kept for backwards compatibility) ─────────────────────
+
+/** @deprecated Use validateParsedItem instead */
+export function validateItem(item, sectionIdx, itemIdx, allItems, dictionary = {}) {
+  return validateParsedItem(item, { sectionIdx, itemIdx });
+}
+
+/** @deprecated Use validateParsedMenu instead */
+export function validateExtraction(extraction, dictionary = {}) {
+  return validateParsedMenu(extraction);
+}
+
+/** Compute overall extraction confidence (0-1) based on issue density. */
 export function extractionConfidence(extraction, dictionary = {}) {
-  const { summary } = validateExtraction(extraction, dictionary);
-  const totalItems = (extraction.sections || []).reduce((n, s) => n + (s.items?.length || 0), 0);
-  
+  const { summary } = validateParsedMenu(extraction);
+  const totalItems = [...(extraction?.sections || []), ...(extraction?.drinkSections || [])]
+    .reduce((n, s) => n + (s.items?.length || 0), 0);
+
   if (totalItems === 0) return 0;
-  
-  // Deduct from 1.0 based on critical/warning issues
+
   let score = 1.0;
-  score -= (summary.critical / totalItems) * 0.4;  // Critical issues worth 40% deduction
-  score -= (summary.warning / totalItems) * 0.2;   // Warnings worth 20% deduction
-  
+  score -= (summary.critical / totalItems) * 0.4;
+  score -= (summary.warning / totalItems) * 0.2;
   return Math.max(0, Math.min(1, score));
 }
