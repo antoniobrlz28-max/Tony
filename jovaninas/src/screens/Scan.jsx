@@ -18,21 +18,25 @@ function readFileAsDataUrl(file) {
 export default function Scan({ go }) {
   const { update } = useData();
   const menuType = "Dinner";
+  const mealPeriod = "";
   const effectiveDate = todayStr();
   const [rawText, setRawText] = useState("");
   const [photos, setPhotos] = useState([]);
   const [extraction, setExtraction] = useState(null);
   const [activeSection, setActiveSection] = useState(0);
-  const [pdfStatus, setPdfStatus] = useState(null); // null | "loading" | "no-text" | "error"
+  const [pdfStatus, setPdfStatus] = useState(null);
   const [pdfProgress, setPdfProgress] = useState(null);
   const [showPasteText, setShowPasteText] = useState(false);
   const [sourcePdf, setSourcePdf] = useState(null);
   const [sourcePdfName, setSourcePdfName] = useState(null);
   const [showDrinks, setShowDrinks] = useState(false);
-  // These change daily and aren't printed on the menu itself — asked once
-  // per upload, same as the preservice meeting, instead of guessed at.
   const [showPreservice, setShowPreservice] = useState(false);
-  const [preservice, setPreservice] = useState({ focacciaFlavor: "", oysterOrigin: "", gelatoSorbetFlavors: "" });
+  const [preservice, setPreservice] = useState({ 
+    focacciaFlavor: "", 
+    oysterOrigin: "", 
+    gelatoFlavors: "",
+    sorbetFlavors: ""
+  });
 
   async function handlePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -153,9 +157,13 @@ export default function Scan({ go }) {
     }
     const menuId = uid("menu");
     update((draft) => {
-      commitMenu(draft, cleanExtraction, { menuId, menuType, effectiveDate, photos, rawText, sourcePdf, sourcePdfName, preservice });
+      commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText, sourcePdf, sourcePdfName, preservice });
     });
     go("menus", { subTab: "changes", menuId });
+  }
+
+  function handlePreserviceClose() {
+    setShowPreservice(false);
   }
 
   return (
@@ -397,15 +405,24 @@ export default function Scan({ go }) {
               />
             </label>
             <label className="field">
-              Tonight's gelato/sorbet flavors
+              Tonight's gelato flavors
               <input
                 type="text"
-                value={preservice.gelatoSorbetFlavors}
-                onChange={(e) => setPreservice((p) => ({ ...p, gelatoSorbetFlavors: e.target.value }))}
-                placeholder="e.g. pistachio, blood orange sorbet"
+                value={preservice.gelatoFlavors}
+                onChange={(e) => setPreservice((p) => ({ ...p, gelatoFlavors: e.target.value }))}
+                placeholder="e.g. pistachio, hazelnut"
               />
             </label>
-            <button className="btn accent" style={{ width: "100%", marginTop: 8 }} onClick={() => setShowPreservice(false)}>
+            <label className="field">
+              Tonight's sorbet flavors
+              <input
+                type="text"
+                value={preservice.sorbetFlavors}
+                onChange={(e) => setPreservice((p) => ({ ...p, sorbetFlavors: e.target.value }))}
+                placeholder="e.g. blood orange, lemon"
+              />
+            </label>
+            <button className="btn accent" style={{ width: "100%", marginTop: 8 }} onClick={handlePreserviceClose}>
               Continue
             </button>
           </div>
