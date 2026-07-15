@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Camera, Trash2, Plus, Check, FileText, Loader2 } from "lucide-react";
+import { Camera, Trash2, Plus, Check, FileText, Loader2, Zap, AlertTriangle } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { parseMenuText } from "../lib/parseMenu.js";
-import { commitMenu } from "../lib/menuOps.js";
+import { parseMenuFromLayout, parseMenuFromText } from "../lib/parseMenuLayout.js";
+import { commitMenu, commitScanAudit } from "../lib/menuOps.js";
+import { collectParserIssues, requiresImmediateResolution, getConfidenceState, extractionConfidence } from "../lib/parserValidation.js";
 import { todayStr, uid } from "../lib/id.js";
-import { extractTextFromPdf } from "../lib/pdfExtract.js";
+import { extractTextFromPdf, extractPositionedLines } from "../lib/pdfExtract.js";
 
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -37,6 +39,10 @@ export default function Scan({ go }) {
     gelatoFlavors: "",
     sorbetFlavors: ""
   });
+  const [parserMode, setParserMode] = useState(null); // "layout" | "text"
+  const [parserIssues, setParserIssues] = useState([]);
+  const [publishSummary, setPublishSummary] = useState(null); // post-save summary
+  const [savedMenuId, setSavedMenuId] = useState(null);
 
   async function handlePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -50,20 +56,37 @@ export default function Scan({ go }) {
     setPdfStatus("loading");
     setPdfProgress(null);
     try {
-      const [{ text, hasText, pageCount, discoveredHeaders }, pdfDataUrl] = await Promise.all([
-        extractTextFromPdf(file, (page, total) => setPdfProgress({ page, total })),
+      const [positionedResult, plainResult, pdfDataUrl] = await Promise.all([
+        extractPositionedLines(file, (page, total) => setPdfProgress({ page, total })).catch(() => null),
+        extractTextFromPdf(file).catch(() => null),
         readFileAsDataUrl(file),
       ]);
+
+      const hasPositioned = positionedResult?.hasText && positionedResult.positionedLines?.length > 0;
+      const hasText = hasPositioned || plainResult?.hasText;
+
       if (!hasText) {
         setPdfStatus("no-text");
         return;
       }
-      setRawText(text);
+
       setSourcePdf(pdfDataUrl);
       setSourcePdfName(file.name);
       setPdfStatus(null);
-      runExtractionFromText(text, discoveredHeaders);
-      void pageCount;
+
+      if (hasPositioned) {
+        const layoutResult = parseMenuFromLayout(positionedResult.positionedLines);
+        if (layoutResult.sections.length > 0) {
+          setRawText(plainResult?.text || "");
+          applyExtraction(layoutResult, "layout");
+          return;
+        }
+      }
+
+      // Fall back to text parser
+      const text = plainResult?.text || "";
+      setRawText(text);
+      runExtractionFromText(text, positionedResult?.discoveredHeaders || plainResult?.discoveredHeaders || []);
     } catch (err) {
       console.error(err);
       setPdfStatus("error");

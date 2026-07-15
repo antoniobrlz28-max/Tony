@@ -42,6 +42,33 @@ export function defaultWineProfile() {
   return profile;
 }
 
+/**
+ * Seeded profile for Jovanina's dinner menu.
+ * Pre-configures known sections, price ranges, and recurring skip patterns.
+ */
+export function jovaninesDinnerProfile() {
+  const profile = emptyProfile(MENU_TYPE.FOOD);
+  profile.profileId = "jovaninas-dinner-menu";
+  profile.menuSignature = "jovaninas:dinner";
+  profile.skipPatterns = [
+    // Common disclaimers and notes that appear on Jovanina's menu
+    /^consuming raw or undercooked/i.toString(),
+    /^please inform your server/i.toString(),
+    /^gluten[\s-]free pasta available/i.toString(),
+    /^\*/.toString(),                   // asterisk footnotes
+    /^\d+$/.toString(),                 // bare page numbers
+    /^[\-–—]+$/.toString(),             // divider lines
+  ];
+  profile.sectionRenames = {
+    "RAW, ROASTED AND GRILLED": "RAW, ROASTED & GRILLED",
+    "HANDMADE PASTA": "HANDMADE FRESH PASTA",
+    "MAINS": "MAIN PLATES",
+    "DESSERTS": "SWEET",
+  };
+  profile.nameAdjustments = {};
+  return profile;
+}
+
 // Compute a signature for a menu to match similar layouts
 export function computeMenuSignature(extraction) {
   // Use section names + item count as a simple signature
