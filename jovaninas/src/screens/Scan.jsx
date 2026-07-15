@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, Trash2, Plus, Check, Lock, FileText, Loader2 } from "lucide-react";
+import { Camera, Trash2, Plus, Check, FileText, Loader2 } from "lucide-react";
 import { useData } from "../lib/context.jsx";
 import { parseMenuText } from "../lib/parseMenu.js";
 import { commitMenu } from "../lib/menuOps.js";
@@ -16,7 +16,7 @@ function readFileAsDataUrl(file) {
 }
 
 export default function Scan({ go }) {
-  const { update, isMaster } = useData();
+  const { update } = useData();
   // We're only ever open for dinner — no menu-type/date form to fill out
   // before scanning; extraction runs immediately on upload.
   const menuType = "Dinner";
@@ -159,16 +159,6 @@ export default function Scan({ go }) {
       commitMenu(draft, cleanExtraction, { menuId, menuType, mealPeriod, effectiveDate, photos, rawText, sourcePdf, sourcePdfName, preservice });
     });
     go("menus", { subTab: "changes", menuId });
-  }
-
-  if (!isMaster) {
-    return (
-      <div className="card empty-state">
-        <Lock size={20} color="var(--gold)" />
-        <p style={{ marginTop: 8 }}>Scanning and saving new menus requires master access on this device.</p>
-        <p className="tiny muted">Ask a manager to unlock it from the lock icon at the top of the app.</p>
-      </div>
-    );
   }
 
   return (

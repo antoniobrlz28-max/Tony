@@ -24,6 +24,9 @@ export function emptyData() {
     notes: [],           // KnowledgeNote[]
     cards: {},           // card_id -> TrainingCard
     dictionary: {},       // term (lowercase) -> DictionaryEntry
+    parserProfiles: [],  // ParserProfile[] — remembered corrections per menu format
+    resolutionQueue: [], // UnresolvedItem[] — items awaiting manager review
+    correctionHistory: [], // CorrectionRecord[] — audit trail of corrections
   };
 }
 
@@ -50,7 +53,7 @@ export function saveData(data) {
       ok: false,
       quota: isQuota,
       message: isQuota
-        ? "This device's local storage is full — your last change was NOT saved. Original PDF/photo attachments are usually the biggest space users; export a backup from More → Settings, then consider removing an older attached PDF."
+        ? "This device's local storage is full — your last change was NOT saved. Original PDF/photo attachments are usually the biggest space users; export a backup from More → Settings, then export."
         : `Save failed: ${e.message || e}`,
     };
   }

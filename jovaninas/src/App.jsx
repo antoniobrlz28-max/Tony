@@ -7,8 +7,6 @@ import {
   Library as LibraryIcon,
   MoreHorizontal,
   Search as SearchIcon,
-  Lock,
-  Unlock,
   AlertTriangle,
   X,
 } from "lucide-react";
@@ -32,67 +30,6 @@ const TABS = [
   { id: "library", label: "Glossary", icon: LibraryIcon },
   { id: "more", label: "More", icon: MoreHorizontal },
 ];
-
-function LockControl() {
-  const { isMaster, pinIsSet, unlockMaster, lockMaster, setMasterPin } = useData();
-  const [modal, setModal] = useState(null); // null | "set" | "unlock"
-  const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [error, setError] = useState("");
-
-  function openModal() {
-    setPin("");
-    setConfirmPin("");
-    setError("");
-    if (isMaster && pinIsSet) {
-      lockMaster();
-      return;
-    }
-    setModal(pinIsSet ? "unlock" : "set");
-  }
-
-  async function submit() {
-    if (modal === "set") {
-      if (pin.length < 4) return setError("Use at least 4 digits.");
-      if (pin !== confirmPin) return setError("PINs don't match.");
-      await setMasterPin(pin);
-      setModal(null);
-    } else {
-      const ok = await unlockMaster(pin);
-      if (!ok) return setError("Incorrect PIN.");
-      setModal(null);
-    }
-  }
-
-  return (
-    <>
-      <button className="icon-btn" onClick={openModal} title={isMaster ? "Lock this device" : "Unlock master access"}>
-        {isMaster ? <Unlock size={14} /> : <Lock size={14} />}
-      </button>
-      {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(30,26,15,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-          <div className="card" style={{ width: "min(320px, 86vw)" }}>
-            <p className="section-title">{modal === "set" ? "Set a master PIN" : "Enter master PIN"}</p>
-            <p className="tiny muted" style={{ marginBottom: 10 }}>
-              {modal === "set"
-                ? "This device-level PIN unlocks editing. Anyone without it can view but not change anything."
-                : "Unlock to add, confirm changes, 86 items, or edit the library."}
-            </p>
-            <input type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" style={{ marginBottom: 8 }} autoFocus />
-            {modal === "set" && (
-              <input type="password" inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} placeholder="Confirm PIN" style={{ marginBottom: 8 }} />
-            )}
-            {error && <p className="small" style={{ color: "var(--red)", marginBottom: 8 }}>{error}</p>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn ghost" onClick={() => setModal(null)} style={{ flex: 1 }}>Cancel</button>
-              <button className="btn" onClick={submit} style={{ flex: 1 }}>{modal === "set" ? "Save" : "Unlock"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
 
 function SaveErrorBanner() {
   const { saveError, dismissSaveError } = useData();
@@ -132,7 +69,6 @@ function AppShell() {
           <div className="name">Jovanina's</div>
           <div className="tag">Broken Italian</div>
         </div>
-        <LockControl />
         <button className="icon-btn" onClick={() => go("search", { fromTab: activeTab })}>
           <SearchIcon size={14} />
         </button>
