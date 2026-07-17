@@ -67,13 +67,10 @@ const COLUMN_CLUSTER_GAP = 150;
 
 // Groups text items into rows by Y position, then splits each row into
 // segments wherever the horizontal gap is wide enough to be a different
-// column rather than a wide same-line gap. `redFlags`, if provided, is a
-// same-length array of booleans (from extractRedFlags below) — a segment
-// is marked red if the first item that started it was drawn in red ink.
-function buildSegments(items, redFlags = null) {
+// column rather than a wide same-line gap.
+function buildSegments(items) {
   const rows = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
+  for (const item of items) {
     if (!item.str) continue;
     const y = Math.round(item.transform[5]);
     let row = rows.find((r) => Math.abs(r.y - y) <= 2);
@@ -81,7 +78,7 @@ function buildSegments(items, redFlags = null) {
       row = { y, items: [] };
       rows.push(row);
     }
-    row.items.push({ ...item, __red: redFlags ? !!redFlags[i] : false });
+    row.items.push(item);
   }
   rows.sort((a, b) => b.y - a.y);
 
@@ -90,14 +87,12 @@ function buildSegments(items, redFlags = null) {
     row.items.sort((a, b) => a.transform[4] - b.transform[4]);
     let text = "";
     let segStartX = null;
-    let segRed = false;
     let lastEnd = null;
     const flush = () => {
       const trimmed = text.trim();
-      if (trimmed) segments.push({ y: row.y, x: segStartX, text: trimmed, red: segRed });
+      if (trimmed) segments.push({ y: row.y, x: segStartX, text: trimmed });
       text = "";
       segStartX = null;
-      segRed = false;
     };
     for (const item of row.items) {
       const x = item.transform[4];
@@ -107,60 +102,13 @@ function buildSegments(items, redFlags = null) {
         else if (gap > 14) text += "   ";
         else if (gap > 2) text += " ";
       }
-      if (segStartX == null) {
-        segStartX = x;
-        segRed = item.__red;
-      }
+      if (segStartX == null) segStartX = x;
       text += item.str;
       lastEnd = x + (item.width || item.str.length * 5);
     }
     flush();
   }
   return segments;
-}
-
-// Best-effort: walks the page's low-level drawing operations to find which
-// text runs were drawn in red ink, since Jovanina's actual menu marks every
-// category header in red print (confirmed against a real page render) —
-// a much more general signal than a fixed phrase list, since it doesn't
-// require knowing every possible header name in advance. pdf.js's
-// getTextContent() (used for position/string data) doesn't expose color,
-// so this separately walks getOperatorList() tracking the active fill
-// color and records it at each text-draw op, then aligns that sequence to
-// textContent.items by position. Only the unambiguous setFillRGBColor op
-// is trusted for "is this red" — any other fill-color op (pattern/
-// separation/indexed color spaces) resets the running color to "unknown"
-// rather than risk a wrong guess. If the recorded color sequence doesn't
-// line up 1:1 with the text items (can happen depending on how a given
-// PDF groups glyphs into show-text ops), this bails out to null rather
-// than risk misattributing color to the wrong text — callers must treat
-// that as "color signal unavailable" and rely on the phrase list alone.
-async function extractRedFlags(pdfjsLib, page, itemCount) {
-  try {
-    const opList = await page.getOperatorList();
-    const OPS = pdfjsLib.OPS;
-    const flags = [];
-    let currentRed = false;
-    for (let i = 0; i < opList.fnArray.length; i++) {
-      const fn = opList.fnArray[i];
-      if (fn === OPS.setFillRGBColor) {
-        const [r, g, b] = opList.argsArray[i];
-        // scale-invariant so it works whether pdf.js gives 0-1 or 0-255
-        currentRed = r > 0 && r > g * 1.4 && r > b * 1.4;
-      } else if (
-        fn === OPS.setFillColorN || fn === OPS.setFillColor ||
-        fn === OPS.setFillGray || fn === OPS.setFillColorSpace
-      ) {
-        currentRed = false; // unknown colorspace — don't guess
-      } else if (fn === OPS.showText || fn === OPS.showSpacedText) {
-        flags.push(currentRed);
-      }
-    }
-    if (flags.length !== itemCount) return null;
-    return flags;
-  } catch {
-    return null;
-  }
 }
 
 // A header that's laid out across two printed lines (e.g. "RAW, ROASTED"
@@ -198,7 +146,7 @@ export function stitchFragmentedHeaders(segments) {
     }
     if (partner >= 0) {
       used.add(partner);
-      merged.push({ ...seg, text: `${seg.text} ${segments[partner].text}`, red: seg.red || segments[partner].red });
+      merged.push({ ...seg, text: `${seg.text} ${segments[partner].text}` });
     } else {
       merged.push(seg);
     }
@@ -206,37 +154,15 @@ export function stitchFragmentedHeaders(segments) {
   return merged;
 }
 
-// Segments whose text is red, short, and title-shaped, but aren't already
-// in the known header lists — new header phrases found "for free" from
-// this page's own red print, so the phrase list doesn't need to name
-// every possible category up front. Excludes the red "Jovanina's"
-// signature specifically, since that's decorative, not a category.
-export function discoverRedHeaders(segments) {
-  const found = new Set();
-  for (const seg of segments) {
-    if (!seg.red) continue;
-    const norm = normalizeHeaderText(seg.text);
-    if (!norm || norm.includes("jovanina")) continue;
-    if (FOOD_HEADERS.has(norm) || DRINK_HEADERS.has(norm)) continue;
-    const words = seg.text.trim().split(/\s+/);
-    if (words.length > 5) continue;
-    if (/\d/.test(seg.text) || seg.text.includes("+") || seg.text.includes(",")) continue;
-    found.add(norm);
-  }
-  return found;
-}
-
 // Clusters known-header x-positions into column bands (gap-based 1D
 // clustering). Returns null when there's fewer than two bands to split on
 // — i.e. this page doesn't look like a multi-column layout, so the caller
 // should leave it in plain top-to-bottom order rather than guess.
-// `extraHeaderNorms` (already-normalized strings) lets a red-detected
-// header that isn't in the static lists also act as a column anchor.
-function clusterHeaderColumns(segments, extraHeaderNorms = null) {
+function clusterHeaderColumns(segments) {
   const headerXs = [];
   for (const seg of segments) {
     const norm = normalizeHeaderText(seg.text);
-    if (FOOD_HEADERS.has(norm) || DRINK_HEADERS.has(norm) || extraHeaderNorms?.has(norm)) headerXs.push(seg.x);
+    if (FOOD_HEADERS.has(norm) || DRINK_HEADERS.has(norm)) headerXs.push(seg.x);
   }
   if (headerXs.length < 2) return null;
   const sorted = [...headerXs].sort((a, b) => a - b);
@@ -255,8 +181,8 @@ function clusterHeaderColumns(segments, extraHeaderNorms = null) {
 // Reorders a page's segments into column-major reading order when the
 // page's known headers cluster into distinct column bands; otherwise
 // returns them in their natural top-to-bottom order, unchanged.
-export function reorderByColumns(segments, extraHeaderNorms = null) {
-  const boundaries = clusterHeaderColumns(segments, extraHeaderNorms);
+export function reorderByColumns(segments) {
+  const boundaries = clusterHeaderColumns(segments);
   if (!boundaries) return segments.map((s) => s.text);
   const columns = Array.from({ length: boundaries.length + 1 }, () => []);
   for (const seg of segments) {
@@ -282,20 +208,22 @@ export async function extractTextFromPdf(file, onProgress) {
   const buffer = await fileToArrayBuffer(file);
   const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
   const pageTexts = [];
-  const allDiscovered = new Set();
   for (let i = 1; i <= doc.numPages; i++) {
     onProgress?.(i, doc.numPages);
     const page = await doc.getPage(i);
+    // getTextContent() only — getOperatorList() (formerly used here to
+    // detect red-print headers by walking the page's raw drawing
+    // operations) was the single most expensive step in this pipeline and
+    // was already experimental/best-effort; the known FOOD_HEADERS/
+    // DRINK_HEADERS phrase list is comprehensive enough now to carry
+    // column/section detection on its own.
     const textContent = await page.getTextContent();
-    const redFlags = await extractRedFlags(pdfjsLib, page, textContent.items.length);
-    const rawSegments = buildSegments(textContent.items, redFlags);
+    const rawSegments = buildSegments(textContent.items);
     // Run twice: a header split across 3 lines needs its first two
     // fragments stitched before the result can match against the third.
     const segments = stitchFragmentedHeaders(stitchFragmentedHeaders(rawSegments));
-    const discovered = redFlags ? discoverRedHeaders(segments) : new Set();
-    for (const h of discovered) allDiscovered.add(h);
-    pageTexts.push(reorderByColumns(segments, allDiscovered).join("\n"));
+    pageTexts.push(reorderByColumns(segments).join("\n"));
   }
   const text = pageTexts.join("\n\n").trim();
-  return { text, pageCount: doc.numPages, hasText: text.length > 20, discoveredHeaders: Array.from(allDiscovered) };
+  return { text, pageCount: doc.numPages, hasText: text.length > 20 };
 }

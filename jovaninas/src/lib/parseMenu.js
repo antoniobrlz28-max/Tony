@@ -37,15 +37,13 @@ const OR_SEPARATOR_RE = /^[-—]\s*or\s*[-—]$/i;
 // Carrots", "Roasted Butternut Squash Ravioli"), so a loose "contains
 // roasted/salad/pasta" match would misfire and turn those dishes into
 // phantom sections. Matching the whole (normalized) line against a known
-// set of category titles avoids that. `extraFoodHeaderNorms` (already
-// normalized) lets pdfExtract.js's red-print header detection recognize a
-// category this static list doesn't name yet.
-function isSectionHeaderLine(line, extraFoodHeaderNorms = null) {
+// set of category titles avoids that.
+function isSectionHeaderLine(line) {
   const trimmed = line.trim();
   if (!trimmed || PRICE_RE.test(trimmed)) return false;
   if (trimmed.split(/\s+/).length > 6) return false;
   const norm = normalizeHeaderText(trimmed);
-  return FOOD_HEADERS.has(norm) || !!extraFoodHeaderNorms?.has(norm);
+  return FOOD_HEADERS.has(norm);
 }
 
 // Same idea, but for a drinks-menu header (Cocktails, Wines by the Glass,
@@ -137,10 +135,7 @@ function splitNameDescription(rest) {
 // page (see pdfExtract.js), but it keeps food and drinks cleanly
 // separated into their own lists rather than mixed into one, and the
 // existing per-item heuristics below are unchanged.
-export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
-  const extraFoodHeaderNorms = extraFoodHeaders.length
-    ? new Set(extraFoodHeaders.map(normalizeHeaderText))
-    : null;
+export function parseMenuText(rawText) {
   const lines = rawText
     .split("\n")
     .map((l) => l.trim())
@@ -257,7 +252,7 @@ export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
         continue;
       }
 
-      const isHeaderLine = price === null && (isSectionHeaderLine(rest, extraFoodHeaderNorms) || isDrinkHeaderLine(rest));
+      const isHeaderLine = price === null && (isSectionHeaderLine(rest) || isDrinkHeaderLine(rest));
       if (isHeaderLine) {
         // a real section/drink header interrupts the pending item — flush
         // it as-is and let the header be handled below (re-processed via
@@ -305,7 +300,7 @@ export function parseMenuText(rawText, { extraFoodHeaders = [] } = {}) {
       }
     }
 
-    if (isSectionHeaderLine(line, extraFoodHeaderNorms)) {
+    if (isSectionHeaderLine(line)) {
       activeTrack = "food";
       current = { name: line.replace(/:$/, ""), items: [] };
       sections.push(current);

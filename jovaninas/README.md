@@ -119,19 +119,19 @@ that's wired up; only the storage layer underneath would change.
   a multi-style item) is parsed as its own price note ("$29 per half
   dozen") instead of misreading the trailing count digit as the price and
   leaving "29 per" behind as unparsed text.
-- **Category headers are also recognized by red print color**, not just
-  the static phrase list — Jovanina's menus mark every category header in
-  red ink, so `pdfExtract.js` walks the page's drawing operations
-  alongside its text to find red, title-shaped text that isn't already a
-  known header (excluding the red "Jovanina's" signature specifically) and
-  treats it as a header too, both for splitting sections and for
-  column-anchoring on a multi-column page. This is a genuinely best-effort
-  layer: pdf.js doesn't expose color through its normal text API, so this
-  separately correlates two lower-level data sources by position and bails
-  out safely (falls back to the phrase list alone) if that correlation
-  doesn't line up — it could not be exercised against a real browser in
-  this sandbox, only unit-tested with synthetic input, so treat it as
-  experimental until confirmed against a live upload.
+- **PDF extraction reads `getTextContent()` only** — an earlier version
+  additionally walked each page's raw drawing operations
+  (`getOperatorList()`) to detect red-print category headers by color, as
+  a secondary signal alongside the phrase list. That pass was the single
+  most expensive step in the whole pipeline (operator lists are a much
+  heavier pdf.js call than text content) and was already marked
+  best-effort/experimental, so it was removed for a faster, simpler
+  pipeline: header/column detection now relies solely on the
+  `FOOD_HEADERS`/`DRINK_HEADERS` phrase list in `lib/menuHeaders.js`,
+  which is comprehensive enough for Jovanina's actual menu that the color
+  signal wasn't adding real value. The left-to-right, top-to-bottom
+  column-reading logic itself (clustering known headers into column
+  bands, reading each column fully before the next) is unchanged.
 - **Menu-specific add-on scope** (e.g. "Add Charcuterie" and "Gluten Free
   Crust" apply only to pizzas; "Gluten Free Pasta" only to Elk Bolognese
   and the Trapanese pesto pasta) is encoded directly in `lib/addOns.js`
