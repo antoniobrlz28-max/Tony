@@ -1,4 +1,4 @@
-import { todayStr } from "./id.js";
+import { todayStr, nowIso } from "./id.js";
 
 export function getShiftLog(data, date = todayStr()) {
   return data.shiftLog?.[date] || { covers: null, specialEvent: "" };
@@ -70,4 +70,38 @@ export function chefNotesSince(data, sinceIso) {
 
 export function estimateReviewMinutes(changeCount, dueCardCount) {
   return Math.max(1, Math.round(changeCount * 0.5 + dueCardCount * 0.6));
+}
+
+// Tonight's Focus session progress, stored per-day alongside the rest of
+// the shift log so it naturally resets to a fresh session the next night.
+// The item list itself isn't persisted — generateTonightsFocus(data) is
+// deterministic enough within a shift that re-deriving it on every render
+// and only remembering *progress through it* keeps this simple and avoids
+// a second, potentially-stale copy of dish/term/scenario data in storage.
+export function getTonightsFocusSession(data, date = todayStr()) {
+  return data.shiftLog?.[date]?.tonightsFocus || null;
+}
+
+export function startTonightsFocusSession(draft, date = todayStr()) {
+  setShiftLog(draft, date, {
+    tonightsFocus: { startedAt: nowIso(), currentIndex: 0, completedIds: [], completedAt: null },
+  });
+}
+
+export function advanceTonightsFocusSession(draft, itemId, totalCount, date = todayStr()) {
+  const session = getTonightsFocusSession(draft, date) || { startedAt: nowIso(), currentIndex: 0, completedIds: [] };
+  const completedIds = session.completedIds.includes(itemId) ? session.completedIds : [...session.completedIds, itemId];
+  const currentIndex = Math.min(totalCount, session.currentIndex + 1);
+  setShiftLog(draft, date, {
+    tonightsFocus: {
+      ...session,
+      completedIds,
+      currentIndex,
+      completedAt: currentIndex >= totalCount ? nowIso() : null,
+    },
+  });
+}
+
+export function resetTonightsFocusSession(draft, date = todayStr()) {
+  setShiftLog(draft, date, { tonightsFocus: null });
 }
